@@ -1,0 +1,166 @@
+{# ==========================================================
+   GLOBAL SAFE NOTIFICATIONS
+   Prevents "dashboard is undefined"
+   ========================================================== #}
+
+<div class="dashboard-card notification-card h-100">
+
+    <!-- Header -->
+    <div class="card-header-custom d-flex justify-content-between align-items-center">
+
+        <div>
+
+            <h5 class="mb-1">
+
+                <i class="bi bi-bell-fill text-warning me-2"></i>
+
+                Alerts
+
+            </h5>
+
+            <small class="text-muted">
+
+                Recent financial alerts and reminders
+
+            </small>
+
+        </div>
+
+        {% if notifications %}
+
+        <span class="notification-counter badge bg-danger rounded-pill">
+
+            {{ notifications|length }}
+
+        </span>
+
+        {% endif %}
+
+    </div>
+
+    <!-- Body -->
+    <div class="notification-body">
+
+        {% if notifications %}
+
+            {% for item in notifications %}
+
+                {% if item.level == "danger" %}
+
+                    {% set icon = "bi-exclamation-octagon-fill" %}
+                    {% set color = "danger" %}
+
+                {% elif item.level == "warning" %}
+
+                    {% set icon = "bi-exclamation-circle-fill" %}
+                    {% set color = "warning" %}
+
+                {% elif item.level == "success" %}
+
+                    {% set icon = "bi-check-circle-fill" %}
+                    {% set color = "success" %}
+
+                {% elif item.level == "info" %}
+
+                    {% set icon = "bi-info-circle-fill" %}
+                    {% set color = "primary" %}
+
+                {% else %}
+
+                    {% set icon = "bi-bell-fill" %}
+                    {% set color = "secondary" %}
+
+                {% endif %}
+
+                <div class="notification-item d-flex align-items-start py-3 border-bottom">
+
+                    <!-- Icon -->
+                    <div class="notification-icon bg-{{ color }}-subtle rounded-circle me-3">
+
+                        <i class="bi {{ icon }} text-{{ color }}"></i>
+
+                    </div>
+
+                    <!-- Content -->
+                    <div class="notification-content flex-grow-1">
+
+                        <div class="notification-title fw-semibold">
+
+                            {{ item.title }}
+
+                        </div>
+
+                        <div class="notification-message text-muted small mt-1">
+
+                            {{ item.message }}
+
+                        </div>
+
+                        {% if item.time %}
+
+                        <div class="notification-time small text-muted mt-2">
+
+                            <i class="bi bi-clock me-1"></i>
+
+                            {{ item.time }}
+
+                        </div>
+
+                        {% endif %}
+
+                    </div>
+
+                </div>
+
+            {% endfor %}
+
+        {% else %}
+
+            <!-- Empty State -->
+
+            <div class="notification-empty text-center py-5">
+
+                <div class="empty-icon mb-3">
+
+                    <i class="bi bi-bell-slash fs-1 text-secondary opacity-50"></i>
+
+                </div>
+
+                <h5 class="mb-2">
+
+                    No New Alerts
+
+                </h5>
+
+                <p class="text-muted mb-0">
+
+                    You're all caught up. Important financial alerts, reminders,
+                    AI insights, budget warnings and payment notifications will
+                    appear here.
+
+                </p>
+
+            </div>
+
+        {% endif %}
+
+    </div>
+
+    <!-- Footer -->
+
+    {% if notifications %}
+
+    <div class="card-footer bg-white border-top text-center">
+
+        <a href="#"
+           class="small text-decoration-none fw-semibold">
+
+            View All Notifications
+
+        </a>
+
+    </div>
+
+    {% endif %}
+
+</div>

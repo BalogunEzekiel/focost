@@ -1,0 +1,390 @@
+{# ============================================================
+   GLOBAL DASHBOARD TOPBAR
+   Works on every page via Context Processor
+   ============================================================ #}
+
+<nav class="navbar dashboard-topbar bg-white border-bottom shadow-sm">
+
+    <div class="container-fluid">
+
+        <div class="d-flex align-items-center justify-content-between w-100">
+
+            <!-- Left -->
+            <div class="d-flex align-items-center">
+
+                <!-- Mobile Sidebar Toggle -->
+
+                <button
+                    class="btn btn-outline-secondary d-lg-none"
+                    id="sidebarToggle"
+                    type="button"
+                    aria-label="Toggle Sidebar">
+
+                    <i class="bi bi-list fs-4"></i>
+
+                </button>
+
+            </div>
+
+            <!-- Center Search -->
+
+            <div class="flex-grow-1 px-2 px-lg-4">
+
+                <div class="position-relative mx-auto topbar-search">
+
+                    <i class="bi bi-search position-absolute top-50 start-0 translate-middle-y ms-3 text-muted"></i>
+
+                    <input
+                        type="search"
+                        class="form-control form-control-sm ps-5"
+                        placeholder="Search..."
+                        autocomplete="off">
+
+                </div>
+
+            </div>
+
+            <!-- Right -->
+
+            <!-- Notifications -->
+
+            <li class="nav-item dropdown">
+
+                <a
+                    class="nav-link position-relative"
+                    href="#"
+                    id="notificationDropdown"
+                    role="button"
+                    data-bs-toggle="dropdown"
+                    aria-expanded="false">
+
+                    <i class="bi bi-bell-fill fs-5"></i>
+
+                    {% if notification_count > 0 %}
+                    <span
+                        id="notificationBadge"
+                        class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+
+                        {{ notification_count }}
+
+                    </span>
+                    {% endif %}
+
+                </a>
+
+                <div
+                    id="notificationMenu"
+                    class="dropdown-menu dropdown-menu-end shadow border-0 notification-dropdown">
+
+                    <!-- Header -->
+
+                    <div class="d-flex justify-content-between align-items-center px-3 py-2 border-bottom">
+
+                        <strong>Alerts</strong>
+
+                        <div>
+
+                            {% if notification_count > 0 %}
+
+                            <span
+                                id="notificationHeaderBadge"
+                                class="badge bg-primary">
+
+                                {{ notification_count }}
+
+                            </span>
+
+                            {% endif %}
+
+                        </div>
+
+                    </div>
+
+                    {% if notifications %}
+
+                        <div
+                            id="notificationList"
+                            class="notification-list">
+
+                            {% for notification in notifications %}
+
+                            <div
+                                class="dropdown-item py-3 notification-item {% if not notification.is_read %}bg-light{% endif %}"
+                                data-id="{{ notification.id }}">
+
+                                <div class="d-flex">
+
+                                    <!-- Icon -->
+
+                                    <div class="me-3">
+
+                                        <i class="bi {{ notification.icon or 'bi-bell-fill' }} fs-5 text-{{ notification.level }}"></i>
+
+                                    </div>
+
+                                    <!-- Content -->
+
+                                    <div class="flex-grow-1">
+
+                                        <div class="d-flex justify-content-between align-items-start">
+
+                                            <div>
+
+                                                <div class="fw-semibold small">
+
+                                                    {{ notification.title }}
+
+                                                </div>
+
+                                                {% if not notification.is_read %}
+
+                                                <span
+                                                    class="badge bg-primary rounded-pill">
+
+                                                    New
+
+                                                </span>
+
+                                                {% endif %}
+
+                                            </div>
+
+                                            <small class="text-muted">
+
+                                                {{ notification.time }}
+
+                                            </small>
+
+                                        </div>
+
+                                        <small class="text-muted d-block mt-2">
+
+                                            {{ notification.message }}
+
+                                        </small>
+
+                                        <!-- Actions -->
+
+                                        <div class="mt-2 d-flex gap-2 flex-wrap">
+
+                                            {% if notification.action_url %}
+
+                                            <a
+                                                href="{{ url_for('notifications.open_notification',
+                                                    notification_id=notification.id) }}"
+                                                class="btn btn-sm btn-outline-primary">
+
+                                                <i class="bi bi-box-arrow-up-right"></i>
+
+                                                Open
+
+                                            </a>
+
+                                            {% endif %}
+
+                                            {% if not notification.is_read %}
+
+                                            <button
+                                                type="button"
+                                                class="btn btn-sm btn-outline-success mark-read"
+                                                data-id="{{ notification.id }}">
+
+                                                <i class="bi bi-check2"></i>
+
+                                                Mark Read
+
+                                            </button>
+
+                                            {% endif %}
+
+                                            <button
+                                                type="button"
+                                                class="btn btn-sm btn-outline-danger delete-notification"
+                                                data-id="{{ notification.id }}">
+
+                                                <i class="bi bi-trash"></i>
+
+                                                Delete
+
+                                            </button>
+
+                                        </div>
+
+                                    </div>
+
+                                </div>
+
+                            </div>
+
+                            {% if not loop.last %}
+                            <div class="dropdown-divider"></div>
+                            {% endif %}
+
+                            {% endfor %}
+
+                        </div>
+
+                        <!-- Footer -->
+
+                        <div class="dropdown-divider"></div>
+
+                        <div class="px-2 py-2">
+
+                            <div class="d-grid gap-2">
+
+                                <button
+                                    id="markAllNotifications"
+                                    class="btn btn-sm btn-outline-primary"
+                                    type="button">
+
+                                    <i class="bi bi-check2-all me-1"></i>
+
+                                    Mark All Read
+
+                                </button>
+
+                                <button
+                                    id="deleteAllNotifications"
+                                    class="btn btn-sm btn-outline-danger"
+                                    type="button">
+
+                                    <i class="bi bi-trash me-1"></i>
+
+                                    Delete All
+
+                                </button>
+
+                                <a
+                                    href="{{ url_for('notifications.index') }}"
+                                    class="btn btn-sm btn-primary">
+
+                                    <i class="bi bi-list-ul me-1"></i>
+
+                                    View All Notifications
+
+                                </a>
+
+                            </div>
+
+                        </div>
+
+                    {% else %}
+
+                        <div class="text-center py-4 px-3 text-muted">
+
+                            <i class="bi bi-bell-slash fs-1"></i>
+
+                            <div class="fw-semibold mt-2">
+
+                                No notifications
+
+                            </div>
+
+                            <small>
+
+                                You're all caught up.
+
+                            </small>
+
+                        </div>
+
+                    {% endif %}
+
+                </div>
+
+            </li>
+
+                <!-- User -->
+
+                <li class="nav-item dropdown">
+
+                    <a
+                        class="nav-link dropdown-toggle d-flex align-items-center"
+                        href="#"
+                        role="button"
+                        data-bs-toggle="dropdown"
+                        aria-expanded="false">
+
+                        <div class="avatar-circle me-2">
+
+                            {{ current_user.first_name[:1]|upper }}
+
+                        </div>
+
+                        <div class="text-start d-none d-md-block">
+
+                            <div class="fw-semibold small">
+
+                                {{ current_user.first_name }}
+
+                            </div>
+
+                            <small class="text-muted">
+
+                                {{ user_plan }}
+
+                            </small>
+
+                        </div>
+
+                    </a>
+
+                    <ul class="dropdown-menu dropdown-menu-end shadow border-0">
+
+                        <li>
+
+                            <a
+                                class="dropdown-item"
+                                href="#"
+                                data-bs-toggle="modal"
+                                data-bs-target="#settingsModal">
+
+                                <i class="bi bi-gear me-2"></i>
+
+                                Settings
+
+                            </a>
+
+                        </li>
+
+                        <li>
+
+                            <a
+                                class="dropdown-item"
+                                href="#">
+
+                                <i class="bi bi-person me-2"></i>
+
+                                My Profile
+
+                            </a>
+
+                        </li>
+
+                        <li><hr class="dropdown-divider"></li>
+
+                        <li>
+
+                            <a
+                                class="dropdown-item text-danger"
+                                href="{{ url_for('auth.logout') }}">
+
+                                <i class="bi bi-box-arrow-right me-2"></i>
+
+                                Logout
+
+                            </a>
+
+                        </li>
+
+                    </ul>
+
+                </li>
+
+            </ul>
+
+        </div>
+
+    </div>
+
+</nav>

@@ -1,0 +1,614 @@
+<!-- =======================================================
+     SMART INSIGHTS WIDGET
+======================================================= -->
+
+<div
+    class="dashboard-card"
+    data-focost-widget="insights">
+
+    <!-- =======================================================
+         SMART INSIGHTS
+    ======================================================= -->
+
+    <div class="row g-2 mb-3">
+
+        <!-- Top Spending -->
+        <div class="col-lg-3 col-md-6 col-6">
+
+            <div class="card border-0 shadow-sm h-100">
+
+                <div class="card-body p-3">
+
+                    <div class="d-flex justify-content-between align-items-center">
+
+                        <div class="flex-grow-1">
+
+                            <small class="text-muted d-block">
+                                Top Spending
+                            </small>
+
+                            <div class="fw-semibold small text-truncate">
+                                {{ dashboard.top_spending }}
+                            </div>
+
+                            <small class="text-danger">
+                                ₦{{ "{:,.2f}".format(dashboard.top_spending_amount|default(0)) }}
+                            </small>
+
+                        </div>
+
+                        <div class="dashboard-icon bg-danger-subtle text-danger">
+                            <i class="bi bi-wallet-fill"></i>
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <!-- Income Source -->
+        <div class="col-lg-3 col-md-6 col-6">
+
+            <div class="card border-0 shadow-sm h-100">
+
+                <div class="card-body p-3">
+
+                    <div class="d-flex justify-content-between align-items-center">
+
+                        <div class="flex-grow-1">
+
+                            <small class="text-muted d-block">
+                                Income Source
+                            </small>
+
+                            <div class="fw-semibold small text-truncate">
+                                {{ dashboard.top_income_source }}
+                            </div>
+
+                            <small class="text-success">
+                                ₦{{ "{:,.2f}".format(dashboard.top_income_amount|default(0)) }}
+                            </small>
+
+                        </div>
+
+                        <div class="dashboard-icon bg-success-subtle text-success">
+                            <i class="bi bi-cash-coin"></i>
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <!-- Spending Trend -->
+        <div class="col-lg-3 col-md-6 col-6">
+
+            <div class="card border-0 shadow-sm h-100">
+
+                <div class="card-body p-3">
+
+                    <div class="d-flex justify-content-between align-items-center">
+
+                        <div class="flex-grow-1">
+
+                            <small class="text-muted d-block">
+                                Trend
+                            </small>
+
+                            <div class="fw-semibold">
+                                {{ dashboard.spending_trend|default("Stable") }}
+                            </div>
+
+                            <small class="text-muted">
+
+                                {% if dashboard.spending_change is defined
+                                      and dashboard.spending_change is not none %}
+
+                                    {{ dashboard.spending_change }}% vs last month
+
+                                {% else %}
+
+                                    No comparison
+
+                                {% endif %}
+
+                            </small>
+
+                        </div>
+
+                        <div class="dashboard-icon bg-warning-subtle text-warning">
+                            <i class="bi bi-graph-up-arrow"></i>
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <!-- Budget Risk -->
+        <div class="col-lg-3 col-md-6 col-6">
+
+            <div class="card border-0 shadow-sm h-100">
+
+                <div class="card-body p-3">
+
+                    <div class="d-flex justify-content-between align-items-center">
+
+                        <div class="flex-grow-1">
+
+                            <small class="text-muted d-block">
+                                Budget Risk
+                            </small>
+
+                            <div class="fw-semibold">
+                                {{ dashboard.budget_risk|default("Low") }}
+                            </div>
+
+                            <small class="text-muted">
+                                {{ dashboard.budget_warning|default("No immediate risks detected.") }}
+                            </small>
+
+                        </div>
+
+                        <div class="dashboard-icon bg-primary-subtle text-primary">
+                            <i class="bi bi-shield-exclamation"></i>
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- =======================================================
+         SECOND ROW
+    ======================================================= -->
+
+    <div class="row g-2 mb-3">
+
+
+        <!-- Savings Opportunity -->
+        <div class="col-lg-4">
+
+            <div class="card border-0 shadow-sm h-100">
+
+                <div class="card-header bg-white py-2 px-3">
+
+                    <strong class="small">
+
+                        <i class="bi bi-piggy-bank me-1"></i>
+
+                        Savings Opportunity
+
+                    </strong>
+
+                </div>
+
+
+                <div class="card-body p-3">
+
+                    <h5 class="fw-bold text-success mb-1">
+
+                        ₦{{ "{:,.2f}".format(
+                            dashboard.savings_opportunity|default(0)
+                        ) }}
+
+                    </h5>
+
+                    <small class="text-muted">
+                        Potential Monthly Savings
+                    </small>
+
+
+                    {% set savings_percentage =
+                        dashboard.savings_percentage|default(0)|float
+                    %}
+
+                    {% if savings_percentage < 0 %}
+                        {% set savings_percentage = 0 %}
+                    {% elif savings_percentage > 100 %}
+                        {% set savings_percentage = 100 %}
+                    {% endif %}
+
+
+                    <div
+                        class="progress mb-3 mt-2"
+                        style="height:15px;">
+
+                        <div
+                            class="progress-bar bg-success"
+                            role="progressbar"
+                            style="width:{{ savings_percentage }}%;"
+                            aria-valuenow="{{ savings_percentage }}"
+                            aria-valuemin="0"
+                            aria-valuemax="100">
+
+                            {{ "%.0f"|format(savings_percentage) }}%
+
+                        </div>
+
+                    </div>
+
+
+                    <small class="text-muted">
+
+                        {{ dashboard.savings_advice|default(
+                            "Review your spending to identify additional savings."
+                        ) }}
+
+                    </small>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <!-- Cash Flow -->
+        <div class="col-lg-4">
+
+            <div class="card border-0 shadow-sm h-100">
+
+                <div class="card-header bg-white py-2 px-3">
+
+                    <strong class="small">
+
+                        <i class="bi bi-arrow-left-right me-1"></i>
+
+                        Cash Flow
+
+                    </strong>
+
+                </div>
+
+
+                <div class="card-body p-3">
+
+                    <h6 class="fw-bold text-primary mb-2">
+
+                        {{ dashboard.cashflow_trend|default("Stable") }}
+
+                    </h6>
+
+                    <small class="text-muted">
+
+                        {{ dashboard.cashflow_message|default(
+                            "Your cash flow is currently stable."
+                        ) }}
+
+                    </small>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <!-- AI Confidence -->
+        <div class="col-lg-4">
+
+            <div class="card border-0 shadow-sm h-100">
+
+                <div class="card-header bg-white py-2 px-3">
+
+                    <strong class="small">
+
+                        <i class="bi bi-cpu me-1"></i>
+
+                        AI Confidence
+
+                    </strong>
+
+                </div>
+
+
+                <div class="card-body p-3 text-center">
+
+                    {% set ai_confidence =
+                        dashboard.ai_confidence|default(0)|float
+                    %}
+
+                    {% if ai_confidence < 0 %}
+                        {% set ai_confidence = 0 %}
+                    {% elif ai_confidence > 100 %}
+                        {% set ai_confidence = 100 %}
+                    {% endif %}
+
+
+                    <h2 class="fw-bold text-primary mb-2">
+
+                        {{ "%.0f"|format(ai_confidence) }}%
+
+                    </h2>
+
+
+                    <div
+                        class="progress mb-3"
+                        style="height:15px;">
+
+                        <div
+                            class="progress-bar bg-primary"
+                            role="progressbar"
+                            style="width:{{ ai_confidence }}%;"
+                            aria-valuenow="{{ ai_confidence }}"
+                            aria-valuemin="0"
+                            aria-valuemax="100">
+
+                        </div>
+
+                    </div>
+
+
+                    <small class="text-muted">
+
+                        Confidence based on available financial data
+
+                    </small>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- =======================================================
+         AI FINANCIAL INSIGHT
+    ======================================================= -->
+
+    <div class="card border-0 shadow-sm rounded-3 mb-3">
+
+        <div class="card-header bg-white py-2 px-3">
+
+            <h6 class="fw-bold mb-0">
+
+                <i class="bi bi-robot text-primary me-2"></i>
+
+                INTELLIGENT FINANCIAL INSIGHTS
+
+            </h6>
+
+        </div>
+
+
+        <div class="card-body p-3">
+
+            {% set financial_insight =
+                dashboard.ai_financial_insight|default({})
+            %}
+
+
+            <!-- Prediction -->
+
+            <p class="mb-3 small lh-base">
+
+                {{ financial_insight.prediction|default(
+                    "FOCOST is analyzing your financial activity to generate personalized insights."
+                )|safe }}
+
+            </p>
+
+
+            <!-- =================================================
+                 CURRENT POSITION
+            ================================================== -->
+
+            <div class="mb-2 fw-semibold text-muted small text-uppercase">
+
+                Current Position
+
+            </div>
+
+
+            <div class="row g-2 mb-3">
+
+
+                <!-- Current Income -->
+
+                <div class="col-md-4">
+
+                    <div class="border rounded p-2 h-100">
+
+                        <small class="text-muted d-block">
+                            Current Income
+                        </small>
+
+                        <div class="fw-bold text-primary">
+
+                            ₦{{ "{:,.2f}".format(
+                                financial_insight.monthly_income|default(0)
+                            ) }}
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+                <!-- Current Expenses -->
+
+                <div class="col-md-4">
+
+                    <div class="border rounded p-2 h-100">
+
+                        <small class="text-muted d-block">
+                            Current Expenses
+                        </small>
+
+                        <div class="fw-bold text-danger">
+
+                            ₦{{ "{:,.2f}".format(
+                                financial_insight.monthly_expenses|default(0)
+                            ) }}
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+                <!-- Current Savings -->
+
+                <div class="col-md-4">
+
+                    <div class="border rounded p-2 h-100">
+
+                        <small class="text-muted d-block">
+                            Current Savings
+                        </small>
+
+                        <div class="fw-bold text-success">
+
+                            ₦{{ "{:,.2f}".format(
+                                financial_insight.total_savings|default(0)
+                            ) }}
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <!-- =================================================
+                 FORECAST
+            ================================================== -->
+
+            <div class="mb-2 fw-semibold text-muted small text-uppercase">
+
+                Month-End Forecast
+
+            </div>
+
+
+            <div class="row g-2 mb-3">
+
+
+                <!-- Projected Income -->
+
+                <div class="col-md-4">
+
+                    <div class="border rounded p-2 h-100">
+
+                        <small class="text-muted d-block">
+                            Projected Income
+                        </small>
+
+                        <div class="fw-bold text-primary">
+
+                            ₦{{ "{:,.2f}".format(
+                                financial_insight.projected_income|default(0)
+                            ) }}
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+                <!-- Projected Expenses -->
+
+                <div class="col-md-4">
+
+                    <div class="border rounded p-2 h-100">
+
+                        <small class="text-muted d-block">
+                            Projected Expenses
+                        </small>
+
+                        <div class="fw-bold text-warning">
+
+                            ₦{{ "{:,.2f}".format(
+                                financial_insight.projected_expenses|default(0)
+                            ) }}
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+                <!-- Projected Savings -->
+
+                <div class="col-md-4">
+
+                    <div class="border rounded p-2 h-100">
+
+                        <small class="text-muted d-block">
+                            Projected Savings
+                        </small>
+
+                        <div class="fw-bold text-success">
+
+                            ₦{{ "{:,.2f}".format(
+                                financial_insight.projected_savings|default(0)
+                            ) }}
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <!-- Forecast Status -->
+
+            {% set forecast_status =
+                financial_insight.forecast_status|default(
+                    "No forecast status is currently available."
+                )
+            %}
+
+
+            {% if "⚠️" in forecast_status %}
+
+                <div class="alert alert-warning py-2 px-3 mb-0 small">
+
+                    {{ forecast_status }}
+
+                </div>
+
+            {% else %}
+
+                <div class="alert alert-success py-2 px-3 mb-0 small">
+
+                    {{ forecast_status }}
+
+                </div>
+
+            {% endif %}
+
+        </div>
+
+    </div>
+
+</div>

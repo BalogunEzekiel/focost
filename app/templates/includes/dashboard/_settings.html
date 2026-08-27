@@ -1,0 +1,2190 @@
+<!-- ==========================================================
+     FOCOST DASHBOARD SETTINGS
+=========================================================== -->
+
+<div class="card border-0 shadow-sm rounded-3 mb-4">
+
+    <!-- ======================================================
+         HEADER
+    ======================================================= -->
+
+    <div class="card-header bg-white border-0 py-3 px-3">
+
+        <div class="d-flex justify-content-between align-items-center gap-3 flex-wrap">
+
+            <div>
+
+                <h5 class="fw-bold mb-1">
+
+                    <i class="bi bi-sliders2 text-primary me-1"></i>
+
+                    Settings
+
+                </h5>
+
+                <small class="text-muted">
+
+                    Customize your FOCOST workspace and AI experience.
+
+                </small>
+
+            </div>
+
+            <span class="badge bg-primary-subtle text-primary px-3 py-2">
+
+                <i class="bi bi-stars me-1"></i>
+
+                AI Powered
+
+            </span>
+
+        </div>
+
+    </div>
+
+
+    <div class="card-body p-3 p-md-4">
+
+        <!-- ==================================================
+             APPEARANCE
+        =================================================== -->
+
+        <div class="mb-4">
+
+            <div class="d-flex align-items-center mb-3">
+
+                <div class="rounded-circle bg-primary-subtle text-primary
+                            d-flex align-items-center justify-content-center me-2"
+                     style="width:34px;height:34px;">
+
+                    <i class="bi bi-palette-fill"></i>
+
+                </div>
+
+                <div>
+
+                    <div class="fw-bold">
+
+                        Appearance
+
+                    </div>
+
+                    <small class="text-muted">
+
+                        Customize how your dashboard looks.
+
+                    </small>
+
+                </div>
+
+            </div>
+
+
+            <div class="row g-3">
+
+                <!-- Theme -->
+
+                <div class="col-md-6">
+
+                    <label
+                        class="form-label small fw-semibold"
+                        for="dashboardTheme">
+
+                        Dashboard Theme
+
+                    </label>
+
+                    <select
+                        class="form-select"
+                        id="dashboardTheme">
+
+                        <option value="default">
+                            Default
+                        </option>
+
+                        <option value="light">
+                            Light
+                        </option>
+
+                        <option value="dark">
+                            Dark
+                        </option>
+
+                        <option value="blue">
+                            Blue Professional
+                        </option>
+
+                        <option value="green">
+                            Finance Green
+                        </option>
+
+                    </select>
+
+                </div>
+
+
+                <!-- Density -->
+
+                <div class="col-md-6">
+
+                    <label
+                        class="form-label small fw-semibold"
+                        for="dashboardDensity">
+
+                        Dashboard Density
+
+                    </label>
+
+                    <select
+                        class="form-select"
+                        id="dashboardDensity">
+
+                        <option value="comfortable">
+                            Comfortable
+                        </option>
+
+                        <option value="compact">
+                            Compact
+                        </option>
+
+                        <option value="spacious">
+                            Spacious
+                        </option>
+
+                    </select>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <hr class="my-4">
+
+
+        <!-- ==================================================
+             DASHBOARD WIDGETS
+        =================================================== -->
+
+        <div class="mb-4">
+
+            <div class="d-flex align-items-center mb-3">
+
+                <div class="rounded-circle bg-success-subtle text-success
+                            d-flex align-items-center justify-content-center me-2"
+                     style="width:34px;height:34px;">
+
+                    <i class="bi bi-grid-fill"></i>
+
+                </div>
+
+                <div>
+
+                    <div class="fw-bold">
+
+                        Dashboard Widgets
+
+                    </div>
+
+                    <small class="text-muted">
+
+                        Choose which sections appear on your dashboard.
+
+                    </small>
+
+                </div>
+
+            </div>
+
+
+            <div class="row g-2">
+
+                <!-- Summary -->
+
+                <div class="col-12 col-sm-6 col-lg-4">
+
+                    <label class="border rounded-3 p-3
+                                  d-flex align-items-center
+                                  justify-content-between
+                                  h-100">
+
+                        <span>
+
+                            <i class="bi bi-robot text-primary me-2"></i>
+
+                            <span class="small fw-semibold">
+
+                                AI Summary
+
+                            </span>
+
+                        </span>
+
+                        <input
+                            type="checkbox"
+                            class="form-check-input"
+                            id="showSummary"
+                            checked>
+
+                    </label>
+
+                </div>
+
+
+                <!-- Insights -->
+
+                <div class="col-12 col-sm-6 col-lg-4">
+
+                    <label class="border rounded-3 p-3
+                                  d-flex align-items-center
+                                  justify-content-between
+                                  h-100">
+
+                        <span>
+
+                            <i class="bi bi-lightbulb text-warning me-2"></i>
+
+                            <span class="small fw-semibold">
+
+                                Insight Cards
+
+                            </span>
+
+                        </span>
+
+                        <input
+                            type="checkbox"
+                            class="form-check-input"
+                            id="showInsights"
+                            checked>
+
+                    </label>
+
+                </div>
+
+
+                <!-- Budgets -->
+
+                <div class="col-12 col-sm-6 col-lg-4">
+
+                    <label class="border rounded-3 p-3
+                                  d-flex align-items-center
+                                  justify-content-between
+                                  h-100">
+
+                        <span>
+
+                            <i class="bi bi-cash-stack text-primary me-2"></i>
+
+                            <span class="small fw-semibold">
+
+                                Budget Engine
+
+                            </span>
+
+                        </span>
+
+                        <input
+                            type="checkbox"
+                            class="form-check-input"
+                            id="showBudgets"
+                            checked>
+
+                    </label>
+
+                </div>
+
+
+                <!-- Goals -->
+
+                <div class="col-12 col-sm-6 col-lg-4">
+
+                    <label class="border rounded-3 p-3
+                                  d-flex align-items-center
+                                  justify-content-between
+                                  h-100">
+
+                        <span>
+
+                            <i class="bi bi-bullseye text-success me-2"></i>
+
+                            <span class="small fw-semibold">
+
+                                Goal Progress
+
+                            </span>
+
+                        </span>
+
+                        <input
+                            type="checkbox"
+                            class="form-check-input"
+                            id="showGoals"
+                            checked>
+
+                    </label>
+
+                </div>
+
+
+                <!-- Health -->
+
+                <div class="col-12 col-sm-6 col-lg-4">
+
+                    <label class="border rounded-3 p-3
+                                  d-flex align-items-center
+                                  justify-content-between
+                                  h-100">
+
+                        <span>
+
+                            <i class="bi bi-heart-pulse text-danger me-2"></i>
+
+                            <span class="small fw-semibold">
+
+                                Financial Health
+
+                            </span>
+
+                        </span>
+
+                        <input
+                            type="checkbox"
+                            class="form-check-input"
+                            id="showHealth"
+                            checked>
+
+                    </label>
+
+                </div>
+
+
+                <!-- Recommendations -->
+
+                <div class="col-12 col-sm-6 col-lg-4">
+
+                    <label class="border rounded-3 p-3
+                                  d-flex align-items-center
+                                  justify-content-between
+                                  h-100">
+
+                        <span>
+
+                            <i class="bi bi-stars text-primary me-2"></i>
+
+                            <span class="small fw-semibold">
+
+                                AI Recommendations
+
+                            </span>
+
+                        </span>
+
+                        <input
+                            type="checkbox"
+                            class="form-check-input"
+                            id="showRecommendations"
+                            checked>
+
+                    </label>
+
+                </div>
+
+
+                <!-- Transactions -->
+
+                <div class="col-12 col-sm-6 col-lg-4">
+
+                    <label class="border rounded-3 p-3
+                                  d-flex align-items-center
+                                  justify-content-between
+                                  h-100">
+
+                        <span>
+
+                            <i class="bi bi-receipt text-secondary me-2"></i>
+
+                            <span class="small fw-semibold">
+
+                                Transactions
+
+                            </span>
+
+                        </span>
+
+                        <input
+                            type="checkbox"
+                            class="form-check-input"
+                            id="showTransactions"
+                            checked>
+
+                    </label>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <hr class="my-4">
+
+
+        <!-- ==================================================
+             ANALYTICS
+        =================================================== -->
+
+        <div class="mb-4">
+
+            <div class="d-flex align-items-center mb-3">
+
+                <div class="rounded-circle bg-info-subtle text-info
+                            d-flex align-items-center justify-content-center me-2"
+                     style="width:34px;height:34px;">
+
+                    <i class="bi bi-bar-chart-fill"></i>
+
+                </div>
+
+                <div>
+
+                    <div class="fw-bold">
+
+                        Default Analytics
+
+                    </div>
+
+                    <small class="text-muted">
+
+                        Choose the analytical view you prefer.
+
+                    </small>
+
+                </div>
+
+            </div>
+
+
+            <label
+                class="form-label small fw-semibold"
+                for="defaultChart">
+
+                Default Dashboard Chart
+
+            </label>
+
+            <select
+                class="form-select"
+                id="defaultChart">
+
+                <option value="Income vs Expenses">
+                    Income vs Expenses
+                </option>
+
+                <option value="Expense Breakdown">
+                    Expense Breakdown
+                </option>
+
+                <option value="Cash Flow">
+                    Cash Flow
+                </option>
+
+                <option value="Budget Utilization">
+                    Budget Utilization
+                </option>
+
+                <option value="Financial Health">
+                    Financial Health
+                </option>
+
+            </select>
+
+        </div>
+
+
+        <hr class="my-4">
+
+
+        <!-- ==================================================
+             AI ASSISTANT
+        =================================================== -->
+
+        <div class="mb-4">
+
+            <div class="d-flex align-items-center mb-3">
+
+                <div class="rounded-circle bg-warning-subtle text-warning
+                            d-flex align-items-center justify-content-center me-2"
+                     style="width:34px;height:34px;">
+
+                    <i class="bi bi-robot"></i>
+
+                </div>
+
+                <div>
+
+                    <div class="fw-bold">
+
+                        AI Assistant
+
+                    </div>
+
+                    <small class="text-muted">
+
+                        Control how FOCOST's AI assists you.
+
+                    </small>
+
+                </div>
+
+            </div>
+
+
+            <div class="row g-2">
+
+                <!-- Daily Brief -->
+
+                <div class="col-12 col-sm-6 col-lg-3">
+
+                    <label class="border rounded-3 p-3
+                                  d-flex align-items-center
+                                  justify-content-between
+                                  h-100">
+
+                        <span class="small fw-semibold">
+
+                            <i class="bi bi-sunrise text-warning me-1"></i>
+
+                            Daily Brief
+
+                        </span>
+
+                        <input
+                            type="checkbox"
+                            class="form-check-input"
+                            id="dailyBrief"
+                            checked>
+
+                    </label>
+
+                </div>
+
+
+                <!-- Smart Alerts -->
+
+                <div class="col-12 col-sm-6 col-lg-3">
+
+                    <label class="border rounded-3 p-3
+                                  d-flex align-items-center
+                                  justify-content-between
+                                  h-100">
+
+                        <span class="small fw-semibold">
+
+                            <i class="bi bi-bell text-danger me-1"></i>
+
+                            Smart Alerts
+
+                        </span>
+
+                        <input
+                            type="checkbox"
+                            class="form-check-input"
+                            id="smartAlerts"
+                            checked>
+
+                    </label>
+
+                </div>
+
+
+                <!-- Goal Reminders -->
+
+                <div class="col-12 col-sm-6 col-lg-3">
+
+                    <label class="border rounded-3 p-3
+                                  d-flex align-items-center
+                                  justify-content-between
+                                  h-100">
+
+                        <span class="small fw-semibold">
+
+                            <i class="bi bi-bullseye text-success me-1"></i>
+
+                            Goal Reminders
+
+                        </span>
+
+                        <input
+                            type="checkbox"
+                            class="form-check-input"
+                            id="goalReminders"
+                            checked>
+
+                    </label>
+
+                </div>
+
+
+                <!-- Weekly Report -->
+
+                <div class="col-12 col-sm-6 col-lg-3">
+
+                    <label class="border rounded-3 p-3
+                                  d-flex align-items-center
+                                  justify-content-between
+                                  h-100">
+
+                        <span class="small fw-semibold">
+
+                            <i class="bi bi-calendar-week text-primary me-1"></i>
+
+                            Weekly Report
+
+                        </span>
+
+                        <input
+                            type="checkbox"
+                            class="form-check-input"
+                            id="weeklyReport"
+                            checked>
+
+                    </label>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <hr class="my-4">
+
+
+        <!-- ==================================================
+             DATA & PRIVACY
+        =================================================== -->
+
+        <div class="mb-4">
+
+            <div class="d-flex align-items-center mb-3">
+
+                <div class="rounded-circle bg-success-subtle text-success
+                            d-flex align-items-center justify-content-center me-2"
+                     style="width:34px;height:34px;">
+
+                    <i class="bi bi-shield-check"></i>
+
+                </div>
+
+                <div>
+
+                    <div class="fw-bold">
+
+                        Data & Privacy
+
+                    </div>
+
+                    <small class="text-muted">
+
+                        Manage and export your financial information.
+
+                    </small>
+
+                </div>
+
+            </div>
+
+
+            <div class="row g-3">
+
+                <!-- Export -->
+
+                <div class="col-lg-8">
+
+                    <div class="border rounded-3 p-3 h-100">
+
+                        <div class="d-flex align-items-start">
+
+                            <i class="bi bi-database-down fs-3
+                                      text-primary me-3"></i>
+
+                            <div>
+
+                                <h6 class="fw-bold mb-1">
+
+                                    Export Your Data
+
+                                </h6>
+
+                                <p class="text-muted small mb-0">
+
+                                    Download a portable copy of your FOCOST
+                                    profile, income, expenses, budgets,
+                                    goals and goal contributions.
+
+                                </p>
+
+                            </div>
+
+                        </div>
+
+
+                        <a
+                            href="{{ url_for('account.export_data') }}"
+                            class="btn btn-outline-primary btn-sm mt-3">
+
+                            <i class="bi bi-download me-1"></i>
+
+                            Export My Data
+
+                        </a>
+
+                    </div>
+
+                </div>
+
+
+                <!-- Format -->
+
+                <div class="col-lg-4">
+
+                    <div class="border rounded-3 p-3 h-100">
+
+                        <div class="d-flex align-items-start">
+
+                            <i class="bi bi-file-earmark-code fs-3
+                                      text-secondary me-3"></i>
+
+                            <div>
+
+                                <h6 class="fw-bold mb-1">
+
+                                    Portable Format
+
+                                </h6>
+
+                                <p class="text-muted small mb-0">
+
+                                    Your export is provided as a
+                                    machine-readable JSON file.
+
+                                </p>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <!-- ==================================================
+             ACTIONS
+        =================================================== -->
+
+        <div class="border-top pt-3">
+
+            <div class="d-flex flex-column flex-sm-row
+                        justify-content-between
+                        align-items-sm-center
+                        gap-2">
+
+                <div
+                    id="settingsStatus"
+                    class="small text-muted"
+                    role="status"
+                    aria-live="polite">
+
+                </div>
+
+
+                <div class="d-flex gap-2">
+
+                    <button
+                        class="btn btn-light border"
+                        type="button"
+                        id="resetDashboardPreferences">
+
+                        <i class="bi bi-arrow-counterclockwise me-1"></i>
+
+                        Reset
+
+                    </button>
+
+
+                    <button
+                        class="btn btn-primary px-4"
+                        type="button"
+                        id="saveDashboardPreferences">
+
+                        <i class="bi bi-check-circle-fill me-1"></i>
+
+                        Save Preferences
+
+                    </button>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<!-- ==========================================================
+     FOCOST SETTINGS ENGINE
+=========================================================== -->
+
+<script>
+
+document.addEventListener("DOMContentLoaded", function () {
+
+    "use strict";
+
+
+    /* ========================================================
+       ELEMENTS
+    ======================================================== */
+
+    const theme =
+        document.getElementById("dashboardTheme");
+
+    const density =
+        document.getElementById("dashboardDensity");
+
+    const defaultChart =
+        document.getElementById("defaultChart");
+
+    const saveButton =
+        document.getElementById("saveDashboardPreferences");
+
+    const resetButton =
+        document.getElementById("resetDashboardPreferences");
+
+    const status =
+        document.getElementById("settingsStatus");
+
+
+    if (!theme || !density || !saveButton) {
+
+        console.warn(
+            "FOCOST Settings: Required elements are missing."
+        );
+
+        return;
+
+    }
+
+
+    /* ========================================================
+       DEFAULT PREFERENCES
+    ======================================================== */
+
+    const DEFAULT_PREFERENCES = {
+
+        appearance: {
+
+            theme: "default",
+
+            density: "comfortable"
+
+        },
+
+        widgets: {
+
+            summary: true,
+
+            insights: true,
+
+            budgets: true,
+
+            goals: true,
+
+            health: true,
+
+            recommendations: true,
+
+            transactions: true
+
+        },
+
+        analytics: {
+
+            default_chart: "Income vs Expenses"
+
+        },
+
+        ai: {
+
+            daily_brief: true,
+
+            smart_alerts: true,
+
+            goal_reminders: true,
+
+            weekly_report: true
+
+        }
+
+    };
+
+
+    /* ========================================================
+       CONTROL MAPS
+    ======================================================== */
+
+    const widgetControls = {
+
+        summary: "showSummary",
+
+        insights: "showInsights",
+
+        budgets: "showBudgets",
+
+        goals: "showGoals",
+
+        health: "showHealth",
+
+        recommendations: "showRecommendations",
+
+        transactions: "showTransactions"
+
+    };
+
+
+    const aiControls = {
+
+        daily_brief: "dailyBrief",
+
+        smart_alerts: "smartAlerts",
+
+        goal_reminders: "goalReminders",
+
+        weekly_report: "weeklyReport"
+
+    };
+
+
+    /* ========================================================
+       CLONE DEFAULTS
+    ======================================================== */
+
+    function cloneDefaults() {
+
+        return JSON.parse(
+            JSON.stringify(DEFAULT_PREFERENCES)
+        );
+
+    }
+
+
+    /* ========================================================
+       DEEP MERGE
+    ======================================================== */
+
+    function mergePreferences(saved) {
+
+        const result =
+            cloneDefaults();
+
+
+        if (
+            !saved ||
+            typeof saved !== "object"
+        ) {
+
+            return result;
+
+        }
+
+
+        Object.keys(result).forEach(
+            function (section) {
+
+                if (
+                    saved[section] &&
+                    typeof saved[section] === "object" &&
+                    !Array.isArray(saved[section])
+                ) {
+
+                    result[section] = {
+
+                        ...result[section],
+
+                        ...saved[section]
+
+                    };
+
+                }
+
+            }
+        );
+
+
+        return result;
+
+    }
+
+
+    /* ========================================================
+       STATUS MESSAGE
+    ======================================================== */
+
+    function showStatus(
+        message,
+        type = "muted"
+    ) {
+
+        if (!status) {
+            return;
+        }
+
+
+        status.className =
+            `small text-${type}`;
+
+
+        status.textContent =
+            message;
+
+
+        clearTimeout(
+            showStatus.timer
+        );
+
+
+        showStatus.timer =
+            setTimeout(
+                function () {
+
+                    status.textContent = "";
+
+                },
+                4000
+            );
+
+    }
+
+
+    /* ========================================================
+       THEME
+    ======================================================== */
+
+    function applyTheme(selectedTheme) {
+
+        const validThemes = [
+
+            "default",
+            "light",
+            "dark",
+            "blue",
+            "green"
+
+        ];
+
+
+        if (
+            !validThemes.includes(
+                selectedTheme
+            )
+        ) {
+
+            selectedTheme =
+                "default";
+
+        }
+
+
+        document.documentElement.setAttribute(
+            "data-focost-theme",
+            selectedTheme
+        );
+
+
+        document.body.classList.remove(
+
+            "theme-default",
+            "theme-light",
+            "theme-dark",
+            "theme-blue",
+            "theme-green"
+
+        );
+
+
+        document.body.classList.add(
+            `theme-${selectedTheme}`
+        );
+
+
+        try {
+
+            localStorage.setItem(
+                "focost_theme",
+                selectedTheme
+            );
+
+        }
+        catch (error) {
+
+            console.warn(
+                "FOCOST: Theme could not be stored locally.",
+                error
+            );
+
+        }
+
+    }
+
+
+    /* ========================================================
+       DENSITY
+    ======================================================== */
+
+    function applyDensity(selectedDensity) {
+
+        const validDensity = [
+
+            "comfortable",
+            "compact",
+            "spacious"
+
+        ];
+
+
+        if (
+            !validDensity.includes(
+                selectedDensity
+            )
+        ) {
+
+            selectedDensity =
+                "comfortable";
+
+        }
+
+
+        document.body.classList.remove(
+
+            "density-comfortable",
+            "density-compact",
+            "density-spacious"
+
+        );
+
+
+        document.body.classList.add(
+            `density-${selectedDensity}`
+        );
+
+
+        try {
+
+            localStorage.setItem(
+                "focost_density",
+                selectedDensity
+            );
+
+        }
+        catch (error) {
+
+            console.warn(
+                "FOCOST: Density could not be stored locally.",
+                error
+            );
+
+        }
+
+    }
+
+
+    /* ========================================================
+       COLLECT WIDGETS
+    ======================================================== */
+
+    function collectWidgets() {
+
+        const widgets = {};
+
+
+        Object.entries(
+            widgetControls
+        ).forEach(
+            function ([key, elementId]) {
+
+                const element =
+                    document.getElementById(
+                        elementId
+                    );
+
+
+                widgets[key] =
+                    element
+                        ? Boolean(element.checked)
+                        : DEFAULT_PREFERENCES
+                            .widgets[key];
+
+            }
+        );
+
+
+        return widgets;
+
+    }
+
+
+    /* ========================================================
+       COLLECT AI SETTINGS
+    ======================================================== */
+
+    function collectAISettings() {
+
+        const ai = {};
+
+
+        Object.entries(
+            aiControls
+        ).forEach(
+            function ([key, elementId]) {
+
+                const element =
+                    document.getElementById(
+                        elementId
+                    );
+
+
+                ai[key] =
+                    element
+                        ? Boolean(element.checked)
+                        : DEFAULT_PREFERENCES
+                            .ai[key];
+
+            }
+        );
+
+
+        return ai;
+
+    }
+
+
+    /* ========================================================
+       COLLECT ALL PREFERENCES
+    ======================================================== */
+
+    function collectPreferences() {
+
+        return {
+
+            appearance: {
+
+                theme:
+                    theme.value ||
+                    "default",
+
+                density:
+                    density.value ||
+                    "comfortable"
+
+            },
+
+            widgets:
+                collectWidgets(),
+
+            analytics: {
+
+                default_chart:
+                    defaultChart?.value ||
+                    "Income vs Expenses"
+
+            },
+
+            ai:
+                collectAISettings()
+
+        };
+
+    }
+
+
+    /* ========================================================
+       APPLY WIDGET VISIBILITY
+    ======================================================== */
+
+    function applyWidgets(widgets) {
+
+        const effectiveWidgets = {
+
+            ...DEFAULT_PREFERENCES.widgets,
+
+            ...(widgets || {})
+
+        };
+
+
+        Object.entries(
+            effectiveWidgets
+        ).forEach(
+            function ([widget, visible]) {
+
+                const elements =
+                    document.querySelectorAll(
+                        `[data-focost-widget="${widget}"]`
+                    );
+
+
+                if (!elements.length) {
+
+                    return;
+
+                }
+
+
+                elements.forEach(
+                    function (element) {
+
+                        if (visible) {
+
+                            if (
+                                element.dataset
+                                    .focostOriginalDisplay
+                            ) {
+
+                                element.style.display =
+                                    element.dataset
+                                        .focostOriginalDisplay;
+
+                            }
+                            else {
+
+                                element.style
+                                    .removeProperty(
+                                        "display"
+                                    );
+
+                            }
+
+
+                            element
+                                .setAttribute(
+                                    "aria-hidden",
+                                    "false"
+                                );
+
+
+                            element
+                                .classList
+                                .remove(
+                                    "focost-widget-hidden"
+                                );
+
+                        }
+                        else {
+
+                            if (
+                                !element.dataset
+                                    .focostOriginalDisplay
+                            ) {
+
+                                const display =
+                                    getComputedStyle(
+                                        element
+                                    ).display;
+
+
+                                if (
+                                    display !== "none"
+                                ) {
+
+                                    element.dataset
+                                        .focostOriginalDisplay =
+                                        display;
+
+                                }
+
+                            }
+
+
+                            element.style.display =
+                                "none";
+
+
+                            element
+                                .setAttribute(
+                                    "aria-hidden",
+                                    "true"
+                                );
+
+
+                            element
+                                .classList
+                                .add(
+                                    "focost-widget-hidden"
+                                );
+
+                        }
+
+                    }
+                );
+
+            }
+        );
+
+    }
+
+
+    /* ========================================================
+       APPLY AI SETTINGS
+    ======================================================== */
+
+    function applyAISettings(ai) {
+
+        const effectiveAI = {
+
+            ...DEFAULT_PREFERENCES.ai,
+
+            ...(ai || {})
+
+        };
+
+
+        Object.entries(
+            aiControls
+        ).forEach(
+            function ([key, elementId]) {
+
+                const element =
+                    document.getElementById(
+                        elementId
+                    );
+
+
+                if (!element) {
+
+                    return;
+
+                }
+
+
+                element.checked =
+                    Boolean(
+                        effectiveAI[key]
+                    );
+
+            }
+        );
+
+    }
+
+
+    /* ========================================================
+       APPLY ALL SETTINGS
+    ======================================================== */
+
+    function applyPreferences(saved) {
+
+        const preferences =
+            mergePreferences(
+                saved
+            );
+
+
+        /* Appearance */
+
+        theme.value =
+            preferences.appearance.theme;
+
+        density.value =
+            preferences.appearance.density;
+
+
+        applyTheme(
+            preferences.appearance.theme
+        );
+
+
+        applyDensity(
+            preferences.appearance.density
+        );
+
+
+        /* Widgets */
+
+        Object.entries(
+            widgetControls
+        ).forEach(
+            function ([key, elementId]) {
+
+                const element =
+                    document.getElementById(
+                        elementId
+                    );
+
+
+                if (!element) {
+                    return;
+                }
+
+
+                element.checked =
+                    Boolean(
+                        preferences.widgets[key]
+                    );
+
+            }
+        );
+
+
+        applyWidgets(
+            preferences.widgets
+        );
+
+
+        /* Analytics */
+
+        if (defaultChart) {
+
+            defaultChart.value =
+                preferences
+                    .analytics
+                    .default_chart;
+
+        }
+
+
+        /* AI */
+
+        applyAISettings(
+            preferences.ai
+        );
+
+    }
+
+
+    /* ========================================================
+       LIVE WIDGET PREVIEW
+    ======================================================== */
+
+    function refreshWidgets() {
+
+        applyWidgets(
+            collectWidgets()
+        );
+
+    }
+
+
+    /* ========================================================
+       LOCAL FALLBACK
+    ======================================================== */
+
+    function saveLocalPreferences(preferences) {
+
+        try {
+
+            localStorage.setItem(
+                "focost_preferences",
+                JSON.stringify(
+                    preferences
+                )
+            );
+
+        }
+        catch (error) {
+
+            console.warn(
+                "FOCOST: Local preferences could not be saved.",
+                error
+            );
+
+        }
+
+    }
+
+
+    function loadLocalPreferences() {
+
+        try {
+
+            const stored =
+                localStorage.getItem(
+                    "focost_preferences"
+                );
+
+
+            if (!stored) {
+
+                return null;
+
+            }
+
+
+            return JSON.parse(
+                stored
+            );
+
+        }
+        catch (error) {
+
+            console.warn(
+                "FOCOST: Local preferences could not be loaded.",
+                error
+            );
+
+
+            return null;
+
+        }
+
+    }
+
+
+    /* ========================================================
+       LOAD FROM SERVER
+    ======================================================== */
+
+    async function loadPreferences() {
+
+        try {
+
+            const response =
+                await fetch(
+                    "{{ url_for('settings.get_settings') }}",
+                    {
+
+                        method: "GET",
+
+                        headers: {
+
+                            "Accept":
+                                "application/json"
+
+                        },
+
+                        credentials:
+                            "same-origin"
+
+                    }
+                );
+
+
+            if (!response.ok) {
+
+                throw new Error(
+                    `Unable to load settings (${response.status}).`
+                );
+
+            }
+
+
+            const data =
+                await response.json();
+
+
+            if (
+                data &&
+                data.success &&
+                data.preferences
+            ) {
+
+                applyPreferences(
+                    data.preferences
+                );
+
+
+                saveLocalPreferences(
+                    data.preferences
+                );
+
+
+                return;
+
+            }
+
+
+            throw new Error(
+                "No saved preferences were returned."
+            );
+
+        }
+        catch (error) {
+
+            console.warn(
+                "FOCOST settings server load failed:",
+                error
+            );
+
+
+            const localPreferences =
+                loadLocalPreferences();
+
+
+            if (localPreferences) {
+
+                applyPreferences(
+                    localPreferences
+                );
+
+                showStatus(
+                    "Using your locally saved preferences.",
+                    "warning"
+                );
+
+                return;
+
+            }
+
+
+            applyPreferences(
+                DEFAULT_PREFERENCES
+            );
+
+        }
+
+    }
+
+
+    /* ========================================================
+       SAVE TO SERVER
+    ======================================================== */
+
+    async function savePreferences() {
+
+        const preferences =
+            collectPreferences();
+
+
+        saveButton.disabled =
+            true;
+
+
+        const originalHTML =
+            saveButton.innerHTML;
+
+
+        saveButton.innerHTML = `
+
+            <span
+                class="spinner-border spinner-border-sm me-1"
+                role="status"
+                aria-hidden="true">
+            </span>
+
+            Saving...
+
+        `;
+
+
+        try {
+
+            const response =
+                await fetch(
+                    "{{ url_for('settings.update_settings') }}",
+                    {
+
+                        method: "PUT",
+
+                        headers: {
+
+                            "Content-Type":
+                                "application/json",
+
+                            "Accept":
+                                "application/json"
+
+                        },
+
+                        credentials:
+                            "same-origin",
+
+                        body:
+                            JSON.stringify({
+
+                                preferences:
+                                    preferences
+
+                            })
+
+                    }
+                );
+
+
+            let data = {};
+
+
+            try {
+
+                data =
+                    await response.json();
+
+            }
+            catch (error) {
+
+                throw new Error(
+                    "The server returned an invalid response."
+                );
+
+            }
+
+
+            if (
+                !response.ok ||
+                !data.success
+            ) {
+
+                throw new Error(
+                    data.message ||
+                    "Unable to save preferences."
+                );
+
+            }
+
+
+            const savedPreferences =
+                data.preferences ||
+                preferences;
+
+
+            applyPreferences(
+                savedPreferences
+            );
+
+
+            saveLocalPreferences(
+                savedPreferences
+            );
+
+
+            showStatus(
+                "Preferences saved successfully.",
+                "success"
+            );
+
+        }
+        catch (error) {
+
+            console.error(
+                "FOCOST settings save error:",
+                error
+            );
+
+
+            /*
+             * Keep the live preview and save locally
+             * even when the server is temporarily unavailable.
+             */
+
+            saveLocalPreferences(
+                preferences
+            );
+
+
+            applyPreferences(
+                preferences
+            );
+
+
+            showStatus(
+                "Server unavailable. Preferences saved locally.",
+                "warning"
+            );
+
+        }
+        finally {
+
+            saveButton.disabled =
+                false;
+
+
+            saveButton.innerHTML =
+                originalHTML;
+
+        }
+
+    }
+
+
+    /* ========================================================
+       RESET
+    ======================================================== */
+
+    async function resetPreferences() {
+
+        const confirmed =
+            window.confirm(
+                "Reset your FOCOST dashboard preferences to the default settings?"
+            );
+
+
+        if (!confirmed) {
+
+            return;
+
+        }
+
+
+        resetButton.disabled =
+            true;
+
+
+        const originalHTML =
+            resetButton.innerHTML;
+
+
+        resetButton.innerHTML = `
+
+            <span
+                class="spinner-border spinner-border-sm me-1"
+                role="status"
+                aria-hidden="true">
+            </span>
+
+            Resetting...
+
+        `;
+
+
+        try {
+
+            const response =
+                await fetch(
+                    "{{ url_for('settings.reset_settings') }}",
+                    {
+
+                        method: "POST",
+
+                        headers: {
+
+                            "Accept":
+                                "application/json"
+
+                        },
+
+                        credentials:
+                            "same-origin"
+
+                    }
+                );
+
+
+            let data = {};
+
+
+            try {
+
+                data =
+                    await response.json();
+
+            }
+            catch (error) {
+
+                throw new Error(
+                    "The server returned an invalid response."
+                );
+
+            }
+
+
+            if (
+                !response.ok ||
+                !data.success
+            ) {
+
+                throw new Error(
+                    data.message ||
+                    "Unable to reset preferences."
+                );
+
+            }
+
+
+            const preferences =
+                data.preferences ||
+                DEFAULT_PREFERENCES;
+
+
+            applyPreferences(
+                preferences
+            );
+
+
+            saveLocalPreferences(
+                preferences
+            );
+
+
+            showStatus(
+                "Preferences restored to default.",
+                "success"
+            );
+
+        }
+        catch (error) {
+
+            console.error(
+                "FOCOST settings reset error:",
+                error
+            );
+
+
+            /*
+             * Do not pretend the server reset succeeded.
+             * However, reset the local dashboard state so
+             * the UI remains usable.
+             */
+
+            applyPreferences(
+                DEFAULT_PREFERENCES
+            );
+
+
+            try {
+
+                localStorage.removeItem(
+                    "focost_preferences"
+                );
+
+                localStorage.removeItem(
+                    "focost_theme"
+                );
+
+                localStorage.removeItem(
+                    "focost_density"
+                );
+
+            }
+            catch (storageError) {
+
+                console.warn(
+                    "FOCOST local reset failed:",
+                    storageError
+                );
+
+            }
+
+
+            showStatus(
+                error.message ||
+                "Unable to reset server preferences.",
+                "danger"
+            );
+
+        }
+        finally {
+
+            resetButton.disabled =
+                false;
+
+
+            resetButton.innerHTML =
+                originalHTML;
+
+        }
+
+    }
+
+
+    /* ========================================================
+       THEME LIVE PREVIEW
+    ======================================================== */
+
+    theme.addEventListener(
+        "change",
+        function () {
+
+            applyTheme(
+                this.value
+            );
+
+        }
+    );
+
+
+    /* ========================================================
+       DENSITY LIVE PREVIEW
+    ======================================================== */
+
+    density.addEventListener(
+        "change",
+        function () {
+
+            applyDensity(
+                this.value
+            );
+
+        }
+    );
+
+
+    /* ========================================================
+       WIDGET LIVE PREVIEW
+    ======================================================== */
+
+    Object.values(
+        widgetControls
+    ).forEach(
+        function (elementId) {
+
+            const element =
+                document.getElementById(
+                    elementId
+                );
+
+
+            if (!element) {
+                return;
+            }
+
+
+            element.addEventListener(
+                "change",
+                refreshWidgets
+            );
+
+        }
+    );
+
+
+    /* ========================================================
+       SAVE
+    ======================================================== */
+
+    saveButton.addEventListener(
+        "click",
+        savePreferences
+    );
+
+
+    /* ========================================================
+       RESET
+    ======================================================== */
+
+    if (resetButton) {
+
+        resetButton.addEventListener(
+            "click",
+            resetPreferences
+        );
+
+    }
+
+
+    /* ========================================================
+       INITIALIZE
+    ======================================================== */
+
+    loadPreferences();
+
+});
+
+</script>

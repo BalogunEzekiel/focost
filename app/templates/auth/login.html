@@ -1,0 +1,146 @@
+{% extends "layouts/public.html" %}
+
+{% block title %}
+Login
+{% endblock %}
+
+{% block content %}
+
+<div class="container pt-0 pb-4" style="margin-top:-15rem;">
+
+    <div class="row justify-content-center align-items-center min-vh-75">
+
+        <div class="col-12 col-sm-10 col-md-8 col-lg-6 col-xl-5">
+
+            <div class="card shadow-lg border-0 rounded-4">
+
+                <div class="card-body p-4 p-md-5">
+
+                    <div class="text-center mb-4">
+
+                        <p class="text-muted mb-0">
+                            Sign in to continue to FOCOST
+                        </p>
+
+                    </div>
+
+                    <form method="POST">
+
+                        {{ form.hidden_tag() }}
+
+                        <div class="mb-3">
+
+                            {{ form.email.label(class="form-label fw-semibold") }}
+
+                            {{ form.email(
+                                class="form-control form-control-lg",
+                                placeholder="Enter your email"
+                            ) }}
+
+                        </div>
+
+                        <div class="mb-4">
+
+                            {{ form.password.label(class="form-label fw-semibold") }}
+
+                            {{ form.password(
+                                class="form-control form-control-lg",
+                                placeholder="Enter your password"
+                            ) }}
+
+                        </div>
+
+                        <div class="d-grid">
+
+                            {{ form.submit(
+                                class="btn btn-primary btn-lg"
+                            ) }}
+
+                        </div>
+
+                    </form>
+
+                    <hr class="my-4">
+
+                    <p class="text-center mb-0">
+
+                        Don't have an account?
+
+                        <a
+                            href="{{ url_for('auth.register') }}"
+                            class="text-decoration-none fw-semibold">
+
+                            Register
+
+                        </a>
+
+                    </p>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}
+
+{% block styles %}
+
+<style>
+
+.min-vh-75{
+    min-height:75vh;
+}
+
+.card{
+    transition:.25s ease;
+}
+
+.card:hover{
+    transform:translateY(-2px);
+}
+
+.form-control{
+    border-radius:.75rem;
+}
+
+.btn{
+    border-radius:.75rem;
+}
+
+@media (max-width:576px){
+
+    .card-body{
+        padding:1.5rem !important;
+    }
+
+    h2{
+        font-size:1.7rem;
+    }
+
+    .form-control-lg{
+        font-size:1rem;
+        padding:.75rem 1rem;
+    }
+
+    .btn-lg{
+        padding:.75rem;
+    }
+
+}
+
+@media (min-width:577px) and (max-width:991px){
+
+    .card-body{
+        padding:2rem !important;
+    }
+
+}
+
+</style>
+
+{% endblock %}

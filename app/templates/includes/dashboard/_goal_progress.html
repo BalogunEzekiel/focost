@@ -1,0 +1,373 @@
+<!-- =======================================================
+     GOAL PROGRESS WIDGET
+======================================================= -->
+
+<div
+    class="dashboard-card"
+    data-focost-widget="goals"
+>
+
+    <div class="card border-0 shadow-sm rounded-3 mb-3">
+
+        <!-- ===================================================
+             HEADER
+        ==================================================== -->
+
+        <div
+            class="card-header bg-white py-2 px-3
+                   d-flex justify-content-between
+                   align-items-center"
+        >
+
+            <h6 class="fw-bold mb-0">
+
+                <i class="bi bi-bullseye text-success me-1"></i>
+
+                GOALS MONITORING
+
+            </h6>
+
+
+            <span class="badge bg-success">
+
+                {{ dashboard.active_goals|default(0) }}
+
+                Goal{{ '' if dashboard.active_goals|default(0) == 1 else 's' }}
+
+            </span>
+
+        </div>
+
+
+        <!-- ===================================================
+             BODY
+        ==================================================== -->
+
+        <div class="card-body p-3">
+
+            {% if dashboard.goal_progress %}
+
+                <div class="row g-3">
+
+                    {% for goal in dashboard.goal_progress %}
+
+                        <!-- =================================================
+                             GOAL CARD
+                        ================================================== -->
+
+                        <div class="col-lg-6">
+
+                            <div class="border rounded-3 p-3 h-100">
+
+                                <!-- =========================================
+                                     HEADER
+                                ========================================== -->
+
+                                <div
+                                    class="d-flex
+                                           justify-content-between
+                                           align-items-start
+                                           mb-2"
+                                >
+
+                                    <div class="flex-grow-1 pe-2">
+
+                                        <div
+                                            class="fw-semibold text-truncate"
+                                            title="{{ goal.title }}"
+                                        >
+
+                                            {{ goal.title }}
+
+                                        </div>
+
+
+                                        <small class="text-muted">
+
+                                            {{ goal.goal_type|default("Financial Goal") }}
+
+                                        </small>
+
+                                    </div>
+
+
+                                    <span
+                                        class="badge
+                                               {{ goal.badge_class|default('bg-secondary') }}"
+                                    >
+
+                                        {{ goal.status|default("Active") }}
+
+                                    </span>
+
+                                </div>
+
+
+                                <!-- =========================================
+                                     PROGRESS
+                                ========================================== -->
+
+                                {% set goal_percentage =
+                                    goal.percentage|default(0)|float
+                                %}
+
+                                {% set safe_percentage =
+                                    [goal_percentage, 100]|min
+                                %}
+
+
+                                <div
+                                    class="progress mb-3"
+                                    style="height:15px;"
+                                    role="progressbar"
+                                    aria-valuenow="{{ safe_percentage }}"
+                                    aria-valuemin="0"
+                                    aria-valuemax="100"
+                                    aria-label="Progress for {{ goal.title }}"
+                                >
+
+                                    <div
+                                        class="progress-bar
+                                               {{ goal.progress_color|default('bg-success') }}"
+                                        style="width:{{ safe_percentage }}%;"
+                                    >
+
+                                        {{ "%.0f"|format(goal_percentage) }}%
+
+                                    </div>
+
+                                </div>
+
+
+                                <!-- =========================================
+                                     FINANCIAL SUMMARY
+                                ========================================== -->
+
+                                <div class="row g-2 text-center mb-3">
+
+                                    <!-- Saved -->
+
+                                    <div class="col-6">
+
+                                        <small class="text-muted d-block">
+
+                                            Saved
+
+                                        </small>
+
+                                        <div
+                                            class="fw-semibold
+                                                   small
+                                                   text-success"
+                                        >
+
+                                            ₦{{ "{:,.0f}".format(
+                                                goal.saved|default(0)|float
+                                            ) }}
+
+                                        </div>
+
+                                    </div>
+
+
+                                    <!-- Target -->
+
+                                    <div class="col-6">
+
+                                        <small class="text-muted d-block">
+
+                                            Target
+
+                                        </small>
+
+                                        <div class="fw-semibold small">
+
+                                            ₦{{ "{:,.0f}".format(
+                                                goal.target|default(0)|float
+                                            ) }}
+
+                                        </div>
+
+                                    </div>
+
+
+                                    <!-- Remaining -->
+
+                                    <div class="col-6">
+
+                                        <small class="text-muted d-block">
+
+                                            Remaining
+
+                                        </small>
+
+                                        <div
+                                            class="fw-semibold
+                                                   small
+                                                   text-danger"
+                                        >
+
+                                            ₦{{ "{:,.0f}".format(
+                                                goal.remaining|default(0)|float
+                                            ) }}
+
+                                        </div>
+
+                                    </div>
+
+
+                                    <!-- Monthly -->
+
+                                    <div class="col-6">
+
+                                        <small class="text-muted d-block">
+
+                                            Monthly
+
+                                        </small>
+
+                                        <div
+                                            class="fw-semibold
+                                                   small
+                                                   text-primary"
+                                        >
+
+                                            ₦{{ "{:,.0f}".format(
+                                                goal.monthly_contribution|default(0)|float
+                                            ) }}
+
+                                        </div>
+
+                                    </div>
+
+                                </div>
+
+
+                                <!-- =========================================
+                                     TIMELINE
+                                ========================================== -->
+
+                                <div class="row g-2 small mb-3">
+
+                                    <!-- Completion -->
+
+                                    <div class="col-6">
+
+                                        <small class="text-muted d-block">
+
+                                            Completion
+
+                                        </small>
+
+                                        <div class="fw-semibold">
+
+                                            {{ goal.estimated_completion|default("Not available") }}
+
+                                        </div>
+
+                                    </div>
+
+
+                                    <!-- Pace -->
+
+                                    <div class="col-6">
+
+                                        <small class="text-muted d-block">
+
+                                            Pace
+
+                                        </small>
+
+                                        <div class="fw-semibold">
+
+                                            {{ goal.funding_pace|default("Not available") }}
+
+                                        </div>
+
+                                    </div>
+
+                                </div>
+
+
+                                <!-- =========================================
+                                     AI RECOMMENDATION
+                                ========================================== -->
+
+                                <div
+                                    class="alert
+                                           {{ goal.alert_class|default('alert-light') }}
+                                           py-2
+                                           px-3
+                                           mb-0
+                                           small"
+                                >
+
+                                    <strong>
+
+                                        <i
+                                            class="bi bi-lightbulb
+                                                   me-1"
+                                        ></i>
+
+                                        Recommendation
+
+                                    </strong>
+
+
+                                    <div class="mt-1">
+
+                                        {{ goal.recommendation|default(
+                                            "Continue contributing consistently toward this goal."
+                                        )|safe }}
+
+                                    </div>
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+                    {% endfor %}
+
+                </div>
+
+
+            {% else %}
+
+                <!-- =================================================
+                     EMPTY STATE
+                ================================================== -->
+
+                <div class="text-center py-4">
+
+                    <i
+                        class="bi bi-bullseye
+                               text-muted
+                               fs-1"
+                    ></i>
+
+
+                    <h6 class="mt-2 mb-1">
+
+                        No Active Goals
+
+                    </h6>
+
+
+                    <small class="text-muted">
+
+                        Create your first financial goal to start
+                        tracking your progress.
+
+                    </small>
+
+                </div>
+
+            {% endif %}
+
+        </div>
+
+    </div>
+
+</div>

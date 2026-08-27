@@ -1,0 +1,104 @@
+
+{% extends "layouts/public.html" %}
+
+{% block title %}FOCOST Platform — AI Financial Intelligence{% endblock %}
+{% block content %}
+<style>
+.platform-hero{
+    margin-top:-260px;
+    background:radial-gradient(circle at 80% 20%,rgba(13,110,253,.16),transparent 34%),linear-gradient(180deg,#f8fbff 0%,#fff 100%);
+}
+.platform-card{border:1px solid #e9eef5;border-radius:22px;box-shadow:0 12px 35px rgba(15,23,42,.06);height:100%;transition:.25s ease}
+.platform-card:hover{transform:translateY(-4px);box-shadow:0 18px 45px rgba(15,23,42,.10)}
+.platform-icon{width:52px;height:52px;border-radius:16px;display:grid;place-items:center;background:#eaf2ff;color:#0d6efd;font-size:1.35rem}
+.metric-strip{background:#0b1324;color:#fff;border-radius:24px}
+</style>
+
+<section class="platform-hero pt-2 pb-5">
+  <div class="container pt-1 pb-lg-5">
+    <div class="row align-items-center g-5">
+      <div class="col-lg-7">
+        <span class="badge bg-primary-subtle text-primary px-3 py-2 rounded-pill">FOCOST Financial Intelligence Platform</span>
+        <h1 class="display-4 fw-bold mt-3">Turn financial records into <span class="text-primary">decisions.</span></h1>
+        <p class="lead text-muted mt-3">
+          FOCOST combines transaction management, budgeting, goals, reporting, forecasting,
+          notifications and conversational AI into one financial operating system.
+        </p>
+        <div class="d-flex flex-wrap gap-2 mt-4">
+          <a href="{{ url_for('auth.register') }}" class="btn btn-primary btn-lg px-4"><i class="bi bi-rocket-takeoff me-2"></i>Start Building Wealth</a>
+          <a href="#capabilities" class="btn btn-outline-dark btn-lg px-4">Explore capabilities</a>
+        </div>
+      </div>
+      <div class="col-lg-5">
+        <div class="metric-strip p-4 p-lg-5">
+          <small class="text-white-50 text-uppercase fw-bold">Product thesis</small>
+          <h3 class="fw-bold mt-2">Measure → Understand → Predict → Act</h3>
+          <p class="text-white-50 mb-0">The platform is designed around the complete financial decision loop, not just bookkeeping.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="capabilities" class="py-5">
+  <div class="container">
+    <div class="text-center mb-5">
+      <span class="text-primary fw-semibold">CORE PLATFORM</span>
+      <h2 class="fw-bold mt-2">Built as a financial intelligence system</h2>
+      <p class="text-muted">A foundation for consumers, professionals, partners and future financial products.</p>
+    </div>
+    <div class="row g-4">
+      {% set features = [
+        ("bi-chat-dots","Conversational AI Coach","Ask natural-language questions about income, spending, budgets and financial behaviour."),
+        ("bi-bar-chart-line","Decision Intelligence","Dashboards, trends, category analysis, financial health and actionable recommendations."),
+        ("bi-wallet2","Transaction Control","Income and expense records with deterministic date ordering, search and pagination."),
+        ("bi-bullseye","Goals & Budgets","Translate intentions into measurable targets, contribution plans and budget risk signals."),
+        ("bi-file-earmark-bar-graph","Professional Reporting","Filterable reports with PDF and Excel exports suitable for management review."),
+        ("bi-shield-check","Security & Governance","RBAC, audit trails, session hardening, data portability and production health checks.")
+      ] %}
+      {% for icon,title,desc in features %}
+      <div class="col-md-6 col-xl-4">
+        <div class="platform-card p-4">
+          <div class="platform-icon"><i class="bi {{ icon }}"></i></div>
+          <h5 class="fw-bold mt-4">{{ title }}</h5>
+          <p class="text-muted mb-0">{{ desc }}</p>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<section class="py-5 bg-light">
+  <div class="container">
+    <div class="row g-4 align-items-center">
+      <div class="col-lg-6">
+        <span class="text-primary fw-semibold">ENGINEERING STANDARD</span>
+        <h2 class="fw-bold mt-2">Designed for the next stage of scale</h2>
+        <p class="text-muted">FOCOST is being evolved beyond a CRUD finance application into an auditable, AI-assisted financial decision platform.</p>
+      </div>
+      <div class="col-lg-6">
+        <div class="row g-3">
+          {% for item in ["Provider-agnostic AI layer","Role-based access control","Audit-ready financial events","Portable user data","Production health/readiness checks","Responsive web experience"] %}
+          <div class="col-sm-6"><div class="bg-white rounded-4 p-3 border"><i class="bi bi-check-circle-fill text-success me-2"></i>{{ item }}</div></div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="py-5">
+  <div class="container text-center">
+    <h2 class="fw-bold">Partner with the builder</h2>
+    <p class="text-muted mx-auto" style="max-width:720px">
+      FOCOST is positioned for strategic investment, technical partnership, enterprise pilots,
+      sponsorship and employment opportunities around financial AI, analytics and software engineering.
+    </p>
+    <div class="d-flex justify-content-center flex-wrap gap-2">
+      <a href="{{ url_for('auth.register') }}" class="btn btn-primary px-4">Experience FOCOST</a>
+      <a href="/" class="btn btn-outline-secondary px-4">Back to home</a>
+    </div>
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,545 @@
+<!-- ==========================================================
+     SIDEBAR
+=========================================================== -->
+
+<div
+    id="sidebar"
+    class="bg-dark text-white d-flex flex-column shadow-lg"
+>
+
+    <div class="p-3 d-flex flex-column h-100">
+
+        <!-- ==================================================
+             LOGO
+        =================================================== -->
+
+        <div class="text-center mb-4">
+
+            <h4 class="fw-bold mb-0">
+
+                <i class="bi bi-cpu-fill me-2"></i>
+
+                FOCOST
+
+            </h4>
+
+        </div>
+
+
+        <!-- ==================================================
+             MOBILE SEARCH
+        =================================================== -->
+
+        <div class="d-lg-none px-0 py-3 border-bottom">
+
+            <div class="position-relative">
+
+                <i
+                    class="bi bi-search
+                           position-absolute
+                           top-50
+                           start-0
+                           translate-middle-y
+                           ms-3
+                           text-muted"
+                ></i>
+
+                <input
+                    type="search"
+                    class="form-control ps-5"
+                    placeholder="Search..."
+                >
+
+            </div>
+
+        </div>
+
+
+        <!-- ==================================================
+             CURRENT ROLE
+        =================================================== -->
+
+        {% set current_role = current_user.role_slug %}
+
+
+        <!-- ==================================================
+             NAVIGATION
+        =================================================== -->
+
+        <nav
+            class="nav flex-column flex-grow-1"
+        >
+
+            <!-- =================================================
+                 SUPER ADMIN / ADMINISTRATION
+            ================================================== -->
+
+            {% if current_role == "super_admin"
+                  or has_permission("admin.dashboard.view")
+                  or has_permission("users.view")
+                  or has_permission("roles.view")
+                  or has_permission("permissions.view")
+                  or has_permission("audit.view")
+                  or has_permission("subscriptions.view")
+                  or has_permission("ai.view")
+                  or has_permission("settings.view") %}
+
+
+                <!-- Admin Dashboard -->
+
+                {% if has_permission("admin.dashboard.view") %}
+
+                    <a
+                        href="{{ url_for('admin.dashboard') }}"
+                        class="nav-link
+                        {% if request.endpoint == 'admin.dashboard' %}
+                            active
+                        {% else %}
+                            text-white
+                        {% endif %}"
+                    >
+
+                        <i class="bi bi-speedometer2 me-2"></i>
+
+                        Admin Dashboard
+
+                    </a>
+
+                {% endif %}
+
+
+                <!-- Users -->
+
+                {% if has_permission("users.view") %}
+
+                    <a
+                        href="{{ url_for('admin_users.index') }}"
+                        class="nav-link
+                        {% if request.endpoint == 'admin_users.index' %}
+                            active
+                        {% else %}
+                            text-white
+                        {% endif %}"
+                    >
+
+                        <i class="bi bi-people me-2"></i>
+
+                        Users
+
+                    </a>
+
+                {% endif %}
+
+
+                <!-- Roles -->
+
+                {% if has_permission("roles.view") %}
+
+                    <a
+                        href="{{ url_for('admin_roles.index') }}"
+                        class="nav-link
+                        {% if request.endpoint == 'admin_roles.index' %}
+                            active
+                        {% else %}
+                            text-white
+                        {% endif %}"
+                    >
+
+                        <i class="bi bi-person-badge me-2"></i>
+
+                        Roles
+
+                    </a>
+
+                {% endif %}
+
+
+                <!-- Permissions -->
+
+                {% if has_permission("permissions.view") %}
+
+                    <a
+                        href="{{ url_for('admin.permissions') }}"
+                        class="nav-link
+                        {% if request.endpoint == 'admin.permissions' %}
+                            active
+                        {% else %}
+                            text-white
+                        {% endif %}"
+                    >
+
+                        <i class="bi bi-key me-2"></i>
+
+                        Permissions
+
+                    </a>
+
+                {% endif %}
+
+
+                <!-- Audit -->
+
+                {% if has_permission("audit.view") %}
+
+                    <a
+                        href="{{ url_for('admin.audit_logs') }}"
+                        class="nav-link
+                        {% if request.endpoint == 'admin.audit_logs' %}
+                            active
+                        {% else %}
+                            text-white
+                        {% endif %}"
+                    >
+
+                        <i class="bi bi-clock-history me-2"></i>
+
+                        Audit Logs
+
+                    </a>
+
+                {% endif %}
+
+
+                <!-- Subscriptions -->
+
+                {% if has_permission("subscriptions.view") %}
+
+                    <a
+                        href="{{ url_for('admin.subscriptions') }}"
+                        class="nav-link
+                        {% if request.endpoint == 'admin.subscriptions' %}
+                            active
+                        {% else %}
+                            text-white
+                        {% endif %}"
+                    >
+
+                        <i class="bi bi-credit-card me-2"></i>
+
+                        Subscriptions
+
+                    </a>
+
+                {% endif %}
+
+
+                <!-- AI -->
+
+                {% if has_permission("ai.view") %}
+
+                    <a
+                        href="{{ url_for('admin.ai_settings') }}"
+                        class="nav-link
+                        {% if request.endpoint == 'admin.ai_settings' %}
+                            active
+                        {% else %}
+                            text-white
+                        {% endif %}"
+                    >
+
+                        <i class="bi bi-cpu me-2"></i>
+
+                        AI Settings
+
+                    </a>
+
+                {% endif %}
+
+
+                <!-- System Settings -->
+
+                {% if has_permission("settings.view") %}
+
+                    <a
+                        href="{{ url_for('admin.settings') }}"
+                        class="nav-link
+                        {% if request.endpoint == 'admin.settings' %}
+                            active
+                        {% else %}
+                            text-white
+                        {% endif %}"
+                    >
+
+                        <i class="bi bi-gear me-2"></i>
+
+                        System Settings
+
+                    </a>
+
+                {% endif %}
+
+            {% endif %}
+
+
+            <!-- =================================================
+                 FINANCIAL APPLICATION
+            ================================================== -->
+
+            {% if not (
+                    current_role == "super_admin"
+                    or has_permission("admin.dashboard.view")
+                    or has_permission("users.view")
+                    or has_permission("roles.view")
+                    or has_permission("permissions.view")
+                    or has_permission("audit.view")
+                    or has_permission("subscriptions.view")
+                    or has_permission("ai.view")
+                    or has_permission("settings.view")
+                )
+                and (
+                    has_permission("dashboard.view")
+                    or has_permission("income.view")
+                    or has_permission("expenses.view")
+                    or has_permission("budgets.view")
+                    or has_permission("goals.view")
+                    or has_permission("reports.view")
+                )
+            %}
+
+                <!-- Dashboard -->
+
+                {% if has_permission("dashboard.view") %}
+
+                    <a
+                        href="{{ url_for('dashboard.dashboard') }}"
+                        class="nav-link
+                        {% if request.endpoint == 'dashboard.dashboard' %}
+                            active
+                        {% else %}
+                            text-white
+                        {% endif %}"
+                    >
+
+                        <i class="bi bi-speedometer2 me-2"></i>
+
+                        Dashboard
+
+                    </a>
+
+                {% endif %}
+
+
+                <!-- Income -->
+
+                {% if has_permission("income.view") %}
+
+                    <a
+                        href="{{ url_for('income.list_income') }}"
+                        class="nav-link
+                        {% if request.endpoint
+                              and request.endpoint.startswith('income.') %}
+                            active
+                        {% else %}
+                            text-white
+                        {% endif %}"
+                    >
+
+                        <i class="bi bi-wallet2 me-2"></i>
+
+                        Income
+
+                    </a>
+
+                {% endif %}
+
+
+                <!-- Expenses -->
+
+                {% if has_permission("expenses.view") %}
+
+                    <a
+                        href="{{ url_for('expense.list_expense') }}"
+                        class="nav-link
+                        {% if request.endpoint
+                              and request.endpoint.startswith('expense.') %}
+                            active
+                        {% else %}
+                            text-white
+                        {% endif %}"
+                    >
+
+                        <i class="bi bi-cash-stack me-2"></i>
+
+                        Expenses
+
+                    </a>
+
+                {% endif %}
+
+
+                <!-- Budgets -->
+
+                {% if has_permission("budgets.view") %}
+
+                    <a
+                        href="{{ url_for('budget.list_budgets') }}"
+                        class="nav-link
+                        {% if request.endpoint
+                              and request.endpoint.startswith('budget.') %}
+                            active
+                        {% else %}
+                            text-white
+                        {% endif %}"
+                    >
+
+                        <i class="bi bi-pie-chart me-2"></i>
+
+                        Budgets
+
+                    </a>
+
+                {% endif %}
+
+
+                <!-- Goals -->
+
+                {% if has_permission("goals.view") %}
+
+                    <a
+                        href="{{ url_for('goal.list_goals') }}"
+                        class="nav-link
+                        {% if request.endpoint
+                              and request.endpoint.startswith('goal.') %}
+                            active
+                        {% else %}
+                            text-white
+                        {% endif %}"
+                    >
+
+                        <i class="bi bi-bullseye me-2"></i>
+
+                        Goals
+
+                    </a>
+
+                {% endif %}
+
+
+                <!-- Reports -->
+
+                {% if has_permission("reports.view") %}
+
+                    <a
+                        href="{{ url_for('reports.index') }}"
+                        class="nav-link
+                        {% if request.endpoint
+                              and request.endpoint.startswith('reports.') %}
+                            active
+                        {% else %}
+                            text-white
+                        {% endif %}"
+                    >
+
+                        <i class="bi bi-bar-chart-line me-2"></i>
+
+                        Reports
+
+                    </a>
+
+                {% endif %}
+
+            {% endif %}
+
+        </nav>
+
+
+        <!-- ==================================================
+             USER INFORMATION
+        =================================================== -->
+
+        <div
+            class="border-top
+                   border-secondary
+                   pt-3
+                   mb-3"
+        >
+
+            <div class="d-flex align-items-center">
+
+                <!-- Avatar -->
+
+                <div
+                    class="rounded-circle
+                           bg-primary
+                           text-white
+                           d-flex
+                           align-items-center
+                           justify-content-center
+                           me-2
+                           flex-shrink-0"
+                    style="width:36px;height:36px;"
+                >
+
+                    {{ current_user.first_name[:1]|upper }}
+
+                </div>
+
+
+                <!-- Name / Role -->
+
+                <div
+                    class="flex-grow-1
+                           overflow-hidden"
+                >
+
+                    <div class="fw-semibold text-truncate">
+
+                        {{ current_user.first_name }}
+                        {{ current_user.last_name }}
+
+                    </div>
+
+ 
+                    <small
+                        class="text-secondary
+                               text-truncate
+                               d-block"
+                    >
+
+                        {% if current_role == "super_admin" %}
+
+                            Super Administrator
+
+                        {% elif current_role %}
+
+                            {{ current_role
+                               |replace("_", " ")
+                               |title }}
+
+                        {% else %}
+
+                            No Role
+
+                        {% endif %}
+
+                    </small>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <!-- ==================================================
+             LOGOUT
+        =================================================== -->
+
+        <div>
+
+            <a
+                href="{{ url_for('auth.logout') }}"
+                class="btn btn-danger w-100"
+            >
+
+                <i class="bi bi-box-arrow-right me-2"></i>
+
+                Logout
+
+            </a>
+
+        </div>
+
+    </div>
+
+</div>

@@ -1,0 +1,883 @@
+<!-- =======================================================
+     RECENT TRANSACTIONS
+======================================================= -->
+<div
+    id="transactions"
+    class="card border-0 shadow-sm"
+>
+
+    <!-- Header -->
+
+    <div
+        class="card-header
+               bg-white
+               py-2
+               px-3
+               d-flex
+               justify-content-between
+               align-items-center"
+    >
+
+        <div class="fw-semibold small">
+
+            <i class="bi bi-clock-history text-primary me-1"></i>
+
+            TRANSACTIONS
+
+        </div>
+
+    </div>
+
+
+    <div class="card-body">
+
+        <!-- ===================================================
+             TOOLBAR
+        ==================================================== -->
+
+        <form
+            id="transactionFilterForm"
+            method="GET"
+            action="{{ url_for('dashboard.dashboard') }}#transaction-table"
+        >
+
+            <div class="row g-2 mb-3">
+
+                <!-- Search -->
+
+                <div class="col-xl-3 col-lg-4">
+
+                    <input
+                        id="transactionSearch"
+                        name="search"
+                        type="search"
+                        class="form-control form-control-sm"
+                        value="{{ search }}"
+                        placeholder="Search transactions..."
+                    >
+
+                </div>
+
+
+                <!-- Type -->
+
+                <div class="col-xl-2 col-lg-2">
+
+                    <select
+                        id="transactionType"
+                        name="type"
+                        class="form-select form-select-sm"
+                    >
+
+                        <option value="">
+                            All Types
+                        </option>
+
+                        <option
+                            value="Income"
+                            {% if transaction_type == "Income" %}
+                                selected
+                            {% endif %}
+                        >
+                            Income
+                        </option>
+
+                        <option
+                            value="Expense"
+                            {% if transaction_type == "Expense" %}
+                                selected
+                            {% endif %}
+                        >
+                            Expense
+                        </option>
+
+                    </select>
+
+                </div>
+
+
+                <!-- Category -->
+
+                <div class="col-xl-2 col-lg-2">
+
+                    <select
+                        id="transactionCategory"
+                        name="category"
+                        class="form-select form-select-sm"
+                    >
+
+                        <option value="">
+                            All Categories
+                        </option>
+
+                        {% for item_category in dashboard.categories %}
+
+                            <option
+                                value="{{ item_category }}"
+                                {% if category == item_category %}
+                                    selected
+                                {% endif %}
+                            >
+
+                                {{ item_category }}
+
+                            </option>
+
+                        {% endfor %}
+
+                    </select>
+
+                </div>
+
+
+                <!-- Period -->
+
+                <div class="col-xl-2 col-lg-2">
+
+                    <select
+                        id="transactionPeriod"
+                        name="period"
+                        class="form-select form-select-sm"
+                    >
+
+                        <option
+                            value="today"
+                            {% if period == "today" %}
+                                selected
+                            {% endif %}
+                        >
+                            Today
+                        </option>
+
+                        <option
+                            value="week"
+                            {% if period == "week" %}
+                                selected
+                            {% endif %}
+                        >
+                            This Week
+                        </option>
+
+                        <option
+                            value="month"
+                            {% if period == "month" %}
+                                selected
+                            {% endif %}
+                        >
+                            This Month
+                        </option>
+
+                        <option
+                            value="year"
+                            {% if period == "year" %}
+                                selected
+                            {% endif %}
+                        >
+                            This Year
+                        </option>
+
+                        <option
+                            value="lifetime"
+                            {% if period == "lifetime" %}
+                                selected
+                            {% endif %}
+                        >
+                            Lifetime
+                        </option>
+
+                    </select>
+
+                </div>
+
+
+                <!-- Buttons -->
+
+                <div
+                    class="col-xl-3
+                           col-lg-2
+                           d-flex
+                           gap-2"
+                >
+
+                    <button
+                        type="submit"
+                        class="btn btn-primary btn-sm flex-fill"
+                    >
+
+                        <i class="bi bi-funnel me-1"></i>
+
+                        Apply
+
+                    </button>
+
+
+                    <a
+                        href="{{ url_for('dashboard.dashboard') }}#transaction-table"
+                        class="btn btn-outline-secondary btn-sm"
+                    >
+
+                        Reset
+
+                    </a>
+
+                </div>
+
+            </div>
+
+        </form>
+
+
+        {% if dashboard.recent_transactions %}
+
+        <!-- ===================================================
+             TABLE
+        ==================================================== -->
+
+        <div
+            id="transaction-table"
+            class="table-responsive border rounded"
+            style="
+                max-height:420px;
+                overflow-y:auto;
+                scroll-margin-top:100px;
+            "
+        >
+
+            <table
+                class="table table-hover table-sm align-middle mb-0"
+            >
+
+                <thead class="table-light sticky-top">
+
+                    <tr>
+
+                        <th>
+                            Date
+                            <i class="bi bi-arrow-down-up small"></i>
+                        </th>
+
+                        <th>
+                            Description
+                        </th>
+
+                        <th>
+                            Category
+                        </th>
+
+                        <th>
+                            Type
+                        </th>
+
+                        <th class="text-end">
+
+                            Amount
+
+                            <i class="bi bi-arrow-down-up small"></i>
+
+                        </th>
+
+                        <th class="text-center">
+                            Status
+                        </th>
+
+                    </tr>
+
+                </thead>
+
+
+                <tbody>
+
+                {% for item in transaction_pagination.items %}
+
+                    <tr
+                        class="transaction-row"
+                        data-id="{{ item.transaction_id }}"
+                        data-type="{{ item.transaction_type }}"
+                        data-url="{{ url_for(
+                            'dashboard.transaction_detail',
+                            transaction_id=item.transaction_id,
+                            transaction_type=item.transaction_type
+                        ) }}"
+                        style="cursor:pointer;"
+                    >
+
+                        <td class="text-nowrap small">
+
+                            {{ item.date.strftime("%d %b") }}
+
+                        </td>
+
+
+                        <td>
+
+                            <div class="fw-semibold">
+
+                                {{ item.title }}
+
+                            </div>
+
+                            {% if item.note %}
+
+                                <small class="text-muted">
+
+                                    {{ item.note }}
+
+                                </small>
+
+                            {% endif %}
+
+                        </td>
+
+
+                        <td>
+
+                            <span class="badge text-bg-light border">
+
+                                {{ item.category }}
+
+                            </span>
+
+                        </td>
+
+
+                        <td>
+
+                            {% if item.type == "Income" %}
+
+                                <span class="badge bg-success">
+
+                                    <i
+                                        class="bi
+                                               bi-arrow-down-circle-fill
+                                               me-1"
+                                    ></i>
+
+                                    Income
+
+                                </span>
+
+                            {% else %}
+
+                                <span class="badge bg-danger">
+
+                                    <i
+                                        class="bi
+                                               bi-arrow-up-circle-fill
+                                               me-1"
+                                    ></i>
+
+                                    Expense
+
+                                </span>
+
+                            {% endif %}
+
+                        </td>
+
+
+                        <td class="text-end fw-semibold">
+
+                            {% if item.type == "Income" %}
+
+                                <span class="text-success">
+
+                                    +₦{{ "{:,.2f}".format(
+                                        item.amount
+                                    ) }}
+
+                                </span>
+
+                            {% else %}
+
+                                <span class="text-danger">
+
+                                    -₦{{ "{:,.2f}".format(
+                                        item.amount
+                                    ) }}
+
+                                </span>
+
+                            {% endif %}
+
+                        </td>
+
+
+                        <td class="text-center">
+
+                            {% if item.flagged %}
+
+                                <span
+                                    class="badge bg-warning text-dark"
+                                >
+
+                                    <i
+                                        class="bi
+                                               bi-exclamation-triangle-fill
+                                               me-1"
+                                    ></i>
+
+                                    Review
+
+                                </span>
+
+                            {% else %}
+
+                                <span class="badge bg-success">
+
+                                    <i
+                                        class="bi
+                                               bi-check-circle-fill
+                                               me-1"
+                                    ></i>
+
+                                    OK
+
+                                </span>
+
+                            {% endif %}
+
+                        </td>
+
+                    </tr>
+
+                {% endfor %}
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+
+        <!-- ===================================================
+            TRANSACTION FOOTER
+        ==================================================== -->
+
+        <div class="d-flex justify-content-between align-items-center mt-3 flex-wrap gap-2">
+
+            <small class="text-muted">
+
+                Showing
+
+                {{ transaction_pagination.first }}
+
+                -
+
+                {{ transaction_pagination.last }}
+
+                of
+
+                {{ transaction_pagination.total }}
+
+                transactions
+
+            </small>
+
+            <small class="text-muted">
+
+                Click a transaction to view details
+
+            </small>
+
+        </div>
+
+
+        <!-- ======================================================
+            PAGINATION
+        ======================================================= -->
+
+        {% if transaction_pagination.pages > 1 %}
+
+        <div class="card-footer bg-white border-0 py-3">
+
+            <nav aria-label="Transaction pagination">
+
+                <ul class="pagination pagination-sm justify-content-center mb-0">
+
+                    <!-- Previous -->
+
+                    <li class="page-item
+                        {% if not transaction_pagination.has_prev %}
+                            disabled
+                        {% endif %}">
+
+                        {% if transaction_pagination.has_prev %}
+
+                            <a
+                                class="page-link"
+                                href="{{ url_for(
+                                    'dashboard.dashboard',
+                                    page=transaction_pagination.prev_num,
+                                    per_page=transaction_pagination.per_page,
+                                    search=search,
+                                    type=transaction_type,
+                                    category=category,
+                                    period=period
+                                ) }}#transaction-table"
+                            >
+
+                                <i class="bi bi-chevron-left"></i>
+
+                            </a>
+
+                        {% else %}
+
+                            <span class="page-link">
+
+                                <i class="bi bi-chevron-left"></i>
+
+                            </span>
+
+                        {% endif %}
+
+                    </li>
+
+
+                    <!-- Page Numbers -->
+
+                    {% for page_num in transaction_pagination.iter_pages(
+                        left_edge=1,
+                        right_edge=1,
+                        left_current=2,
+                        right_current=2
+                    ) %}
+
+                        {% if page_num %}
+
+                            <li class="page-item
+                                {% if page_num == transaction_pagination.page %}
+                                    active
+                                {% endif %}">
+
+                                <a
+                                    class="page-link"
+                                    href="{{ url_for(
+                                        'dashboard.dashboard',
+                                        page=page_num,
+                                        per_page=transaction_pagination.per_page,
+                                        search=search,
+                                        type=transaction_type,
+                                        category=category,
+                                        period=period
+                                    ) }}#transaction-table"
+                                >
+
+                                    {{ page_num }}
+
+                                </a>
+
+                            </li>
+
+                        {% else %}
+
+                            <li class="page-item disabled">
+
+                                <span class="page-link">
+                                    …
+                                </span>
+
+                            </li>
+
+                        {% endif %}
+
+                    {% endfor %}
+
+
+                    <!-- Next -->
+
+                    <li class="page-item
+                        {% if not transaction_pagination.has_next %}
+                            disabled
+                        {% endif %}">
+
+                        {% if transaction_pagination.has_next %}
+
+                            <a
+                                class="page-link"
+                                href="{{ url_for(
+                                    'dashboard.dashboard',
+                                    page=transaction_pagination.next_num,
+                                    per_page=transaction_pagination.per_page,
+                                    search=search,
+                                    type=transaction_type,
+                                    category=category,
+                                    period=period
+                                ) }}#transaction-table"
+                            >
+
+                                <i class="bi bi-chevron-right"></i>
+
+                            </a>
+
+                        {% else %}
+
+                            <span class="page-link">
+
+                                <i class="bi bi-chevron-right"></i>
+
+                            </span>
+
+                        {% endif %}
+
+                    </li>
+
+                </ul>
+
+            </nav>
+
+        </div>
+
+        {% endif %}
+
+
+        <hr>
+
+
+        {% else %}
+
+        <!-- ===================================================
+             EMPTY STATE
+        ==================================================== -->
+
+        <div class="text-center py-5">
+
+            <i
+                class="bi
+                       bi-wallet2
+                       display-6
+                       text-muted"
+            ></i>
+
+            <h6 class="mt-3">
+
+                No Transactions Found
+
+            </h6>
+
+            {% if search
+                or transaction_type
+                or category
+                or period != "month" %}
+
+                <p class="text-muted mb-3">
+
+                    No transactions match your current
+                    search or filters.
+
+                </p>
+
+                <a
+                    href="{{ url_for('dashboard.dashboard') }}"
+                    class="btn btn-outline-secondary"
+                >
+
+                    Clear Filters
+
+                </a>
+
+            {% else %}
+
+                <p class="text-muted mb-3">
+
+                    Record your first income or expense
+                    to unlock AI insights.
+
+                </p>
+
+                <a
+                    href="{{ url_for('income.add_income') }}"
+                    class="btn btn-primary"
+                >
+
+                    <i class="bi bi-plus-circle me-1"></i>
+
+                    Add First Transaction
+
+                </a>
+
+            {% endif %}
+
+        </div>
+
+        {% endif %}
+
+    </div>
+
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+
+    /*
+     * ==========================================================
+     * TRANSACTION ROW CLICK
+     * ==========================================================
+     */
+
+    document.querySelectorAll(".transaction-row").forEach(
+        function (row) {
+
+            row.addEventListener("click", function (event) {
+
+                if (
+                    event.target.closest("a") ||
+                    event.target.closest("button")
+                ) {
+                    return;
+                }
+
+                const url = row.dataset.url;
+
+                if (url) {
+                    window.location.href = url;
+                }
+
+            });
+
+        }
+    );
+
+
+    /*
+     * ==========================================================
+     * TRANSACTION FILTER FORM
+     * ==========================================================
+     *
+     * Always:
+     *
+     * 1. Reset pagination to page 1
+     * 2. Keep the transaction-table anchor
+     * 3. Let the server process the filters normally
+     *
+     */
+
+    const filterForm = document.getElementById(
+        "transactionFilterForm"
+    );
+
+    if (filterForm) {
+
+        filterForm.addEventListener(
+            "submit",
+            function () {
+
+                /*
+                 * Search/filter always starts
+                 * from transaction page 1.
+                 */
+
+                let pageInput = filterForm.querySelector(
+                    'input[name="page"]'
+                );
+
+                if (!pageInput) {
+
+                    pageInput = document.createElement(
+                        "input"
+                    );
+
+                    pageInput.type = "hidden";
+                    pageInput.name = "page";
+
+                    filterForm.appendChild(
+                        pageInput
+                    );
+
+                }
+
+                pageInput.value = "1";
+
+
+                /*
+                 * IMPORTANT:
+                 *
+                 * Keep the URL anchored to the
+                 * transaction table.
+                 */
+
+                filterForm.action =
+                    "{{ url_for('dashboard.dashboard') }}" +
+                    "#transaction-table";
+
+            }
+        );
+
+    }
+
+
+    /*
+     * ==========================================================
+     * FORCE SCROLL TO TRANSACTION TABLE
+     * ==========================================================
+     *
+     * Browser fragment scrolling can happen before the
+     * dashboard has completely rendered.
+     *
+     * We therefore explicitly scroll AFTER rendering.
+     *
+     */
+
+    function scrollToTransactionTable() {
+
+        const table =
+            document.getElementById(
+                "transaction-table"
+            );
+
+        if (!table) {
+            return;
+        }
+
+        const rect =
+            table.getBoundingClientRect();
+
+        const absoluteTop =
+            rect.top +
+            window.pageYOffset -
+            100;
+
+        window.scrollTo({
+            top: Math.max(
+                0,
+                absoluteTop
+            ),
+            behavior: "smooth"
+        });
+
+    }
+
+
+    /*
+     * ==========================================================
+     * ONLY SCROLL WHEN TRANSACTION TABLE IS REQUESTED
+     * ==========================================================
+     */
+
+    if (
+        window.location.hash === "#transaction-table"
+    ) {
+
+        /*
+         * Give the browser time to finish
+         * restoring/rendering the page.
+         */
+
+        setTimeout(
+            scrollToTransactionTable,
+            100
+        );
+
+        setTimeout(
+            scrollToTransactionTable,
+            300
+        );
+
+        setTimeout(
+            scrollToTransactionTable,
+            600
+        );
+
+    }
+
+});
+</script>

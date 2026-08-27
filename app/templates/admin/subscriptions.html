@@ -1,0 +1,657 @@
+{% extends "layouts/dashboard.html" %}
+
+{% block title %}
+Subscription Management
+{% endblock %}
+
+{% block content %}
+
+<div class="container-fluid py-4">
+
+    <!-- =========================================================
+         PAGE HEADER
+    ========================================================== -->
+
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
+
+        <div>
+            <div class="d-flex align-items-center mb-1">
+                <div class="bg-primary bg-opacity-10 rounded-3 p-2 me-3">
+                    <i class="bi bi-credit-card-2-front text-primary fs-4"></i>
+                </div>
+
+                <div>
+                    <h2 class="fw-bold mb-0">
+                        Subscription Management
+                    </h2>
+
+                    <p class="text-muted mb-0 small">
+                        Monitor plans, subscription status and user access.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+
+    <!-- =========================================================
+         SUMMARY CARDS
+    ========================================================== -->
+
+    <div class="row g-3 mb-4">
+
+        <!-- Total Users -->
+
+        <div class="col-xl-3 col-md-6">
+
+            <div class="card border-0 shadow-sm h-100">
+
+                <div class="card-body">
+
+                    <div class="d-flex justify-content-between align-items-start">
+
+                        <div>
+
+                            <small class="text-muted d-block mb-1">
+                                Total Users
+                            </small>
+
+                            <h3 class="fw-bold mb-0">
+                                {{ total_users|default(0) }}
+                            </h3>
+
+                        </div>
+
+                        <div class="bg-primary bg-opacity-10 rounded-3 p-2">
+                            <i class="bi bi-people-fill text-primary fs-4"></i>
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <!-- Active -->
+
+        <div class="col-xl-3 col-md-6">
+
+            <div class="card border-0 shadow-sm h-100">
+
+                <div class="card-body">
+
+                    <div class="d-flex justify-content-between align-items-start">
+
+                        <div>
+
+                            <small class="text-muted d-block mb-1">
+                                Active Subscribers
+                            </small>
+
+                            <h3 class="fw-bold mb-0 text-success">
+                                {{ active_subscriptions|default(0) }}
+                            </h3>
+
+                        </div>
+
+                        <div class="bg-success bg-opacity-10 rounded-3 p-2">
+                            <i class="bi bi-check-circle-fill text-success fs-4"></i>
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <!-- Trial -->
+
+        <div class="col-xl-3 col-md-6">
+
+            <div class="card border-0 shadow-sm h-100">
+
+                <div class="card-body">
+
+                    <div class="d-flex justify-content-between align-items-start">
+
+                        <div>
+
+                            <small class="text-muted d-block mb-1">
+                                Trial Users
+                            </small>
+
+                            <h3 class="fw-bold mb-0 text-warning">
+                                {{ trial_subscriptions|default(0) }}
+                            </h3>
+
+                        </div>
+
+                        <div class="bg-warning bg-opacity-10 rounded-3 p-2">
+                            <i class="bi bi-hourglass-split text-warning fs-4"></i>
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <!-- Expired -->
+
+        <div class="col-xl-3 col-md-6">
+
+            <div class="card border-0 shadow-sm h-100">
+
+                <div class="card-body">
+
+                    <div class="d-flex justify-content-between align-items-start">
+
+                        <div>
+
+                            <small class="text-muted d-block mb-1">
+                                Expired / Inactive
+                            </small>
+
+                            <h3 class="fw-bold mb-0 text-danger">
+                                {{ expired_subscriptions|default(0) }}
+                            </h3>
+
+                        </div>
+
+                        <div class="bg-danger bg-opacity-10 rounded-3 p-2">
+                            <i class="bi bi-x-circle-fill text-danger fs-4"></i>
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- =========================================================
+         PLAN OVERVIEW
+    ========================================================== -->
+
+    <div class="card border-0 shadow-sm mb-4">
+
+        <div class="card-header bg-white border-bottom">
+
+            <div class="d-flex justify-content-between align-items-center">
+
+                <div>
+
+                    <h5 class="fw-bold mb-1">
+                        Subscription Plans
+                    </h5>
+
+                    <small class="text-muted">
+                        Overview of plans currently available to users.
+                    </small>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <div class="table-responsive">
+
+            <table class="table table-hover align-middle mb-0">
+
+                <thead class="table-light">
+
+                    <tr>
+
+                        <th class="ps-4">
+                            Plan
+                        </th>
+
+                        <th>
+                            Price
+                        </th>
+
+                        <th>
+                            Billing
+                        </th>
+
+                        <th>
+                            Subscribers
+                        </th>
+
+                        <th>
+                            Status
+                        </th>
+
+                    </tr>
+
+                </thead>
+
+
+                <tbody>
+
+                    {% if plans %}
+
+                        {% for plan in plans %}
+
+                        <tr>
+
+                            <td class="ps-4">
+
+                                <div class="d-flex align-items-center">
+
+                                    <div class="bg-primary bg-opacity-10 rounded-2 p-2 me-3">
+                                        <i class="bi bi-box-seam text-primary"></i>
+                                    </div>
+
+                                    <div>
+
+                                        <strong>
+                                            {{ plan.name }}
+                                        </strong>
+
+                                        {% if plan.description %}
+                                            <small class="text-muted d-block">
+                                                {{ plan.description }}
+                                            </small>
+                                        {% endif %}
+
+                                    </div>
+
+                                </div>
+
+                            </td>
+
+
+                            <td>
+
+                                {% if plan.price is defined %}
+
+                                    {% if plan.price == 0 %}
+                                        <span class="fw-semibold">
+                                            Free
+                                        </span>
+                                    {% else %}
+                                        <span class="fw-semibold">
+                                            ₦{{ "{:,.2f}".format(plan.price) }}
+                                        </span>
+                                    {% endif %}
+
+                                {% else %}
+
+                                    <span class="text-muted">
+                                        —
+                                    </span>
+
+                                {% endif %}
+
+                            </td>
+
+
+                            <td>
+
+                                {{ plan.billing_cycle|default("—") }}
+
+                            </td>
+
+
+                            <td>
+
+                                <span class="badge bg-primary bg-opacity-10 text-primary">
+
+                                    {{ plan.subscriber_count|default(0) }}
+
+                                </span>
+
+                            </td>
+
+
+                            <td>
+
+                                {% if plan.active|default(true) %}
+
+                                    <span class="badge bg-success-subtle text-success">
+                                        Active
+                                    </span>
+
+                                {% else %}
+
+                                    <span class="badge bg-secondary-subtle text-secondary">
+                                        Inactive
+                                    </span>
+
+                                {% endif %}
+
+                            </td>
+
+                        </tr>
+
+                        {% endfor %}
+
+                    {% else %}
+
+                        <tr>
+
+                            <td colspan="5"
+                                class="text-center text-muted py-5">
+
+                                <div class="mb-2">
+
+                                    <i class="bi bi-credit-card-2-front fs-1 opacity-50"></i>
+
+                                </div>
+
+                                <strong>
+                                    No subscription plans configured
+                                </strong>
+
+                                <div class="small mt-1">
+                                    Subscription plans will appear here once configured.
+                                </div>
+
+                            </td>
+
+                        </tr>
+
+                    {% endif %}
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </div>
+
+
+    <!-- =========================================================
+         USER SUBSCRIPTIONS
+    ========================================================== -->
+
+    <div class="card border-0 shadow-sm">
+
+        <div class="card-header bg-white border-bottom">
+
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+
+                <div>
+
+                    <h5 class="fw-bold mb-1">
+                        User Subscriptions
+                    </h5>
+
+                    <small class="text-muted">
+                        Review subscription status across users.
+                    </small>
+
+                </div>
+
+
+                {% if subscriptions %}
+
+                <span class="badge bg-light text-dark border">
+
+                    {{ subscriptions|length }}
+                    Record{% if subscriptions|length != 1 %}s{% endif %}
+
+                </span>
+
+                {% endif %}
+
+            </div>
+
+        </div>
+
+
+        <div class="table-responsive">
+
+            <table class="table table-hover align-middle mb-0">
+
+                <thead class="table-light">
+
+                    <tr>
+
+                        <th class="ps-4">
+                            User
+                        </th>
+
+                        <th>
+                            Plan
+                        </th>
+
+                        <th>
+                            Status
+                        </th>
+
+                        <th>
+                            Start Date
+                        </th>
+
+                        <th>
+                            Expiry
+                        </th>
+
+                    </tr>
+
+                </thead>
+
+
+                <tbody>
+
+                    {% if subscriptions %}
+
+                        {% for subscription in subscriptions %}
+
+                        <tr>
+
+                            <td class="ps-4">
+
+                                {% if subscription.user %}
+
+                                    <strong>
+
+                                        {{ subscription.user.first_name|default("") }}
+
+                                        {{ subscription.user.last_name|default("") }}
+
+                                    </strong>
+
+                                    <small class="text-muted d-block">
+
+                                        {{ subscription.user.email|default("—") }}
+
+                                    </small>
+
+                                {% else %}
+
+                                    <span class="text-muted">
+                                        Unknown user
+                                    </span>
+
+                                {% endif %}
+
+                            </td>
+
+
+                            <td>
+
+                                {% if subscription.plan %}
+
+                                    {{ subscription.plan.name|default(subscription.plan) }}
+
+                                {% else %}
+
+                                    <span class="text-muted">
+                                        —
+                                    </span>
+
+                                {% endif %}
+
+                            </td>
+
+
+                            <td>
+
+                                {% set subscription_status =
+                                    subscription.status|default("unknown")|lower
+                                %}
+
+
+                                {% if subscription_status in ["active", "paid"] %}
+
+                                    <span class="badge bg-success-subtle text-success">
+                                        <i class="bi bi-check-circle me-1"></i>
+                                        {{ subscription_status|title }}
+                                    </span>
+
+
+                                {% elif subscription_status in ["trial", "trialing"] %}
+
+                                    <span class="badge bg-warning-subtle text-warning-emphasis">
+                                        <i class="bi bi-hourglass-split me-1"></i>
+                                        Trial
+                                    </span>
+
+
+                                {% elif subscription_status in ["expired", "cancelled", "canceled", "inactive"] %}
+
+                                    <span class="badge bg-danger-subtle text-danger">
+                                        <i class="bi bi-x-circle me-1"></i>
+                                        {{ subscription_status|title }}
+                                    </span>
+
+
+                                {% else %}
+
+                                    <span class="badge bg-secondary-subtle text-secondary">
+                                        {{ subscription_status|title }}
+                                    </span>
+
+                                {% endif %}
+
+                            </td>
+
+
+                            <td>
+
+                                {% if subscription.start_date %}
+
+                                    {{ subscription.start_date.strftime("%d %b %Y") }}
+
+                                {% else %}
+
+                                    <span class="text-muted">
+                                        —
+                                    </span>
+
+                                {% endif %}
+
+                            </td>
+
+
+                            <td>
+
+                                {% if subscription.end_date %}
+
+                                    {{ subscription.end_date.strftime("%d %b %Y") }}
+
+                                {% else %}
+
+                                    <span class="text-muted">
+                                        No expiry
+                                    </span>
+
+                                {% endif %}
+
+                            </td>
+
+                        </tr>
+
+                        {% endfor %}
+
+                    {% else %}
+
+                        <tr>
+
+                            <td colspan="5"
+                                class="text-center text-muted py-5">
+
+                                <div class="mb-2">
+
+                                    <i class="bi bi-people fs-1 opacity-50"></i>
+
+                                </div>
+
+                                <strong>
+                                    No subscription records available
+                                </strong>
+
+                                <div class="small mt-1">
+                                    User subscription records will appear here.
+                                </div>
+
+                            </td>
+
+                        </tr>
+
+                    {% endif %}
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </div>
+
+
+    <!-- =========================================================
+         INFORMATION NOTICE
+    ========================================================== -->
+
+    <div class="alert alert-light border mt-4 mb-0">
+
+        <div class="d-flex">
+
+            <i class="bi bi-info-circle text-primary fs-5 me-3"></i>
+
+            <div>
+
+                <strong>
+                    Subscription administration
+                </strong>
+
+                <div class="small text-muted mt-1">
+
+                    This area provides administrative visibility into
+                    subscription plans and user access. Payment processing,
+                    renewals, cancellations and transaction history should
+                    be connected to the application's subscription service
+                    when those capabilities are enabled.
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}

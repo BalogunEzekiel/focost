@@ -1,0 +1,245 @@
+{% extends "layouts/dashboard.html" %}
+
+{% block title %}
+Transaction Details
+{% endblock %}
+
+
+{% block content %}
+
+<div class="container-fluid">
+
+    <!-- ==================================================
+         HEADER
+    ================================================== -->
+
+    <div
+        class="d-flex
+               justify-content-between
+               align-items-center
+               mb-4
+               flex-wrap
+               gap-2"
+    >
+
+        <div>
+
+            <h4 class="fw-bold mb-1">
+
+                Transaction Details
+
+            </h4>
+
+            <small class="text-muted">
+
+                View transaction information
+
+            </small>
+
+        </div>
+
+
+        <a
+            href="{{ url_for('dashboard.dashboard') }}#transaction-table"
+            class="btn btn-outline-secondary btn-sm"
+        >
+
+            <i class="bi bi-arrow-left me-1"></i>
+
+            Back to Dashboard
+
+        </a>
+
+    </div>
+
+
+    <!-- ==================================================
+         TRANSACTION CARD
+    ================================================== -->
+
+    <div class="card border-0 shadow-sm rounded-4">
+
+        <div class="card-body">
+
+            <div
+                class="d-flex
+                       justify-content-between
+                       align-items-start
+                       mb-4
+                       flex-wrap
+                       gap-3"
+            >
+
+                <div>
+
+                    <small class="text-muted">
+
+                        Transaction Type
+
+                    </small>
+
+                    <div class="mt-1">
+
+                        {% if transaction_type == "Income" %}
+
+                            <span class="badge bg-success">
+
+                                <i
+                                    class="bi
+                                           bi-arrow-down-circle-fill
+                                           me-1"
+                                ></i>
+
+                                Income
+
+                            </span>
+
+                        {% else %}
+
+                            <span class="badge bg-danger">
+
+                                <i
+                                    class="bi
+                                           bi-arrow-up-circle-fill
+                                           me-1"
+                                ></i>
+
+                                Expense
+
+                            </span>
+
+                        {% endif %}
+
+                    </div>
+
+                </div>
+
+
+                <div class="text-end">
+
+                    <small class="text-muted d-block">
+
+                        Amount
+
+                    </small>
+
+                    <h3
+                        class="fw-bold
+                               mb-0
+                               {% if transaction_type == 'Income' %}
+                                   text-success
+                               {% else %}
+                                   text-danger
+                               {% endif %}"
+                    >
+
+                        ₦{{ "{:,.2f}".format(
+                            transaction.amount
+                        ) }}
+
+                    </h3>
+
+                </div>
+
+            </div>
+
+
+            <div class="row g-4">
+
+                <!-- Description -->
+
+                <div class="col-md-6">
+
+                    <small class="text-muted">
+                        Description
+                    </small>
+
+                    <div class="fw-semibold mt-1">
+
+                        {{ transaction.description
+                           or transaction.title
+                           or "—" }}
+
+                    </div>
+
+                </div>
+
+
+                <!-- Date -->
+
+                <div class="col-md-6">
+
+                    <small class="text-muted">
+                        Date
+                    </small>
+
+                    <div class="fw-semibold mt-1">
+
+                        {% if transaction.date %}
+
+                            {{ transaction.date.strftime(
+                                "%d %B %Y"
+                            ) }}
+
+                        {% else %}
+
+                            —
+
+                        {% endif %}
+
+                    </div>
+
+                </div>
+
+
+                <!-- Category -->
+
+                <div class="col-md-6">
+
+                    <small class="text-muted">
+                        Category
+                    </small>
+
+                    <div class="mt-1">
+
+                        <span
+                            class="badge
+                                   text-bg-light
+                                   border"
+                        >
+
+                            {{ transaction.category
+                               or "Uncategorized" }}
+
+                        </span>
+
+                    </div>
+
+                </div>
+
+
+                <!-- Note -->
+
+                <div class="col-md-6">
+
+                    <small class="text-muted">
+                        Notes
+                    </small>
+
+                    <div class="fw-semibold mt-1">
+
+                        {{ transaction.note or "—" }}
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}

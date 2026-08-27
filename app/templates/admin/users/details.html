@@ -1,0 +1,284 @@
+{% extends "layouts/dashboard.html" %}
+
+{% block content %}
+
+<div class="container-fluid">
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+
+        <div>
+
+            <h2>
+
+                {{ user.first_name }} {{ user.last_name }}
+
+            </h2>
+
+        </div>
+
+        <div>
+
+            {% if has_permission("users.update") %}
+
+            <a
+                href="{{ url_for('admin_users.edit', public_id=user.public_id) }}"
+                class="btn btn-primary">
+
+                Edit
+
+            </a>
+
+            {% endif %}
+
+        </div>
+
+    </div>
+
+
+    <div class="row">
+
+        <div class="col-lg-8">
+
+            <div class="card shadow mb-4">
+
+                <div class="card-header">
+
+                    Profile
+
+                </div>
+
+                <div class="card-body">
+
+                    <div class="table-responsive">
+
+                        <table class="table mb-0">
+
+                            <tr>
+
+                                <th>
+
+                                    Name
+
+                                </th>
+
+                                <td>
+
+                                    {{ user.first_name }} {{ user.last_name }}
+
+                                </td>
+
+                            </tr>
+
+                            <tr>
+
+                                <th>
+
+                                    Email
+
+                                </th>
+
+                                <td>
+
+                                    {{ user.email }}
+
+                                </td>
+
+                            </tr>
+
+                            <tr>
+
+                                <th>
+
+                                    Status
+
+                                </th>
+
+                                <td>
+
+                                    {% if user.is_active %}
+
+                                    <span class="badge bg-success">
+
+                                        Active
+
+                                    </span>
+
+                                    {% else %}
+
+                                    <span class="badge bg-danger">
+
+                                        Inactive
+
+                                    </span>
+
+                                    {% endif %}
+
+                                </td>
+
+                            </tr>
+
+                            <tr>
+
+                                <th>
+
+                                    Joined
+
+                                </th>
+
+                                <td>
+
+                                    {{ user.created_at.strftime("%d %B %Y") }}
+
+                                </td>
+
+                            </tr>
+
+                        </table>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+            <div class="card shadow">
+
+                <div class="card-header">
+                    Assigned Role
+                </div>
+
+                <div class="card-body">
+
+                    {% if user.role %}
+
+                        <span class="badge bg-primary">
+                            {{ user.role.name }}
+                        </span>
+
+                    {% else %}
+
+                        <p class="text-muted mb-0">
+                            No assigned role.
+                        </p>
+
+                    {% endif %}
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <div class="col-lg-4">
+
+            <div class="card shadow">
+
+                <div class="card-header">
+
+                    Quick Actions
+
+                </div>
+
+                <div class="card-body d-grid gap-2">
+
+                    {% if has_permission("roles.assign") %}
+
+                    <form
+                        method="POST"
+                        action="{{ url_for('admin_users.assign_role', public_id=user.public_id) }}"
+                    >
+
+                        <div class="input-group">
+
+                            <select
+                                name="role"
+                                class="form-select"
+                                required
+                            >
+
+                                <option value="" selected disabled>
+
+                                    Select Role
+
+                                </option>
+
+                                {% for role in roles %}
+
+                                <option value="{{ role.slug }}">
+
+                                    {{ role.name }}
+
+                                </option>
+
+                                {% endfor %}
+
+                            </select>
+
+                            <button
+                                type="submit"
+                                class="btn btn-outline-primary"
+                            >
+
+                                Assign Role
+
+                            </button>
+
+                        </div>
+
+                    </form>
+
+                    {% endif %}
+
+
+                    {% if has_permission("users.update") %}
+
+                        {% if user.is_active %}
+
+                        <a
+                            href="{{ url_for('admin_users.deactivate', public_id=user.public_id) }}"
+                            class="btn btn-warning">
+
+                            Deactivate
+
+                        </a>
+
+                        {% else %}
+
+                        <a
+                            href="{{ url_for('admin_users.activate', public_id=user.public_id) }}"
+                            class="btn btn-success">
+
+                            Activate
+
+                        </a>
+
+                        {% endif %}
+
+                    {% endif %}
+
+
+                    {% if has_permission("users.delete") %}
+
+                    <a
+                        href="{{ url_for('admin_users.delete', public_id=user.public_id) }}"
+                        class="btn btn-danger"
+                        onclick="return confirm('Delete this user?')">
+
+                        Delete User
+
+                    </a>
+
+                    {% endif %}
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}

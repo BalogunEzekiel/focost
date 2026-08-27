@@ -1,0 +1,109 @@
+<!-- ================================
+     Floating AI Button
+================================ -->
+
+<div id="aiCoachButton"
+     aria-label="Open AI Coach"
+     title="FOCOST AI">
+
+    <i class="bi bi-robot"></i>
+
+</div>
+
+<!-- ================================
+     Floating Chat Window
+================================ -->
+
+<div id="aiCoachWindow">
+
+    <!-- Header -->
+
+    <div class="chat-header" id="chatHeader">
+
+        <div class="d-flex align-items-center gap-2">
+
+            <i class="bi bi-robot"></i>
+
+            <strong>FOCOST AI</strong>
+
+        </div>
+
+        <div class="header-actions">
+
+            <button
+                id="minimizeAI"
+                type="button"
+                title="Minimize">
+
+                <i class="bi bi-dash-lg"></i>
+
+            </button>
+
+            <button
+                id="maximizeAI"
+                type="button"
+                title="Maximize">
+
+                <i class="bi bi-square"></i>
+
+            </button>
+
+            <button
+                id="closeAI"
+                type="button"
+                title="Close">
+
+                <i class="bi bi-x-lg"></i>
+
+            </button>
+
+        </div>
+
+    </div>
+
+    <!-- Messages -->
+
+    <div id="chatMessages">
+
+        <div class="message">
+
+            <strong>FOCOST AI</strong>
+
+            <div class="ai-message">
+
+                Hello {{ current_user.first_name }} 👋
+
+                I'm your personal financial coach.
+
+                Ask me anything about your income,
+                expenses, budgets, goals, savings,
+                or financial health.
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- Footer -->
+
+    <div class="chat-footer">
+
+        <input
+            id="chatInput"
+            type="text"
+            autocomplete="off"
+            placeholder="Ask FOCOST AI..." />
+
+        <button
+            id="sendAI"
+            class="btn btn-primary"
+            type="button">
+
+            <i class="bi bi-send-fill"></i>
+
+        </button>
+
+    </div>
+
+</div>

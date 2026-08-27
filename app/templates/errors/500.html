@@ -1,0 +1,35 @@
+{% extends "layouts/public.html" %}
+
+{% block title %}
+Something Went Wrong — FOCOST
+{% endblock %}
+
+{% block content %}
+
+<div class="container py-5 text-center">
+
+    <div class="display-1 fw-bold text-danger">
+        500
+    </div>
+
+    <h1 class="fw-bold mt-3">
+        Something went wrong.
+    </h1>
+
+    <p class="text-muted">
+        Our systems recorded the incident. Please try again shortly.
+    </p>
+
+    {% if request_id %}
+        <small class="text-muted d-block mb-3">
+            Reference: {{ request_id }}
+        </small>
+    {% endif %}
+
+    <a class="btn btn-primary" href="/">
+        Return to FOCOST
+    </a>
+
+</div>
+
+{% endblock %}

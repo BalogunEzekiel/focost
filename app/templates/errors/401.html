@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+
+{% block title %}
+Unauthorized
+{% endblock %}
+
+{% block content %}
+
+<div class="container py-5 text-center">
+
+    <h1 class="display-2">
+        401
+    </h1>
+
+    <h3>
+        Login Required
+    </h3>
+
+    <p>
+
+        Please login to continue.
+
+    </p>
+
+    <a
+        href="{{ url_for('auth.login') }}"
+        class="btn btn-primary">
+
+        Login
+
+    </a>
+
+</div>
+
+{% endblock %}

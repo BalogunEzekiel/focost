@@ -1,0 +1,281 @@
+{% extends "layouts/dashboard.html" %}
+
+{% block title %}
+Role Users
+{% endblock %}
+
+{% block content %}
+
+<div class="container-fluid">
+
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+
+        <div>
+
+            <h2 class="fw-bold mb-1">
+
+                <i class="bi bi-people-fill me-2"></i>
+
+                {{ role.name }}
+
+            </h2>
+
+            <p class="text-muted mb-0">
+
+                Users assigned to this role
+
+            </p>
+
+        </div>
+
+        <div>
+
+            {% if has_permission("users.assign_role") %}
+
+            <a href="{{ url_for('admin_roles.assign_users', role_id=role.public_id) }}"
+               class="btn btn-primary">
+
+                <i class="bi bi-person-plus-fill me-2"></i>
+
+                Assign User
+
+            </a>
+
+            {% endif %}
+
+        </div>
+
+    </div>
+
+    <!-- Summary Card -->
+
+    <div class="card shadow-sm border-0 mb-4">
+
+        <div class="card-body">
+
+            <div class="row text-center">
+
+                <div class="col-md-4">
+
+                    <h3 class="fw-bold text-primary">
+
+                        {{ users|length }}
+
+                    </h3>
+
+                    <small class="text-muted">
+
+                        Assigned Users
+
+                    </small>
+
+                </div>
+
+                <div class="col-md-4">
+
+                    <h3 class="fw-bold text-success">
+
+                        {{ role.permissions|length }}
+
+                    </h3>
+
+                    <small class="text-muted">
+
+                        Permissions
+
+                    </small>
+
+                </div>
+
+                <div class="col-md-4">
+
+                    <h3 class="fw-bold text-secondary">
+
+                        {{ role.slug }}
+
+                    </h3>
+
+                    <small class="text-muted">
+
+                        Role Slug
+
+                    </small>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- Users -->
+
+    <div class="card shadow-sm border-0">
+
+        <div class="card-header bg-white">
+
+            <h5 class="mb-0">
+
+                Assigned Users
+
+            </h5>
+
+        </div>
+
+        <div class="table-responsive">
+
+            <table class="table table-hover align-middle mb-0">
+
+                <thead class="table-light">
+
+                    <tr>
+
+                        <th>User</th>
+
+                        <th>Email</th>
+
+                        <th>Status</th>
+                        <th>Created</th>
+
+                        <th width="180">
+
+                            Actions
+
+                        </th>
+
+                    </tr>
+
+                </thead>
+
+                <tbody>
+
+                {% for user in users %}
+
+                    <tr>
+
+                        <td>
+
+                            <strong>
+
+                                {{ user.full_name }}
+
+                            </strong>
+
+                        </td>
+
+                        <td>
+
+                            {{ user.email }}
+
+                        </td>
+
+                        <td>
+
+                            {% if user.is_active %}
+
+                                <span class="badge bg-success">
+
+                                    Active
+
+                                </span>
+
+                            {% else %}
+
+                                <span class="badge bg-danger">
+
+                                    Disabled
+
+                                </span>
+
+                            {% endif %}
+
+                        </td>
+
+                        <td>
+
+                            {{ user.created_at.strftime("%d %b %Y") }}
+
+                        </td>
+
+                        <td>
+
+                            {% if has_permission("users.view") %}
+
+                            <a href="{{ url_for('admin_users.details', user_id=user.public_id) }}"
+                               class="btn btn-sm btn-outline-primary">
+
+                                <i class="bi bi-eye"></i>
+
+                            </a>
+
+                            {% endif %}
+
+                            {% if has_permission("users.remove_role") %}
+
+                            <form method="POST"
+                                  action="{{ url_for('admin_roles.remove_user',
+                                                     role_id=role.public_id,
+                                                     user_id=user.public_id) }}"
+                                  class="d-inline">
+
+                                <button
+                                    class="btn btn-sm btn-outline-danger"
+                                    onclick="return confirm('Remove this role from this user?')">
+
+                                    <i class="bi bi-person-dash-fill"></i>
+
+                                </button>
+
+                            </form>
+
+                            {% endif %}
+
+                        </td>
+
+                    </tr>
+
+                {% else %}
+
+                    <tr>
+
+                        <td colspan="5"
+                            class="text-center py-5 text-muted">
+
+                            <i class="bi bi-people display-5"></i>
+
+                            <br><br>
+
+                            No users assigned to this role.
+
+                        </td>
+
+                    </tr>
+
+                {% endfor %}
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </div>
+
+    <div class="mt-4">
+
+        <a href="{{ url_for('admin_roles.index') }}"
+           class="btn btn-secondary">
+
+            <i class="bi bi-arrow-left me-2"></i>
+
+            Back to Roles
+
+        </a>
+
+    </div>
+
+</div>
+
+{% endblock %}

@@ -1,0 +1,2423 @@
+{% extends "layouts/dashboard.html" %}
+
+{% block title %}
+Permissions
+{% endblock %}
+
+{% block content %}
+
+<div class="container-fluid py-2">
+
+    <!-- =========================================================
+         PAGE HEADER
+         ========================================================= -->
+
+    <div class="d-flex flex-column flex-lg-row
+                justify-content-between
+                align-items-lg-center
+                gap-3
+                mb-4">
+
+        <div>
+
+            <div class="d-flex align-items-center gap-2 mb-1">
+
+                <div
+                    class="rounded-3 bg-primary bg-opacity-10
+                           d-flex align-items-center
+                           justify-content-center"
+                    style="width:42px;height:42px;">
+
+                    <i class="bi bi-shield-lock-fill
+                              text-primary fs-5"></i>
+
+                </div>
+
+                <div>
+
+                    <h2 class="fw-bold mb-0">
+                        Permissions
+                    </h2>
+
+                    <div class="text-muted small">
+                        Manage and monitor permissions within
+                        the FOCOST RBAC system.
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+        <div class="d-flex flex-wrap gap-2">
+
+            <button
+                type="button"
+                class="btn btn-outline-secondary"
+                id="refreshPermissions">
+
+                <i class="bi bi-arrow-clockwise me-1"></i>
+
+                Refresh
+
+            </button>
+
+            <button
+                type="button"
+                class="btn btn-outline-primary"
+                data-bs-toggle="modal"
+                data-bs-target="#rbacInformationModal">
+
+                <i class="bi bi-info-circle me-1"></i>
+
+                RBAC Guide
+
+            </button>
+
+        </div>
+
+    </div>
+
+
+    <!-- =========================================================
+         SECURITY / SYSTEM STATUS
+         ========================================================= -->
+
+    <div class="alert alert-primary
+                border-0 shadow-sm
+                d-flex align-items-start
+                gap-3 mb-4">
+
+        <div class="flex-shrink-0">
+
+            <div
+                class="rounded-circle
+                       bg-primary bg-opacity-10
+                       d-flex align-items-center
+                       justify-content-center"
+                style="width:40px;height:40px;">
+
+                <i class="bi bi-shield-check text-primary"></i>
+
+            </div>
+
+        </div>
+
+        <div>
+
+            <div class="fw-semibold">
+                Role-Based Access Control
+            </div>
+
+            <div class="small text-muted">
+
+                Permissions define what actions users can perform.
+                Access should be granted through roles rather than
+                directly to individual users.
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- =========================================================
+         KPI CARDS
+         ========================================================= -->
+
+    {% set permission_count = permissions|length %}
+
+    {% set modules = permissions
+        |map(attribute='module')
+        |select
+        |list
+        |unique
+        |list %}
+
+    {% set actions = permissions
+        |map(attribute='action')
+        |select
+        |list
+        |unique
+        |list %}
+
+    {% set active_count = permissions
+        |selectattr('is_active', 'equalto', true)
+        |list
+        |length %}
+
+    <div class="row g-3 mb-4">
+
+        <!-- Total -->
+
+        <div class="col-12 col-sm-6 col-xl-3">
+
+            <div class="card border-0 shadow-sm h-100">
+
+                <div class="card-body">
+
+                    <div class="d-flex
+                                justify-content-between
+                                align-items-start">
+
+                        <div>
+
+                            <div class="text-muted small
+                                        text-uppercase fw-semibold">
+
+                                Total Permissions
+
+                            </div>
+
+                            <div
+                                class="display-6 fw-bold mt-1"
+                                id="totalPermissions">
+
+                                {{ permission_count }}
+
+                            </div>
+
+                        </div>
+
+                        <div
+                            class="rounded-3 bg-primary
+                                   bg-opacity-10
+                                   p-3">
+
+                            <i class="bi bi-key-fill
+                                      text-primary fs-5"></i>
+
+                        </div>
+
+                    </div>
+
+                    <div class="small text-muted mt-3">
+
+                        Registered RBAC permissions
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <!-- Modules -->
+
+        <div class="col-12 col-sm-6 col-xl-3">
+
+            <div class="card border-0 shadow-sm h-100">
+
+                <div class="card-body">
+
+                    <div class="d-flex
+                                justify-content-between
+                                align-items-start">
+
+                        <div>
+
+                            <div class="text-muted small
+                                        text-uppercase fw-semibold">
+
+                                Modules
+
+                            </div>
+
+                            <div
+                                class="display-6 fw-bold mt-1">
+
+                                {{ modules|length }}
+
+                            </div>
+
+                        </div>
+
+                        <div
+                            class="rounded-3 bg-info
+                                   bg-opacity-10
+                                   p-3">
+
+                            <i class="bi bi-grid-3x3-gap-fill
+                                      text-info fs-5"></i>
+
+                        </div>
+
+                    </div>
+
+                    <div class="small text-muted mt-3">
+
+                        Functional areas protected
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <!-- Actions -->
+
+        <div class="col-12 col-sm-6 col-xl-3">
+
+            <div class="card border-0 shadow-sm h-100">
+
+                <div class="card-body">
+
+                    <div class="d-flex
+                                justify-content-between
+                                align-items-start">
+
+                        <div>
+
+                            <div class="text-muted small
+                                        text-uppercase fw-semibold">
+
+                                Actions
+
+                            </div>
+
+                            <div
+                                class="display-6 fw-bold mt-1">
+
+                                {{ actions|length }}
+
+                            </div>
+
+                        </div>
+
+                        <div
+                            class="rounded-3 bg-success
+                                   bg-opacity-10
+                                   p-3">
+
+                            <i class="bi bi-lightning-charge-fill
+                                      text-success fs-5"></i>
+
+                        </div>
+
+                    </div>
+
+                    <div class="small text-muted mt-3">
+
+                        Distinct permission operations
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <!-- Active -->
+
+        <div class="col-12 col-sm-6 col-xl-3">
+
+            <div class="card border-0 shadow-sm h-100">
+
+                <div class="card-body">
+
+                    <div class="d-flex
+                                justify-content-between
+                                align-items-start">
+
+                        <div>
+
+                            <div class="text-muted small
+                                        text-uppercase fw-semibold">
+
+                                Active
+
+                            </div>
+
+                            <div
+                                class="display-6 fw-bold mt-1">
+
+                                {{ active_count }}
+
+                            </div>
+
+                        </div>
+
+                        <div
+                            class="rounded-3 bg-success
+                                   bg-opacity-10
+                                   p-3">
+
+                            <i class="bi bi-check-circle-fill
+                                      text-success fs-5"></i>
+
+                        </div>
+
+                    </div>
+
+                    <div class="small text-muted mt-3">
+
+                        Currently enabled permissions
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- =========================================================
+         FILTERS
+         ========================================================= -->
+
+    <div class="card border-0 shadow-sm mb-4">
+
+        <div class="card-body">
+
+            <div class="d-flex
+                        justify-content-between
+                        align-items-center
+                        mb-3">
+
+                <div>
+
+                    <h5 class="fw-semibold mb-1">
+
+                        Permission Directory
+
+                    </h5>
+
+                    <div class="small text-muted">
+
+                        Search and filter registered permissions.
+
+                    </div>
+
+                </div>
+
+                <span
+                    class="badge bg-light text-dark border"
+                    id="visibleCount">
+
+                    {{ permission_count }} results
+
+                </span>
+
+            </div>
+
+
+            <div class="row g-3">
+
+                <!-- Search -->
+
+                <div class="col-12 col-lg-5">
+
+                    <label
+                        for="permissionSearch"
+                        class="form-label small fw-semibold">
+
+                        Search
+
+                    </label>
+
+                    <div class="input-group">
+
+                        <span class="input-group-text bg-white">
+
+                            <i class="bi bi-search text-muted"></i>
+
+                        </span>
+
+                        <input
+                            type="search"
+                            class="form-control"
+                            id="permissionSearch"
+                            placeholder="Search name, code or description..."
+                            autocomplete="off">
+
+                    </div>
+
+                </div>
+
+
+                <!-- Module -->
+
+                <div class="col-12 col-md-4 col-lg-2">
+
+                    <label
+                        for="moduleFilter"
+                        class="form-label small fw-semibold">
+
+                        Module
+
+                    </label>
+
+                    <select
+                        class="form-select"
+                        id="moduleFilter">
+
+                        <option value="">
+                            All Modules
+                        </option>
+
+                        {% for module in modules|sort %}
+
+                        <option value="{{ module|lower }}">
+                            {{ module|replace('_', ' ')|title }}
+                        </option>
+
+                        {% endfor %}
+
+                    </select>
+
+                </div>
+
+
+                <!-- Action -->
+
+                <div class="col-12 col-md-4 col-lg-2">
+
+                    <label
+                        for="actionFilter"
+                        class="form-label small fw-semibold">
+
+                        Action
+
+                    </label>
+
+                    <select
+                        class="form-select"
+                        id="actionFilter">
+
+                        <option value="">
+                            All Actions
+                        </option>
+
+                        {% for action in actions|sort %}
+
+                        <option value="{{ action|lower }}">
+                            {{ action|replace('_', ' ')|title }}
+                        </option>
+
+                        {% endfor %}
+
+                    </select>
+
+                </div>
+
+
+                <!-- Status -->
+
+                <div class="col-12 col-md-4 col-lg-2">
+
+                    <label
+                        for="statusFilter"
+                        class="form-label small fw-semibold">
+
+                        Status
+
+                    </label>
+
+                    <select
+                        class="form-select"
+                        id="statusFilter">
+
+                        <option value="">
+                            All Status
+                        </option>
+
+                        <option value="active">
+                            Active
+                        </option>
+
+                        <option value="inactive">
+                            Inactive
+                        </option>
+
+                    </select>
+
+                </div>
+
+
+                <!-- Reset -->
+
+                <div
+                    class="col-12 col-lg-1
+                           d-flex align-items-end">
+
+                    <button
+                        type="button"
+                        class="btn btn-outline-secondary w-100"
+                        id="clearFilters"
+                        title="Clear filters">
+
+                        <i class="bi bi-x-circle"></i>
+
+                        <span class="d-lg-none ms-1">
+                            Clear
+                        </span>
+
+                    </button>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- =========================================================
+         BULK ACTION BAR
+         ========================================================= -->
+
+    <div
+        class="card border-0 shadow-sm mb-3 d-none"
+        id="bulkActionBar">
+
+        <div class="card-body py-2">
+
+            <div class="d-flex
+                        flex-wrap
+                        align-items-center
+                        justify-content-between
+                        gap-2">
+
+                <div class="small">
+
+                    <strong id="selectedCount">
+                        0
+                    </strong>
+
+                    permission(s) selected.
+
+                </div>
+
+                <div class="d-flex gap-2">
+
+                    <button
+                        type="button"
+                        class="btn btn-sm btn-outline-secondary"
+                        id="clearSelection">
+
+                        Clear Selection
+
+                    </button>
+
+                    <button
+                        type="button"
+                        class="btn btn-sm btn-outline-primary"
+                        id="copySelectedCodes">
+
+                        <i class="bi bi-copy me-1"></i>
+
+                        Copy Codes
+
+                    </button>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- =========================================================
+         PERMISSIONS TABLE
+         ========================================================= -->
+
+    <div class="card border-0 shadow-sm">
+
+        <div class="card-header bg-white
+                    d-flex
+                    flex-column flex-md-row
+                    justify-content-between
+                    align-items-md-center
+                    gap-2">
+
+            <div>
+
+                <h5 class="mb-1 fw-semibold">
+
+                    Registered Permissions
+
+                </h5>
+
+                <small class="text-muted">
+
+                    Permission definitions available to roles.
+
+                </small>
+
+            </div>
+
+            <div class="small text-muted">
+
+                <i class="bi bi-shield-lock me-1"></i>
+
+                RBAC Protected
+
+            </div>
+
+        </div>
+
+
+        <div class="table-responsive">
+
+            <table
+                class="table table-hover align-middle mb-0"
+                id="permissionsTable">
+
+                <thead class="table-light">
+
+                    <tr>
+
+                        <th
+                            class="ps-3"
+                            style="width:45px;">
+
+                            <input
+                                class="form-check-input"
+                                type="checkbox"
+                                id="selectAllPermissions"
+                                aria-label="Select all permissions">
+
+                        </th>
+
+                        <th
+                            style="width:70px;">
+
+                            #
+
+                        </th>
+
+                        <th>
+                            Permission
+                        </th>
+
+                        <th>
+                            Module
+                        </th>
+
+                        <th>
+                            Action
+                        </th>
+
+                        <th>
+                            Permission Code
+                        </th>
+
+                        <th>
+                            Status
+                        </th>
+
+                        <th class="text-end pe-3">
+                            Actions
+                        </th>
+
+                    </tr>
+
+                </thead>
+
+                <tbody>
+
+                {% for permission in permissions %}
+
+                    <tr
+                        class="permission-row"
+
+                        data-module="{{ permission.module|default('', true)|lower }}"
+
+                        data-action="{{ permission.action|default('', true)|lower }}"
+
+                        data-status="{% if permission.is_active is defined and permission.is_active %}active{% elif permission.is_active is defined %}inactive{% else %}active{% endif %}"
+
+                        data-search="{{ (
+                            permission.name|default('', true)
+                            ~ ' '
+                            ~ permission.code|default('', true)
+                            ~ ' '
+                            ~ permission.description|default('', true)
+                            ~ ' '
+                            ~ permission.module|default('', true)
+                            ~ ' '
+                            ~ permission.action|default('', true)
+                        )|lower }}"
+
+                        data-code="{{ permission.code }}">
+
+                        <!-- Select -->
+
+                        <td class="ps-3">
+
+                            <input
+                                type="checkbox"
+                                class="form-check-input permission-checkbox"
+                                value="{{ permission.id }}"
+                                data-code="{{ permission.code }}"
+                                aria-label="Select {{ permission.name }}">
+
+                        </td>
+
+
+                        <!-- Number -->
+
+                        <td>
+
+                            <span class="text-muted small">
+                                {{ loop.index }}
+                            </span>
+
+                        </td>
+
+
+                        <!-- Permission -->
+
+                        <td>
+
+                            <div class="d-flex
+                                        align-items-center
+                                        gap-3">
+
+                                <div
+                                    class="rounded-3
+                                           bg-primary
+                                           bg-opacity-10
+                                           d-flex
+                                           align-items-center
+                                           justify-content-center
+                                           flex-shrink-0"
+                                    style="width:40px;height:40px;">
+
+                                    <i class="bi bi-key-fill
+                                              text-primary"></i>
+
+                                </div>
+
+                                <div>
+
+                                    <div class="fw-semibold">
+
+                                        {{ permission.name }}
+
+                                    </div>
+
+                                    {% if permission.description %}
+
+                                    <div
+                                        class="small text-muted
+                                               text-truncate"
+                                        style="max-width:360px;">
+
+                                        {{ permission.description }}
+
+                                    </div>
+
+                                    {% endif %}
+
+                                </div>
+
+                            </div>
+
+                        </td>
+
+
+                        <!-- Module -->
+
+                        <td>
+
+                            <span
+                                class="badge rounded-pill
+                                       bg-primary bg-opacity-10
+                                       text-primary border
+                                       border-primary
+                                       border-opacity-25">
+
+                                <i class="bi bi-grid me-1"></i>
+
+                                {{ permission.module|replace('_', ' ')|title }}
+
+                            </span>
+
+                        </td>
+
+
+                        <!-- Action -->
+
+                        <td>
+
+                            <span
+                                class="badge rounded-pill
+                                       bg-light text-dark border">
+
+                                {{ permission.action
+                                    |replace('_', ' ')
+                                    |title }}
+
+                            </span>
+
+                        </td>
+
+
+                        <!-- Code -->
+
+                        <td>
+
+                            <div class="d-flex
+                                        align-items-center
+                                        gap-2">
+
+                                <code
+                                    class="small bg-light
+                                           border rounded px-2 py-1">
+
+                                    {{ permission.code }}
+
+                                </code>
+
+                                <button
+                                    type="button"
+                                    class="btn btn-sm
+                                           btn-link text-muted
+                                           p-0 copy-permission-code"
+                                    data-code="{{ permission.code }}"
+                                    title="Copy permission code"
+                                    aria-label="Copy permission code">
+
+                                    <i class="bi bi-copy"></i>
+
+                                </button>
+
+                            </div>
+
+                        </td>
+
+
+                        <!-- Status -->
+
+                        <td>
+
+                            {% if permission.is_active is defined %}
+
+                                {% if permission.is_active %}
+
+                                <span
+                                    class="badge rounded-pill
+                                           bg-success bg-opacity-10
+                                           text-success border
+                                           border-success
+                                           border-opacity-25">
+
+                                    <i class="bi bi-check-circle-fill me-1"></i>
+
+                                    Active
+
+                                </span>
+
+                                {% else %}
+
+                                <span
+                                    class="badge rounded-pill
+                                           bg-secondary bg-opacity-10
+                                           text-secondary border">
+
+                                    <i class="bi bi-pause-circle-fill me-1"></i>
+
+                                    Inactive
+
+                                </span>
+
+                                {% endif %}
+
+                            {% else %}
+
+                            <span
+                                class="badge rounded-pill
+                                       bg-success bg-opacity-10
+                                       text-success border
+                                       border-success
+                                       border-opacity-25">
+
+                                <i class="bi bi-check-circle-fill me-1"></i>
+
+                                Active
+
+                            </span>
+
+                            {% endif %}
+
+                        </td>
+
+
+                        <!-- Actions -->
+
+                        <td class="text-end pe-3">
+
+                            <div class="dropdown">
+
+                                <button
+                                    class="btn btn-sm
+                                           btn-light border"
+                                    type="button"
+                                    data-bs-toggle="dropdown"
+                                    aria-expanded="false"
+                                    aria-label="Permission actions">
+
+                                    <i class="bi bi-three-dots-vertical"></i>
+
+                                </button>
+
+                                <ul
+                                    class="dropdown-menu
+                                           dropdown-menu-end shadow-sm">
+
+                                    <li>
+
+                                        <button
+                                            type="button"
+                                            class="dropdown-item view-permission"
+                                            data-id="{{ permission.id }}"
+                                            data-name="{{ permission.name }}"
+                                            data-module="{{ permission.module }}"
+                                            data-action="{{ permission.action }}"
+                                            data-code="{{ permission.code }}"
+                                            data-description="{{ permission.description or '' }}"
+                                            data-status="{% if permission.is_active is defined and permission.is_active %}Active{% elif permission.is_active is defined %}Inactive{% else %}Active{% endif %}">
+
+                                            <i class="bi bi-eye me-2"></i>
+
+                                            View Details
+
+                                        </button>
+
+                                    </li>
+
+                                    <li>
+
+                                        <button
+                                            type="button"
+                                            class="dropdown-item copy-code-action"
+                                            data-code="{{ permission.code }}">
+
+                                            <i class="bi bi-copy me-2"></i>
+
+                                            Copy Code
+
+                                        </button>
+
+                                    </li>
+
+                                </ul>
+
+                            </div>
+
+                        </td>
+
+                    </tr>
+
+                {% else %}
+
+                    <tr id="emptyPermissionsRow">
+
+                        <td
+                            colspan="8"
+                            class="text-center py-5">
+
+                            <div class="py-4">
+
+                                <div
+                                    class="rounded-circle
+                                           bg-light
+                                           d-inline-flex
+                                           align-items-center
+                                           justify-content-center
+                                           mb-3"
+                                    style="width:70px;height:70px;">
+
+                                    <i class="bi bi-key
+                                              fs-2 text-muted"></i>
+
+                                </div>
+
+                                <h5 class="fw-semibold">
+
+                                    No permissions found
+
+                                </h5>
+
+                                <p class="text-muted mb-0">
+
+                                    There are currently no permissions
+                                    registered in the RBAC system.
+
+                                </p>
+
+                            </div>
+
+                        </td>
+
+                    </tr>
+
+                {% endfor %}
+
+
+                <!-- Filter Empty State -->
+
+                <tr
+                    id="filterEmptyRow"
+                    class="d-none">
+
+                    <td
+                        colspan="8"
+                        class="text-center py-5">
+
+                        <div class="py-4">
+
+                            <div
+                                class="rounded-circle
+                                       bg-light
+                                       d-inline-flex
+                                       align-items-center
+                                       justify-content-center
+                                       mb-3"
+                                style="width:70px;height:70px;">
+
+                                <i class="bi bi-search
+                                          fs-2 text-muted"></i>
+
+                            </div>
+
+                            <h5 class="fw-semibold">
+
+                                No matching permissions
+
+                            </h5>
+
+                            <p class="text-muted mb-3">
+
+                                Try changing your search criteria
+                                or clearing the filters.
+
+                            </p>
+
+                            <button
+                                type="button"
+                                class="btn btn-outline-primary"
+                                id="emptyStateClearFilters">
+
+                                <i class="bi bi-arrow-counterclockwise me-1"></i>
+
+                                Clear Filters
+
+                            </button>
+
+                        </div>
+
+                    </td>
+
+                </tr>
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+
+        <!-- =====================================================
+             TABLE FOOTER
+             ===================================================== -->
+
+        <div
+            class="card-footer bg-white
+                   d-flex
+                   flex-column flex-md-row
+                   justify-content-between
+                   align-items-md-center
+                   gap-2">
+
+            <small class="text-muted">
+
+                Showing
+                <strong id="showingCount">
+                    {{ permission_count }}
+                </strong>
+                of
+                <strong>
+                    {{ permission_count }}
+                </strong>
+                permissions
+
+            </small>
+
+            <small class="text-muted">
+
+                <i class="bi bi-shield-check me-1"></i>
+
+                Access controlled by RBAC
+
+            </small>
+
+        </div>
+
+    </div>
+
+
+    <!-- =========================================================
+         SECURITY INFORMATION
+         ========================================================= -->
+
+    <div class="card border-0 shadow-sm mt-4">
+
+        <div class="card-body">
+
+            <div class="row g-4 align-items-center">
+
+                <div class="col-lg-8">
+
+                    <div class="d-flex align-items-start gap-3">
+
+                        <div
+                            class="rounded-3
+                                   bg-warning
+                                   bg-opacity-10
+                                   p-3">
+
+                            <i class="bi bi-shield-exclamation
+                                      text-warning fs-4"></i>
+
+                        </div>
+
+                        <div>
+
+                            <h6 class="fw-bold mb-1">
+
+                                Permission Security
+
+                            </h6>
+
+                            <p class="text-muted small mb-0">
+
+                                Permissions should be assigned to roles
+                                according to the principle of least
+                                privilege. Avoid granting excessive
+                                administrative access and review
+                                privileged roles periodically.
+
+                            </p>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+                <div class="col-lg-4 text-lg-end">
+
+                    <span
+                        class="badge bg-success
+                               bg-opacity-10
+                               text-success
+                               border
+                               border-success
+                               border-opacity-25
+                               px-3 py-2">
+
+                        <i class="bi bi-check-circle-fill me-1"></i>
+
+                        RBAC Protected
+
+                    </span>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<!-- =============================================================
+     PERMISSION DETAILS MODAL
+     ============================================================= -->
+
+<div
+    class="modal fade"
+    id="permissionDetailsModal"
+    tabindex="-1"
+    aria-labelledby="permissionDetailsModalLabel"
+    aria-hidden="true">
+
+    <div class="modal-dialog modal-dialog-centered">
+
+        <div class="modal-content border-0 shadow-lg">
+
+            <div class="modal-header">
+
+                <div>
+
+                    <h5
+                        class="modal-title fw-bold"
+                        id="permissionDetailsModalLabel">
+
+                        Permission Details
+
+                    </h5>
+
+                    <small class="text-muted">
+
+                        RBAC permission definition
+
+                    </small>
+
+                </div>
+
+                <button
+                    type="button"
+                    class="btn-close"
+                    data-bs-dismiss="modal"
+                    aria-label="Close"></button>
+
+            </div>
+
+            <div class="modal-body">
+
+                <div class="text-center mb-4">
+
+                    <div
+                        class="rounded-circle
+                               bg-primary
+                               bg-opacity-10
+                               d-inline-flex
+                               align-items-center
+                               justify-content-center"
+                        style="width:64px;height:64px;">
+
+                        <i class="bi bi-key-fill
+                                  text-primary fs-3"></i>
+
+                    </div>
+
+                    <h5
+                        class="fw-bold mt-3 mb-1"
+                        id="detailPermissionName">
+
+                        -
+
+                    </h5>
+
+                    <span
+                        class="badge bg-success bg-opacity-10
+                               text-success border"
+                        id="detailPermissionStatus">
+
+                        Active
+
+                    </span>
+
+                </div>
+
+
+                <div class="row g-3">
+
+                    <div class="col-6">
+
+                        <div
+                            class="bg-light
+                                   rounded-3
+                                   p-3 h-100">
+
+                            <small class="text-muted d-block">
+                                Module
+                            </small>
+
+                            <strong id="detailPermissionModule">
+                                -
+                            </strong>
+
+                        </div>
+
+                    </div>
+
+
+                    <div class="col-6">
+
+                        <div
+                            class="bg-light
+                                   rounded-3
+                                   p-3 h-100">
+
+                            <small class="text-muted d-block">
+                                Action
+                            </small>
+
+                            <strong id="detailPermissionAction">
+                                -
+                            </strong>
+
+                        </div>
+
+                    </div>
+
+
+                    <div class="col-12">
+
+                        <div
+                            class="bg-light
+                                   rounded-3
+                                   p-3">
+
+                            <small class="text-muted d-block mb-1">
+                                Permission Code
+                            </small>
+
+                            <div class="d-flex
+                                        justify-content-between
+                                        align-items-center">
+
+                                <code
+                                    id="detailPermissionCode"
+                                    class="fw-semibold">
+
+                                    -
+
+                                </code>
+
+                                <button
+                                    type="button"
+                                    class="btn btn-sm btn-outline-primary"
+                                    id="detailCopyCode">
+
+                                    <i class="bi bi-copy me-1"></i>
+
+                                    Copy
+
+                                </button>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+
+                    <div class="col-12">
+
+                        <div
+                            class="bg-light
+                                   rounded-3
+                                   p-3">
+
+                            <small class="text-muted d-block mb-1">
+
+                                Description
+
+                            </small>
+
+                            <div
+                                id="detailPermissionDescription"
+                                class="small">
+
+                                No description provided.
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+            <div class="modal-footer">
+
+                <button
+                    type="button"
+                    class="btn btn-light"
+                    data-bs-dismiss="modal">
+
+                    Close
+
+                </button>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<!-- =============================================================
+     RBAC GUIDE MODAL
+     ============================================================= -->
+
+<div
+    class="modal fade"
+    id="rbacInformationModal"
+    tabindex="-1"
+    aria-labelledby="rbacInformationModalLabel"
+    aria-hidden="true">
+
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+
+        <div class="modal-content border-0 shadow-lg">
+
+            <div class="modal-header">
+
+                <div>
+
+                    <h5
+                        class="modal-title fw-bold"
+                        id="rbacInformationModalLabel">
+
+                        <i class="bi bi-shield-lock-fill
+                                  text-primary me-2"></i>
+
+                        FOCOST RBAC Guide
+
+                    </h5>
+
+                    <small class="text-muted">
+
+                        Understanding roles and permissions
+
+                    </small>
+
+                </div>
+
+                <button
+                    type="button"
+                    class="btn-close"
+                    data-bs-dismiss="modal"
+                    aria-label="Close"></button>
+
+            </div>
+
+
+            <div class="modal-body">
+
+                <div class="row g-4">
+
+                    <div class="col-md-4">
+
+                        <div class="text-center">
+
+                            <div
+                                class="rounded-circle
+                                       bg-primary
+                                       bg-opacity-10
+                                       d-inline-flex
+                                       align-items-center
+                                       justify-content-center mb-3"
+                                style="width:60px;height:60px;">
+
+                                <i class="bi bi-person-badge-fill
+                                          text-primary fs-4"></i>
+
+                            </div>
+
+                            <h6 class="fw-bold">
+                                Users
+                            </h6>
+
+                            <p class="small text-muted mb-0">
+
+                                Users receive access through
+                                their assigned role.
+
+                            </p>
+
+                        </div>
+
+                    </div>
+
+
+                    <div class="col-md-4">
+
+                        <div class="text-center">
+
+                            <div
+                                class="rounded-circle
+                                       bg-success
+                                       bg-opacity-10
+                                       d-inline-flex
+                                       align-items-center
+                                       justify-content-center mb-3"
+                                style="width:60px;height:60px;">
+
+                                <i class="bi bi-shield-fill-check
+                                          text-success fs-4"></i>
+
+                            </div>
+
+                            <h6 class="fw-bold">
+                                Roles
+                            </h6>
+
+                            <p class="small text-muted mb-0">
+
+                                Roles group permissions according
+                                to responsibilities.
+
+                            </p>
+
+                        </div>
+
+                    </div>
+
+
+                    <div class="col-md-4">
+
+                        <div class="text-center">
+
+                            <div
+                                class="rounded-circle
+                                       bg-warning
+                                       bg-opacity-10
+                                       d-inline-flex
+                                       align-items-center
+                                       justify-content-center mb-3"
+                                style="width:60px;height:60px;">
+
+                                <i class="bi bi-key-fill
+                                          text-warning fs-4"></i>
+
+                            </div>
+
+                            <h6 class="fw-bold">
+                                Permissions
+                            </h6>
+
+                            <p class="small text-muted mb-0">
+
+                                Permissions define specific
+                                actions users can perform.
+
+                            </p>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+                <hr class="my-4">
+
+
+                <div class="alert alert-light border mb-0">
+
+                    <div class="d-flex gap-3">
+
+                        <i class="bi bi-info-circle-fill
+                                  text-primary fs-5"></i>
+
+                        <div>
+
+                            <strong>
+                                Recommended access model
+                            </strong>
+
+                            <p class="small text-muted mb-0 mt-1">
+
+                                User → Role → Permissions.
+
+                                Avoid assigning permissions directly
+                                to individual users. Keep privileged
+                                access limited and review role
+                                assignments regularly.
+
+                            </p>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <div class="modal-footer">
+
+                <button
+                    type="button"
+                    class="btn btn-primary"
+                    data-bs-dismiss="modal">
+
+                    Got It
+
+                </button>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}
+
+
+{% block scripts %}
+
+<script>
+
+document.addEventListener(
+    "DOMContentLoaded",
+    function () {
+
+        const searchInput =
+            document.getElementById(
+                "permissionSearch"
+            );
+
+        const moduleFilter =
+            document.getElementById(
+                "moduleFilter"
+            );
+
+        const actionFilter =
+            document.getElementById(
+                "actionFilter"
+            );
+
+        const statusFilter =
+            document.getElementById(
+                "statusFilter"
+            );
+
+        const clearFilters =
+            document.getElementById(
+                "clearFilters"
+            );
+
+        const emptyStateClearFilters =
+            document.getElementById(
+                "emptyStateClearFilters"
+            );
+
+        const rows = Array.from(
+            document.querySelectorAll(
+                ".permission-row"
+            )
+        );
+
+        const filterEmptyRow =
+            document.getElementById(
+                "filterEmptyRow"
+            );
+
+        const visibleCount =
+            document.getElementById(
+                "visibleCount"
+            );
+
+        const showingCount =
+            document.getElementById(
+                "showingCount"
+            );
+
+        const selectAll =
+            document.getElementById(
+                "selectAllPermissions"
+            );
+
+        const bulkActionBar =
+            document.getElementById(
+                "bulkActionBar"
+            );
+
+        const selectedCount =
+            document.getElementById(
+                "selectedCount"
+            );
+
+        const clearSelection =
+            document.getElementById(
+                "clearSelection"
+            );
+
+        const copySelectedCodes =
+            document.getElementById(
+                "copySelectedCodes"
+            );
+
+
+        /* ======================================================
+           FILTERING
+           ====================================================== */
+
+        function applyFilters() {
+
+            const search =
+                searchInput.value
+                    .trim()
+                    .toLowerCase();
+
+            const module =
+                moduleFilter.value
+                    .toLowerCase();
+
+            const action =
+                actionFilter.value
+                    .toLowerCase();
+
+            const status =
+                statusFilter.value
+                    .toLowerCase();
+
+            let visible = 0;
+
+
+            rows.forEach(
+                function (row) {
+
+                    const rowSearch =
+                        row.dataset.search || "";
+
+                    const rowModule =
+                        row.dataset.module || "";
+
+                    const rowAction =
+                        row.dataset.action || "";
+
+                    const rowStatus =
+                        row.dataset.status || "";
+
+
+                    const matchesSearch =
+                        !search ||
+                        rowSearch.includes(search);
+
+                    const matchesModule =
+                        !module ||
+                        rowModule === module;
+
+                    const matchesAction =
+                        !action ||
+                        rowAction === action;
+
+                    const matchesStatus =
+                        !status ||
+                        rowStatus === status;
+
+
+                    const matches =
+                        matchesSearch &&
+                        matchesModule &&
+                        matchesAction &&
+                        matchesStatus;
+
+
+                    row.style.display =
+                        matches ? "" : "none";
+
+
+                    if (matches) {
+
+                        visible++;
+
+                    }
+
+                }
+            );
+
+
+            if (filterEmptyRow) {
+
+                filterEmptyRow.classList.toggle(
+                    "d-none",
+                    visible !== 0
+                );
+
+            }
+
+
+            visibleCount.textContent =
+                `${visible} result${visible === 1 ? "" : "s"}`;
+
+
+            showingCount.textContent =
+                visible;
+
+        }
+
+
+        searchInput?.addEventListener(
+            "input",
+            applyFilters
+        );
+
+        moduleFilter?.addEventListener(
+            "change",
+            applyFilters
+        );
+
+        actionFilter?.addEventListener(
+            "change",
+            applyFilters
+        );
+
+        statusFilter?.addEventListener(
+            "change",
+            applyFilters
+        );
+
+
+        function resetFilters() {
+
+            searchInput.value = "";
+
+            moduleFilter.value = "";
+
+            actionFilter.value = "";
+
+            statusFilter.value = "";
+
+            applyFilters();
+
+        }
+
+
+        clearFilters?.addEventListener(
+            "click",
+            resetFilters
+        );
+
+        emptyStateClearFilters?.addEventListener(
+            "click",
+            resetFilters
+        );
+
+
+        /* ======================================================
+           COPY CODE
+           ====================================================== */
+
+        async function copyCode(code) {
+
+            if (!code) {
+
+                return;
+
+            }
+
+            try {
+
+                await navigator.clipboard.writeText(
+                    code
+                );
+
+                showToast(
+                    "Permission code copied.",
+                    "success"
+                );
+
+            } catch (error) {
+
+                showToast(
+                    "Unable to copy permission code.",
+                    "danger"
+                );
+
+            }
+
+        }
+
+
+        document
+            .querySelectorAll(
+                ".copy-permission-code"
+            )
+            .forEach(
+                function (button) {
+
+                    button.addEventListener(
+                        "click",
+                        function () {
+
+                            copyCode(
+                                button.dataset.code
+                            );
+
+                        }
+                    );
+
+                }
+            );
+
+
+        document
+            .querySelectorAll(
+                ".copy-code-action"
+            )
+            .forEach(
+                function (button) {
+
+                    button.addEventListener(
+                        "click",
+                        function () {
+
+                            copyCode(
+                                button.dataset.code
+                            );
+
+                        }
+                    );
+
+                }
+            );
+
+
+        /* ======================================================
+           VIEW DETAILS
+           ====================================================== */
+
+        document
+            .querySelectorAll(
+                ".view-permission"
+            )
+            .forEach(
+                function (button) {
+
+                    button.addEventListener(
+                        "click",
+                        function () {
+
+                            document
+                                .getElementById(
+                                    "detailPermissionName"
+                                )
+                                .textContent =
+                                button.dataset.name || "-";
+
+
+                            document
+                                .getElementById(
+                                    "detailPermissionModule"
+                                )
+                                .textContent =
+                                button.dataset.module || "-";
+
+
+                            document
+                                .getElementById(
+                                    "detailPermissionAction"
+                                )
+                                .textContent =
+                                button.dataset.action || "-";
+
+
+                            document
+                                .getElementById(
+                                    "detailPermissionCode"
+                                )
+                                .textContent =
+                                button.dataset.code || "-";
+
+
+                            document
+                                .getElementById(
+                                    "detailPermissionDescription"
+                                )
+                                .textContent =
+                                button.dataset.description ||
+                                "No description provided.";
+
+
+                            document
+                                .getElementById(
+                                    "detailPermissionStatus"
+                                )
+                                .textContent =
+                                button.dataset.status ||
+                                "Active";
+
+
+                            const modal =
+                                new bootstrap.Modal(
+                                    document.getElementById(
+                                        "permissionDetailsModal"
+                                    )
+                                );
+
+                            modal.show();
+
+                        }
+                    );
+
+                }
+            );
+
+
+        /* ======================================================
+           COPY FROM DETAILS MODAL
+           ====================================================== */
+
+        document
+            .getElementById(
+                "detailCopyCode"
+            )
+            ?.addEventListener(
+                "click",
+                function () {
+
+                    copyCode(
+                        document
+                            .getElementById(
+                                "detailPermissionCode"
+                            )
+                            .textContent
+                            .trim()
+                    );
+
+                }
+            );
+
+
+        /* ======================================================
+           CHECKBOX SELECTION
+           ====================================================== */
+
+        const checkboxes =
+            () => Array.from(
+                document.querySelectorAll(
+                    ".permission-checkbox"
+                )
+            );
+
+
+        function updateSelection() {
+
+            const selected =
+                checkboxes()
+                    .filter(
+                        checkbox =>
+                            checkbox.checked
+                    );
+
+
+            selectedCount.textContent =
+                selected.length;
+
+
+            bulkActionBar.classList.toggle(
+                "d-none",
+                selected.length === 0
+            );
+
+
+            if (selectAll) {
+
+                const visibleCheckboxes =
+                    rows
+                        .filter(
+                            row =>
+                                row.style.display !== "none"
+                        )
+                        .map(
+                            row =>
+                                row.querySelector(
+                                    ".permission-checkbox"
+                                )
+                        )
+                        .filter(Boolean);
+
+
+                const checkedVisible =
+                    visibleCheckboxes.filter(
+                        checkbox =>
+                            checkbox.checked
+                    );
+
+
+                selectAll.checked =
+                    visibleCheckboxes.length > 0 &&
+                    checkedVisible.length ===
+                    visibleCheckboxes.length;
+
+
+                selectAll.indeterminate =
+                    checkedVisible.length > 0 &&
+                    checkedVisible.length <
+                    visibleCheckboxes.length;
+
+            }
+
+        }
+
+
+        document
+            .querySelectorAll(
+                ".permission-checkbox"
+            )
+            .forEach(
+                function (checkbox) {
+
+                    checkbox.addEventListener(
+                        "change",
+                        updateSelection
+                    );
+
+                }
+            );
+
+
+        selectAll?.addEventListener(
+            "change",
+            function () {
+
+                rows.forEach(
+                    function (row) {
+
+                        if (
+                            row.style.display === "none"
+                        ) {
+
+                            return;
+
+                        }
+
+                        const checkbox =
+                            row.querySelector(
+                                ".permission-checkbox"
+                            );
+
+                        if (checkbox) {
+
+                            checkbox.checked =
+                                selectAll.checked;
+
+                        }
+
+                    }
+                );
+
+
+                updateSelection();
+
+            }
+        );
+
+
+        clearSelection?.addEventListener(
+            "click",
+            function () {
+
+                checkboxes().forEach(
+                    checkbox =>
+                        checkbox.checked = false
+                );
+
+                updateSelection();
+
+            }
+        );
+
+
+        /* ======================================================
+           COPY SELECTED CODES
+           ====================================================== */
+
+        copySelectedCodes?.addEventListener(
+            "click",
+            async function () {
+
+                const selected =
+                    checkboxes()
+                        .filter(
+                            checkbox =>
+                                checkbox.checked
+                        )
+                        .map(
+                            checkbox =>
+                                checkbox.dataset.code
+                        )
+                        .filter(Boolean);
+
+
+                if (!selected.length) {
+
+                    return;
+
+                }
+
+
+                await copyCode(
+                    selected.join("\n")
+                );
+
+            }
+        );
+
+
+        /* ======================================================
+           REFRESH
+           ====================================================== */
+
+        document
+            .getElementById(
+                "refreshPermissions"
+            )
+            ?.addEventListener(
+                "click",
+                function () {
+
+                    window.location.reload();
+
+                }
+            );
+
+
+        /* ======================================================
+           TOAST
+           ====================================================== */
+
+        function showToast(
+            message,
+            type = "success"
+        ) {
+
+            const containerId =
+                "permissionToastContainer";
+
+
+            let container =
+                document.getElementById(
+                    containerId
+                );
+
+
+            if (!container) {
+
+                container =
+                    document.createElement(
+                        "div"
+                    );
+
+                container.id =
+                    containerId;
+
+                container.className =
+                    "toast-container position-fixed " +
+                    "top-0 end-0 p-3";
+
+                container.style.zIndex =
+                    "1090";
+
+                document.body.appendChild(
+                    container
+                );
+
+            }
+
+
+            const wrapper =
+                document.createElement(
+                    "div"
+                );
+
+            wrapper.className =
+                `toast align-items-center text-bg-${type} border-0`;
+
+            wrapper.setAttribute(
+                "role",
+                "alert"
+            );
+
+            wrapper.setAttribute(
+                "aria-live",
+                "assertive"
+            );
+
+            wrapper.setAttribute(
+                "aria-atomic",
+                "true"
+            );
+
+
+            wrapper.innerHTML = `
+
+                <div class="d-flex">
+
+                    <div class="toast-body">
+
+                        <i class="bi bi-check-circle-fill me-2"></i>
+
+                        ${message}
+
+                    </div>
+
+                    <button
+                        type="button"
+                        class="btn-close btn-close-white me-2 m-auto"
+                        data-bs-dismiss="toast"
+                        aria-label="Close">
+                    </button>
+
+                </div>
+
+            `;
+
+
+            container.appendChild(
+                wrapper
+            );
+
+
+            const toast =
+                new bootstrap.Toast(
+                    wrapper,
+                    {
+                        delay: 2500
+                    }
+                );
+
+
+            toast.show();
+
+
+            wrapper.addEventListener(
+                "hidden.bs.toast",
+                function () {
+
+                    wrapper.remove();
+
+                }
+            );
+
+        }
+
+
+        /* ======================================================
+           INITIALIZE
+           ====================================================== */
+
+        applyFilters();
+
+        updateSelection();
+
+    }
+);
+
+</script>
+
+{% endblock %}

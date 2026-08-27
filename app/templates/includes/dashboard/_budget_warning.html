@@ -1,0 +1,240 @@
+<!-- =======================================================
+     BUDGET WARNING ENGINE
+======================================================= -->
+
+<div
+    class="card border-0 shadow-sm rounded-3 mb-3"
+    data-focost-widget="budgets"
+>
+
+    <div class="card-header bg-white py-2 px-3 d-flex justify-content-between align-items-center">
+
+        <h6 class="fw-bold mb-0">
+
+            <i class="bi bi-cash-stack me-2"></i>
+
+            BUDGETS MONITORING
+
+        </h6>
+
+        <span class="badge bg-primary">
+
+            {{ dashboard.active_budgets }}
+            Budget{{ '' if dashboard.active_budgets == 1 else 's' }}
+
+        </span>
+
+    </div>
+
+
+    <div class="card-body p-3">
+
+        {% if dashboard.budget_warnings %}
+
+            {% for budget in dashboard.budget_warnings %}
+
+            <div class="border rounded-3 p-3 mb-3">
+
+                <!-- Header -->
+
+                <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+
+                    <div>
+
+                        <div class="fw-semibold">
+
+                            {{ budget.category }}
+
+                        </div>
+
+                        <small class="text-muted">
+
+                            Budget:
+                            ₦{{ "{:,.2f}".format(budget.budget) }}
+
+                        </small>
+
+                    </div>
+
+
+                    {% if budget.risk == "Critical" %}
+
+                        <span class="badge bg-danger">
+                            Critical
+                        </span>
+
+                    {% elif budget.risk == "High" %}
+
+                        <span class="badge bg-warning text-dark">
+                            High
+                        </span>
+
+                    {% elif budget.risk == "Medium" %}
+
+                        <span class="badge bg-info">
+                            Medium
+                        </span>
+
+                    {% else %}
+
+                        <span class="badge bg-success">
+                            Low
+                        </span>
+
+                    {% endif %}
+
+                </div>
+
+
+                <!-- Progress -->
+
+                <div
+                    class="progress mb-3"
+                    style="height:15px;"
+                >
+
+                    <div
+                        class="progress-bar {{ budget.progress_color }}"
+                        role="progressbar"
+                        style="width: {{ budget.percentage }}%;"
+                        aria-valuenow="{{ budget.percentage }}"
+                        aria-valuemin="0"
+                        aria-valuemax="100"
+                    >
+
+                        {{ "%.0f"|format(budget.percentage) }}%
+
+                    </div>
+
+                </div>
+
+
+                <!-- Statistics -->
+
+                <div class="row g-2 text-center">
+
+                    <div class="col-6 col-md-3">
+
+                        <small class="text-muted d-block">
+
+                            Spent
+
+                        </small>
+
+                        <div class="fw-semibold small">
+
+                            ₦{{ "{:,.0f}".format(budget.spent) }}
+
+                        </div>
+
+                    </div>
+
+
+                    <div class="col-6 col-md-3">
+
+                        <small class="text-muted d-block">
+
+                            Left
+
+                        </small>
+
+                        <div class="fw-semibold small">
+
+                            ₦{{ "{:,.0f}".format(budget.remaining) }}
+
+                        </div>
+
+                    </div>
+
+
+                    <div class="col-6 col-md-3">
+
+                        <small class="text-muted d-block">
+
+                            Forecast
+
+                        </small>
+
+                        <div class="fw-semibold small">
+
+                            ₦{{ "{:,.0f}".format(budget.projected) }}
+
+                        </div>
+
+                    </div>
+
+
+                    <div class="col-6 col-md-3">
+
+                        <small class="text-muted d-block">
+
+                            Status
+
+                        </small>
+
+                        <div class="fw-semibold small">
+
+                            {{ budget.status }}
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+                <!-- Recommendation -->
+
+                <div
+                    class="mt-3 p-2 rounded small
+                    {% if budget.risk == 'Critical' %}
+                        alert alert-danger
+                    {% elif budget.risk == 'High' %}
+                        alert alert-warning
+                    {% elif budget.risk == 'Medium' %}
+                        alert alert-info
+                    {% else %}
+                        alert alert-success
+                    {% endif %}
+                    mb-0"
+                >
+
+                    <strong>
+
+                        <i class="bi bi-robot me-1"></i>
+
+                        AI Recommendation
+
+                    </strong>
+
+
+                    <div class="mt-1">
+
+                        {{ budget.recommendation }}
+
+                    </div>
+
+                </div>
+
+            </div>
+
+            {% endfor %}
+
+
+        {% else %}
+
+            <div class="alert alert-success py-2 px-3 mb-0 small">
+
+                <i class="bi bi-check-circle-fill me-1"></i>
+
+                <strong>Excellent!</strong>
+
+                No budget risks detected. All budgets are on track.
+
+            </div>
+
+        {% endif %}
+
+    </div>
+
+</div>

@@ -1,0 +1,213 @@
+{% extends "layouts/dashboard.html" %}
+
+{% block title %}
+Role Permissions
+{% endblock %}
+
+{% block content %}
+
+<div class="container-fluid">
+
+    <!-- Header -->
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+
+        <div>
+
+            <h2 class="fw-bold mb-1">
+
+                Manage Permissions
+
+            </h2>
+
+            <p class="text-muted mb-0">
+
+                {{ role.name }}
+
+                <span class="badge bg-secondary ms-2">
+
+                    {{ role.slug }}
+
+                </span>
+
+            </p>
+
+        </div>
+
+        <div>
+
+            <a href="{{ url_for('admin_roles.index') }}"
+            class="btn btn-outline-secondary">
+
+                <i class="bi bi-arrow-left"></i>
+
+                Back to Roles
+
+            </a>
+
+        </div>
+
+    </div>
+
+    <form method="POST">
+
+        <div class="card shadow-sm">
+
+            <div class="card-header d-flex justify-content-between align-items-center">
+
+                <strong>
+
+                    Assign Permissions
+
+                </strong>
+
+                <button
+                    type="submit"
+                    class="btn btn-primary">
+
+                    <i class="bi bi-check-circle"></i>
+
+                    Save Changes
+
+                </button>
+
+            </div>
+
+            <div class="card-body">
+
+                {% for module, module_permissions in grouped_permissions.items() %}
+
+                <div class="card border mb-4">
+
+                    <div class="card-header bg-light">
+
+                        <div class="d-flex justify-content-between align-items-center">
+
+                            <h5 class="mb-0 text-capitalize">
+
+                                {{ module }}
+
+                            </h5>
+
+                            <button
+                                type="button"
+                                class="btn btn-sm btn-outline-primary select-module"
+                                data-module="{{ module }}">
+
+                                Select All
+
+                            </button>
+
+                        </div>
+
+                    </div>
+
+                    <div class="card-body">
+
+                        <div class="row">
+
+                            {% for permission in module_permissions %}
+
+                            <div class="col-lg-4 col-md-6 mb-3">
+
+                                <div class="form-check">
+
+                                    <input
+                                        class="form-check-input module-{{ module }}"
+                                        type="checkbox"
+                                        name="permissions"
+                                        value="{{ permission.id }}"
+                                        id="perm{{ permission.id }}"
+
+                                        {% if permission.id in assigned_permission_ids %}
+                                            checked
+                                        {% endif %}
+                                    >
+
+                                    <label
+                                        class="form-check-label"
+                                        for="perm{{ permission.id }}">
+
+                                        <strong>
+
+                                            {{ permission.name }}
+
+                                        </strong>
+
+                                        <br>
+
+                                        <small class="text-muted">
+
+                                            {{ permission.code }}
+
+                                        </small>
+
+                                    </label>
+
+                                </div>
+
+                            </div>
+
+                            {% endfor %}
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+                {% endfor %}
+
+            </div>
+
+            <div class="card-footer text-end">
+
+                <button
+                    type="submit"
+                    class="btn btn-success">
+
+                    <i class="bi bi-save"></i>
+
+                    Save Permissions
+
+                </button>
+
+            </div>
+
+        </div>
+
+    </form>
+
+</div>
+
+<script>
+
+document.querySelectorAll(".select-module").forEach(button => {
+
+    button.addEventListener("click", function () {
+
+        const module = this.dataset.module;
+
+        const checkboxes = document.querySelectorAll(
+            ".module-" + module
+        );
+
+        const allChecked = [...checkboxes].every(cb => cb.checked);
+
+        checkboxes.forEach(cb => {
+
+            cb.checked = !allChecked;
+
+        });
+
+        this.textContent = allChecked
+            ? "Select All"
+            : "Clear All";
+
+    });
+
+});
+
+</script>
+
+{% endblock %}

@@ -1,0 +1,601 @@
+{% extends "layouts/dashboard.html" %}
+
+{% block title %}
+System Settings | FOCOST
+{% endblock %}
+
+{% block content %}
+
+<div class="container-fluid py-4">
+
+    <!-- ======================================================
+         PAGE HEADER
+         ====================================================== -->
+
+    <div class="d-flex flex-column flex-md-row
+                justify-content-between
+                align-items-md-center
+                gap-3
+                mb-4">
+
+        <div>
+
+            <div class="d-flex align-items-center gap-2">
+
+                <div class="bg-primary bg-opacity-10
+                            text-primary
+                            rounded-3
+                            p-2">
+
+                    <i class="bi bi-gear-fill fs-4"></i>
+
+                </div>
+
+                <div>
+
+                    <h3 class="fw-bold mb-1">
+                        System Settings
+                    </h3>
+
+                    <p class="text-muted mb-0">
+                        Manage FOCOST application configuration
+                        and administrative preferences.
+                    </p>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- ======================================================
+         SYSTEM STATUS
+         ====================================================== -->
+
+    <div class="row g-3 mb-4">
+
+        <div class="col-md-4">
+
+            <div class="card border-0 shadow-sm h-100">
+
+                <div class="card-body">
+
+                    <div class="d-flex
+                                justify-content-between
+                                align-items-start">
+
+                        <div>
+
+                            <small class="text-muted">
+                                Application
+                            </small>
+
+                            <h5 class="fw-bold mt-1 mb-0">
+                                FOCOST
+                            </h5>
+
+                        </div>
+
+                        <span class="badge bg-success">
+                            Operational
+                        </span>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <div class="col-md-4">
+
+            <div class="card border-0 shadow-sm h-100">
+
+                <div class="card-body">
+
+                    <div class="d-flex
+                                justify-content-between
+                                align-items-start">
+
+                        <div>
+
+                            <small class="text-muted">
+                                Environment
+                            </small>
+
+                            <h5 class="fw-bold mt-1 mb-0">
+                                {{ config.ENV if config.ENV else "Development" }}
+                            </h5>
+
+                        </div>
+
+                        <i class="bi bi-server
+                                  text-primary
+                                  fs-4"></i>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <div class="col-md-4">
+
+            <div class="card border-0 shadow-sm h-100">
+
+                <div class="card-body">
+
+                    <div class="d-flex
+                                justify-content-between
+                                align-items-start">
+
+                        <div>
+
+                            <small class="text-muted">
+                                Security
+                            </small>
+
+                            <h5 class="fw-bold mt-1 mb-0">
+                                RBAC Protected
+                            </h5>
+
+                        </div>
+
+                        <i class="bi bi-shield-check
+                                  text-success
+                                  fs-4"></i>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- ======================================================
+         SETTINGS
+         ====================================================== -->
+
+    <div class="row g-4">
+
+        <!-- Main Settings -->
+
+        <div class="col-lg-8">
+
+            <div class="card border-0 shadow-sm">
+
+                <div class="card-header bg-white border-bottom">
+
+                    <div class="d-flex
+                                align-items-center
+                                gap-2">
+
+                        <i class="bi bi-sliders2
+                                  text-primary"></i>
+
+                        <div>
+
+                            <h5 class="mb-0 fw-bold">
+                                Application Preferences
+                            </h5>
+
+                            <small class="text-muted">
+                                Configure general FOCOST behaviour.
+                            </small>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+                <div class="card-body">
+
+                    <!-- General -->
+
+                    <div class="mb-4">
+
+                        <h6 class="fw-bold mb-3">
+
+                            <i class="bi bi-window
+                                      text-primary me-2"></i>
+
+                            General
+
+                        </h6>
+
+                        <div class="row g-3">
+
+                            <div class="col-md-6">
+
+                                <label class="form-label fw-semibold">
+                                    Application Name
+                                </label>
+
+                                <input
+                                    type="text"
+                                    class="form-control"
+                                    value="FOCOST"
+                                    disabled>
+
+                            </div>
+
+                            <div class="col-md-6">
+
+                                <label class="form-label fw-semibold">
+                                    Default Currency
+                                </label>
+
+                                <select class="form-select">
+
+                                    <option selected>
+                                        Nigerian Naira (₦)
+                                    </option>
+
+                                    <option>
+                                        US Dollar ($)
+                                    </option>
+
+                                </select>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+
+                    <hr>
+
+
+                    <!-- User Experience -->
+
+                    <div class="my-4">
+
+                        <h6 class="fw-bold mb-3">
+
+                            <i class="bi bi-display
+                                      text-info me-2"></i>
+
+                            User Experience
+
+                        </h6>
+
+                        <div class="row g-3">
+
+                            <div class="col-md-6">
+
+                                <label class="form-label fw-semibold">
+                                    Default Dashboard Theme
+                                </label>
+
+                                <select class="form-select">
+
+                                    <option selected>
+                                        Default
+                                    </option>
+
+                                    <option>
+                                        Light
+                                    </option>
+
+                                    <option>
+                                        Dark
+                                    </option>
+
+                                </select>
+
+                            </div>
+
+                            <div class="col-md-6">
+
+                                <label class="form-label fw-semibold">
+                                    Dashboard Density
+                                </label>
+
+                                <select class="form-select">
+
+                                    <option selected>
+                                        Comfortable
+                                    </option>
+
+                                    <option>
+                                        Compact
+                                    </option>
+
+                                    <option>
+                                        Spacious
+                                    </option>
+
+                                </select>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+
+                    <hr>
+
+
+                    <!-- Notifications -->
+
+                    <div class="my-4">
+
+                        <h6 class="fw-bold mb-3">
+
+                            <i class="bi bi-bell
+                                      text-warning me-2"></i>
+
+                            Notifications
+
+                        </h6>
+
+                        <div class="form-check form-switch mb-3">
+
+                            <input
+                                class="form-check-input"
+                                type="checkbox"
+                                checked>
+
+                            <label class="form-check-label">
+
+                                Enable system notifications
+
+                            </label>
+
+                        </div>
+
+
+                        <div class="form-check form-switch mb-3">
+
+                            <input
+                                class="form-check-input"
+                                type="checkbox"
+                                checked>
+
+                            <label class="form-check-label">
+
+                                Enable financial alerts
+
+                            </label>
+
+                        </div>
+
+
+                        <div class="form-check form-switch">
+
+                            <input
+                                class="form-check-input"
+                                type="checkbox"
+                                checked>
+
+                            <label class="form-check-label">
+
+                                Enable AI recommendations
+
+                            </label>
+
+                        </div>
+
+                    </div>
+
+
+                    <hr>
+
+
+                    <!-- Security -->
+
+                    <div class="my-4">
+
+                        <h6 class="fw-bold mb-3">
+
+                            <i class="bi bi-shield-lock
+                                      text-danger me-2"></i>
+
+                            Security
+
+                        </h6>
+
+                        <div class="form-check form-switch mb-3">
+
+                            <input
+                                class="form-check-input"
+                                type="checkbox"
+                                checked>
+
+                            <label class="form-check-label">
+
+                                Require authenticated access
+
+                            </label>
+
+                        </div>
+
+
+                        <div class="form-check form-switch">
+
+                            <input
+                                class="form-check-input"
+                                type="checkbox"
+                                checked>
+
+                            <label class="form-check-label">
+
+                                Record administrative activities
+
+                            </label>
+
+                        </div>
+
+                    </div>
+
+
+                    <!-- Save -->
+
+                    <div class="d-flex
+                                justify-content-end
+                                gap-2
+                                mt-4">
+
+                        <button
+                            type="button"
+                            class="btn btn-light">
+
+                            <i class="bi bi-arrow-counterclockwise me-1"></i>
+
+                            Reset
+
+                        </button>
+
+                        <button
+                            type="button"
+                            class="btn btn-primary">
+
+                            <i class="bi bi-check-circle me-1"></i>
+
+                            Save Settings
+
+                        </button>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <!-- ==================================================
+             ADMINISTRATION SIDEBAR
+             ================================================== -->
+
+        <div class="col-lg-4">
+
+            <div class="card border-0 shadow-sm mb-4">
+
+                <div class="card-header bg-white">
+
+                    <h6 class="fw-bold mb-0">
+
+                        <i class="bi bi-tools text-primary me-2"></i>
+
+                        Administration
+
+                    </h6>
+
+                </div>
+
+                <div class="list-group list-group-flush">
+
+                    <a
+                        href="{{ url_for('admin.dashboard') }}"
+                        class="list-group-item
+                               list-group-item-action">
+
+                        <i class="bi bi-speedometer2 me-2"></i>
+
+                        Admin Dashboard
+
+                    </a>
+
+
+                    <a
+                        href="{{ url_for('admin.ai_settings') }}"
+                        class="list-group-item
+                               list-group-item-action">
+
+                        <i class="bi bi-robot me-2"></i>
+
+                        AI Center
+
+                    </a>
+
+
+                    <a
+                        href="{{ url_for('admin.audit_logs') }}"
+                        class="list-group-item
+                               list-group-item-action">
+
+                        <i class="bi bi-journal-text me-2"></i>
+
+                        Audit Logs
+
+                    </a>
+
+
+                    <a
+                        href="{{ url_for('admin.subscriptions') }}"
+                        class="list-group-item
+                               list-group-item-action">
+
+                        <i class="bi bi-credit-card me-2"></i>
+
+                        Subscriptions
+
+                    </a>
+
+                </div>
+
+            </div>
+
+
+            <!-- Security Notice -->
+
+            <div class="card border-0 shadow-sm">
+
+                <div class="card-body">
+
+                    <div class="d-flex gap-3">
+
+                        <div class="text-success">
+
+                            <i class="bi bi-shield-check fs-3"></i>
+
+                        </div>
+
+                        <div>
+
+                            <h6 class="fw-bold">
+                                Security Notice
+                            </h6>
+
+                            <p class="small text-muted mb-0">
+
+                                Administrative settings are protected
+                                by FOCOST's role-based access control
+                                system. Sensitive credentials should
+                                remain in environment configuration.
+
+                            </p>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}

@@ -1,0 +1,98 @@
+{% extends "layouts/dashboard.html" %}
+
+{% block content %}
+
+<div class="container-fluid px-2 px-md-3">
+
+    <div class="row justify-content-center">
+
+        <div class="col-12 col-xl-10">
+
+            <div class="d-flex align-items-center mb-3">
+
+                <h2 class="h3 h-md-2 fw-bold mb-0">
+
+                    🤖 Ask FOCOST AI
+
+                </h2>
+
+            </div>
+
+            <div class="card shadow-sm border-0">
+
+                <div class="card-body p-2 p-md-4">
+
+                    <!-- Chat Window -->
+
+                    <div
+                        id="chatWindow"
+                        class="border rounded bg-light p-3 mb-3">
+
+                        <div class="mb-3">
+
+                            <strong>
+
+                                FOCOST AI
+
+                            </strong>
+
+                            <div class="mt-1">
+
+                                Hello {{ current_user.first_name }}.
+
+                                Ask me anything about your finances.
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                    <!-- Chat Input -->
+
+                    <div class="row g-2">
+
+                        <div class="col-12 col-md">
+
+                            <input
+                                id="question"
+                                type="text"
+                                class="form-control"
+                                placeholder="Ask anything..."
+                                autocomplete="off">
+
+                        </div>
+
+                        <div class="col-12 col-md-auto">
+
+                            <button
+                                id="sendBtn"
+                                class="btn btn-primary w-100 px-4">
+
+                                <i class="bi bi-send-fill me-1"></i>
+
+                                Send
+
+                            </button>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+
+<script src="{{ url_for('static', filename='js/ai_chat.js') }}"></script>
+
+{% endblock %}

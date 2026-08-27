@@ -1,0 +1,109 @@
+{% extends "layouts/dashboard.html" %}
+
+{% block title %}
+Budget Progress
+{% endblock %}
+
+{% block content %}
+
+<div class="container-fluid">
+
+    <h2 class="mb-4">
+
+        Budget Progress
+
+    </h2>
+
+    {% if budgets %}
+
+    {% for budget in budgets %}
+
+    <div class="card shadow-sm mb-4">
+
+        <div class="card-body">
+
+            <div class="d-flex justify-content-between">
+
+                <h5>
+
+                    {{ budget.category }}
+
+                </h5>
+
+                <strong>
+
+                    {{ budget.percentage_used }}%
+
+                </strong>
+
+            </div>
+
+            <div class="progress mt-3" style="height:25px;">
+
+                <div class="progress-bar
+
+                    {% if budget.percentage_used < 70 %}
+                        bg-success
+                    {% elif budget.percentage_used < 90 %}
+                        bg-warning
+                    {% else %}
+                        bg-danger
+                    {% endif %}
+
+                "
+
+                style="width:{{ budget.percentage_used }}%;">
+
+                    ₦{{ "{:,.2f}".format(budget.spent) }}
+
+                </div>
+
+            </div>
+
+            <div class="row mt-3">
+
+                <div class="col-md-4">
+
+                    <strong>Budget</strong><br>
+
+                    ₦{{ "{:,.2f}".format(budget.amount) }}
+
+                </div>
+
+                <div class="col-md-4">
+
+                    <strong>Spent</strong><br>
+
+                    ₦{{ "{:,.2f}".format(budget.spent) }}
+
+                </div>
+
+                <div class="col-md-4">
+
+                    <strong>Remaining</strong><br>
+
+                    ₦{{ "{:,.2f}".format(budget.remaining) }}
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    {% endfor %}
+
+    {% else %}
+
+    <div class="alert alert-info">
+
+        No budgets available.
+
+    </div>
+
+    {% endif %}
+
+</div>
+
+{% endblock %}

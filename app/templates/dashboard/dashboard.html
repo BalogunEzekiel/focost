@@ -1,0 +1,62 @@
+{% extends "layouts/dashboard.html" %}
+
+{% block title %}
+Dashboard
+{% endblock %}
+
+{% block content %}
+
+<div class="container-fluid px-2 px-md-3 px-lg-4">
+
+    {% include "includes/dashboard/_summary.html" %}
+
+    {% include "includes/dashboard/_kpis.html" %}
+
+    {% include "includes/dashboard/_daily_brief.html" %}
+
+    {% include "includes/dashboard/_ai_summary.html" %}
+
+    {% include "includes/dashboard/_insights.html" %}
+
+    {% include "includes/dashboard/_budget_warning.html" %}
+
+    {% include "includes/dashboard/_goal_progress.html" %}
+
+    {#
+    {% include "includes/dashboard/_charts.html" %}
+    #}
+
+    {% include "includes/dashboard/_transactions.html" %}
+
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+
+<script>
+
+window.dashboardIncome =
+{{ dashboard.summary.income|tojson }};
+
+window.dashboardExpenses =
+{{ dashboard.summary.expenses|tojson }};
+
+window.expenseLabels =
+{{ dashboard.charts.expense_chart["labels"]|tojson }};
+
+window.expenseValues =
+{{ dashboard.charts.expense_chart["values"]|tojson }};
+
+window.cashFlowLabels =
+{{ dashboard.charts.cashflow["labels"]|tojson }};
+
+window.cashFlowIncome =
+{{ dashboard.charts.cashflow["income"]|tojson }};
+
+window.cashFlowExpenses =
+{{ dashboard.charts.cashflow["expenses"]|tojson }};
+
+</script>
+
+{% endblock %}

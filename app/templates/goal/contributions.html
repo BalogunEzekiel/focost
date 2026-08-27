@@ -1,0 +1,334 @@
+{% extends "layouts/dashboard.html" %}
+
+{% block title %}
+Goal Contributions
+{% endblock %}
+
+{% block content %}
+
+<div class="container-fluid">
+
+    <!-- Header -->
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+
+        <div>
+
+            <h2 class="fw-bold">
+
+                <i class="bi bi-wallet2 text-success"></i>
+
+                Contribution History
+
+            </h2>
+
+            <p class="text-muted">
+
+                {{ goal.title }}
+
+            </p>
+
+        </div>
+
+        <div>
+
+            <a href="{{ url_for('goal.detail', goal_id=goal.id) }}"
+               class="btn btn-outline-secondary">
+
+                <i class="bi bi-arrow-left"></i>
+
+                Back
+
+            </a>
+
+            <a href="{{ url_for('goal.contribute', goal_id=goal.id) }}"
+               class="btn btn-success">
+
+                <i class="bi bi-plus-circle"></i>
+
+                Add Contribution
+
+            </a>
+
+        </div>
+
+    </div>
+
+    <!-- Summary -->
+
+    <div class="row mb-4">
+
+        <div class="col-md-4">
+
+            <div class="card border-0 shadow-sm">
+
+                <div class="card-body text-center">
+
+                    <h6 class="text-muted">
+
+                        Goal Target
+
+                    </h6>
+
+                    <h3 class="text-primary">
+
+                        ₦{{ "{:,.2f}".format(goal.target_amount) }}
+
+                    </h3>
+
+                </div>
+
+            </div>
+
+        </div>
+
+        <div class="col-md-4">
+
+            <div class="card border-0 shadow-sm">
+
+                <div class="card-body text-center">
+
+                    <h6 class="text-muted">
+
+                        Total Saved
+
+                    </h6>
+
+                    <h3 class="text-success">
+
+                        ₦{{ "{:,.2f}".format(goal.saved_amount) }}
+
+                    </h3>
+
+                </div>
+
+            </div>
+
+        </div>
+
+        <div class="col-md-4">
+
+            <div class="card border-0 shadow-sm">
+
+                <div class="card-body text-center">
+
+                    <h6 class="text-muted">
+
+                        Remaining
+
+                    </h6>
+
+                    <h3 class="text-danger">
+
+                        ₦{{ "{:,.2f}".format(goal.remaining_amount) }}
+
+                    </h3>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- Progress -->
+
+    <div class="card shadow-sm border-0 mb-4">
+
+        <div class="card-body">
+
+            <div class="d-flex justify-content-between mb-2">
+
+                <strong>Progress</strong>
+
+                <strong>{{ goal.percentage_completed }}%</strong>
+
+            </div>
+
+            <div class="progress mb-3" style="height:15px;">
+
+
+                <div class="progress-bar
+
+                    {% if goal.percentage_completed >=100 %}
+                        bg-success
+                    {% elif goal.percentage_completed >=75 %}
+                        bg-info
+                    {% elif goal.percentage_completed >=50 %}
+                        bg-warning
+                    {% else %}
+                        bg-danger
+                    {% endif %}"
+
+                    style="width: {{ goal.percentage_completed }}%;">
+
+                    {{ goal.percentage_completed }}%
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- Contributions -->
+
+    <div class="card shadow-sm border-0">
+
+        <div class="card-header bg-white">
+
+            <strong>
+
+                Contribution Records
+
+            </strong>
+
+        </div>
+
+        <div class="card-body">
+
+            {% if contributions %}
+
+            <div class="table-responsive">
+
+                <table class="table table-hover align-middle">
+
+                    <thead class="table-light">
+
+                        <tr>
+
+                            <th>#</th>
+
+                            <th>Date</th>
+
+                            <th>Amount</th>
+
+                            <th>Notes</th>
+
+                            <th class="text-center">
+
+                                Actions
+
+                            </th>
+
+                        </tr>
+
+                    </thead>
+
+                    <tbody>
+
+                    {% for item in contributions %}
+
+                        <tr>
+
+                            <td>
+
+                                {{ loop.index }}
+
+                            </td>
+
+                            <td>
+
+                                {{ item.contribution_date.strftime("%d %b %Y") }}
+
+                            </td>
+
+                            <td class="text-success fw-bold">
+
+                                ₦{{ "{:,.2f}".format(item.amount) }}
+
+                            </td>
+
+                            <td>
+
+                                {{ item.note or "-" }}
+
+                            </td>
+
+                            <td class="text-center">
+
+                                <div class="action-buttons">
+
+                                    <!-- Edit -->
+
+                                    <a href="{{ url_for('goal.edit_contribution',
+                                                        contribution_id=item.id) }}"
+                                    class="action-btn action-edit"
+                                    title="Edit Contribution">
+
+                                        <i class="bi bi-pencil-square"></i>
+
+                                    </a>
+
+                                    <!-- Delete -->
+
+                                    <form method="POST"
+                                        action="{{ url_for('goal.delete_contribution',
+                                                            contribution_id=item.id) }}"
+                                        class="d-inline">
+
+                                        <button type="submit"
+                                                class="action-btn action-delete"
+                                                title="Delete Contribution"
+                                                onclick="return confirm('Delete this contribution record?');">
+
+                                            <i class="bi bi-trash"></i>
+
+                                        </button>
+
+                                    </form>
+
+                                </div>
+
+                            </td>
+
+                        </tr>
+
+                    {% endfor %}
+
+                    </tbody>
+
+                </table>
+
+            </div>
+
+            {% else %}
+
+            <div class="text-center py-5">
+
+                <i class="bi bi-wallet2 display-1 text-secondary"></i>
+
+                <h4 class="mt-3">
+
+                    No Contributions Yet
+
+                </h4>
+
+                <p class="text-muted">
+
+                    Start saving towards your goal.
+
+                </p>
+
+                <a href="{{ url_for('goal.contribute', goal_id=goal.id) }}"
+                   class="btn btn-success">
+
+                    <i class="bi bi-plus-circle"></i>
+
+                    Add First Contribution
+
+                </a>
+
+            </div>
+
+            {% endif %}
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}

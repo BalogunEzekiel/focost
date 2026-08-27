@@ -1,0 +1,43 @@
+{% extends "layouts/public.html" %}
+
+{% block title %}
+Security — FOCOST
+{% endblock %}
+
+{% block content %}
+
+<div class="container pt-0 pb-5" style="max-width:900px; margin-top:-220px;">
+
+    <span class="badge bg-success-subtle text-success px-3 py-2">
+        Security
+    </span>
+
+    <h1 class="fw-bold mt-3">
+        FOCOST Security & Responsible Disclosure
+    </h1>
+
+    <p class="lead text-muted">
+        FOCOST is designed with least-privilege access, auditability, secure sessions and user-owned financial data in mind.
+    </p>
+
+    <div class="card border-0 shadow-sm rounded-4 mt-4">
+
+        <div class="card-body p-4">
+
+            <h5 class="fw-bold">
+                Report a vulnerability
+            </h5>
+
+            <p class="text-muted mb-0">
+                Please contact the security team using the address published in
+                <code>/.well-known/security.txt</code>.
+                Do not include passwords, API keys or unnecessary personal information in a report.
+            </p>
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}

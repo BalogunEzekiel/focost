@@ -1,0 +1,134 @@
+{% extends "layouts/public.html" %}
+
+{% block title %}
+Focost AI
+{% endblock %}
+
+{% block content %}
+
+<section class="hero pt-0 pb-4" style="margin-top: -15rem;">
+
+    <div class="container">
+
+        <div class="row align-items-center gy-4">
+
+            <!-- Left Content -->
+            <div class="col-lg-6 text-center text-lg-start">
+
+                <span class="badge bg-primary px-3 py-2">
+
+                    <i class="bi bi-stars me-1"></i>
+                    AI-Powered Personal Financial Coach
+
+                </span>
+
+                <h1 class="display-5 fw-bold mt-3 mb-3">
+
+                    Chat Your Way
+                    <span class="text-primary">
+                        into financial prosperity.
+                    </span>
+
+                </h1>
+
+                <p class="lead text-muted mb-3">
+
+                    Focost helps you track your income & expenses, create budgets,
+                    forecast spending and receive personalized financial
+                    guidance from your
+                    <a href="{% if current_user.is_authenticated %}{{ url_for('dashboard.dashboard') }}{% else %}{{ url_for('auth.register') }}{% endif %}"
+                    class="text-primary text-decoration-none">
+
+                        conversational AI coach
+
+                    </a>
+
+                </p>
+
+                <!-- AI Chat Card -->
+                <div class="d-flex align-items-start bg-light border rounded-4 p-3 mb-4 shadow-sm">
+
+                    <div class="me-3">
+
+                        <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center"
+                             style="width:52px;height:52px;">
+
+                            <i class="bi bi-chat-dots-fill fs-4"></i>
+
+                        </div>
+
+                    </div>
+
+                    <div class="text-start">
+
+                        <div class="fw-semibold text-primary mb-1">
+
+                            AI Coach
+
+                        </div>
+
+                        <p class="mb-0 small text-muted">
+
+                            I'm your
+                            <strong>conversational AI financial coach.</strong>
+                            Sign up and <strong>let's get talking</strong> to
+                            build your wealth — one conversation at a time.
+
+                        </p>
+
+                    </div>
+
+                </div>
+
+                <!-- Buttons -->
+                <div class="d-grid d-sm-flex gap-2 justify-content-center justify-content-lg-start">
+
+                    <a href="/auth/register"
+                       class="btn btn-primary btn-lg px-4">
+
+                        <i class="bi bi-rocket-takeoff-fill me-2"></i>
+                        Get Started Free
+
+                    </a>
+
+                    <a href="#features"
+                       class="btn btn-outline-dark btn-lg px-4">
+
+                        Learn More
+
+                    </a>
+
+                    <a
+                        href="https://docs.google.com/forms/d/e/1FAIpQLSdGk30q3FtbEf9Sbu2A8Vu6q1SxS5ijTmSdlTHWAtKrtcMw7Q/viewform?usp=publish-editor"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="btn btn-outline-primary btn-lg px-4">
+
+                        <i class="bi bi-chat-square-text me-2"></i>
+
+                        Give Feedback
+
+                    </a>
+
+                </div>
+
+            </div>
+
+            <!-- Right Image -->
+            <div class="col-lg-6 text-center">
+
+                <img
+                    src="https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=900"
+                    class="img-fluid rounded-4 shadow-lg"
+                    style="max-width:500px;width:100%;"
+                    alt="Focost AI Dashboard">
+
+            </div>
+
+        </div>
+
+    </div>
+
+</section>
+
+{% endblock %}

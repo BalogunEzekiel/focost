@@ -1,0 +1,674 @@
+<!-- ==========================================================
+     FOCOST SETTINGS MODAL
+=========================================================== -->
+
+<div class="modal fade"
+     id="settingsModal"
+     tabindex="-1"
+     aria-labelledby="settingsModalLabel"
+     aria-hidden="true">
+
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+
+        <div class="modal-content settings-modal">
+
+            <!-- ========================================= -->
+            <!-- Header -->
+            <!-- ========================================= -->
+
+            <div class="modal-header">
+
+                <div>
+
+                    <h4
+                        class="modal-title"
+                        id="settingsModalLabel">
+
+                        <i class="bi bi-gear-fill text-primary"></i>
+
+                        Settings
+
+                    </h4>
+
+                    <small class="text-muted">
+
+                        Customize your FOCOST workspace and preferences
+
+                    </small>
+
+                </div>
+
+                <button
+                    class="btn-close"
+                    data-bs-dismiss="modal">
+                </button>
+
+            </div>
+
+            <!-- ========================================= -->
+            <!-- Body -->
+            <!-- ========================================= -->
+
+            <div class="modal-body">
+
+                <div class="row">
+
+                    <!-- ========================================= -->
+                    <!-- Left Navigation -->
+                    <!-- ========================================= -->
+
+                    <div class="col-lg-3">
+
+                        <div class="list-group settings-nav">
+
+                            <button
+                                class="list-group-item list-group-item-action active"
+                                data-bs-toggle="pill"
+                                data-bs-target="#appearance">
+
+                                <i class="bi bi-palette-fill"></i>
+
+                                Appearance
+
+                            </button>
+
+                            <button
+                                class="list-group-item list-group-item-action"
+                                data-bs-toggle="pill"
+                                data-bs-target="#dashboard">
+
+                                <i class="bi bi-grid-fill"></i>
+
+                                Dashboard
+
+                            </button>
+
+                            <button
+                                class="list-group-item list-group-item-action"
+                                data-bs-toggle="pill"
+                                data-bs-target="#notifications">
+
+                                <i class="bi bi-bell-fill"></i>
+
+                                Notifications
+
+                            </button>
+
+                            <button
+                                class="list-group-item list-group-item-action"
+                                data-bs-toggle="pill"
+                                data-bs-target="#assistant">
+
+                                <i class="bi bi-stars"></i>
+
+                                AI Preferences
+
+                            </button>
+
+                            <button
+                                class="list-group-item list-group-item-action"
+                                data-bs-toggle="pill"
+                                data-bs-target="#security">
+
+                                <i class="bi bi-shield-lock-fill"></i>
+
+                                Security
+
+                            </button>
+
+                            <button
+                                class="list-group-item list-group-item-action"
+                                data-bs-toggle="pill"
+                                data-bs-target="#data">
+
+                                <i class="bi bi-cloud-arrow-down-fill"></i>
+
+                                Data & Export
+
+                            </button>
+
+                        </div>
+
+                    </div>
+
+                    <!-- ========================================= -->
+                    <!-- Right Content -->
+                    <!-- ========================================= -->
+
+                    <div class="col-lg-9">
+
+                        <div class="tab-content">
+
+                            <!-- ========================================= -->
+                            <!-- Appearance -->
+                            <!-- ========================================= -->
+
+                            <div
+                                class="tab-pane fade show active"
+                                id="appearance">
+
+                                <h5>
+
+                                    Appearance
+
+                                </h5>
+
+                                <hr>
+
+                                <div class="row">
+
+                                    <div class="col-md-6 mb-4">
+
+                                        <label class="form-label">
+
+                                            Dashboard Theme
+
+                                        </label>
+
+                                        <select
+                                            class="form-select"
+                                            id="dashboardTheme">
+
+                                            <option value="default">
+
+                                                Default
+
+                                            </option>
+
+                                            <option value="light">
+
+                                                Light
+
+                                            </option>
+
+                                            <option value="dark">
+
+                                                Dark
+
+                                            </option>
+
+                                            <option value="blue">
+
+                                                Blue Professional
+
+                                            </option>
+
+                                            <option value="green">
+
+                                                Finance Green
+
+                                            </option>
+
+                                        </select>
+
+                                    </div>
+
+                                    <div class="col-md-6 mb-4">
+
+                                        <label class="form-label">
+
+                                            Dashboard Density
+
+                                        </label>
+
+                                        <select
+                                            class="form-select"
+                                            id="dashboardDensity">
+
+                                            <option>
+
+                                                Comfortable
+
+                                            </option>
+
+                                            <option>
+
+                                                Compact
+
+                                            </option>
+
+                                            <option>
+
+                                                Spacious
+
+                                            </option>
+
+                                        </select>
+
+                                    </div>
+
+                                </div>
+
+                            </div>
+
+                            <!-- ========================================= -->
+                            <!-- Dashboard -->
+                            <!-- ========================================= -->
+
+                            <div
+                                class="tab-pane fade"
+                                id="dashboard">
+
+                                <h5>
+
+                                    Dashboard Widgets
+
+                                </h5>
+
+                                <hr>
+
+                                <div class="row">
+
+                                    <div class="col-md-6">
+
+                                        <div class="form-check form-switch mb-3">
+
+                                            <input
+                                                class="form-check-input"
+                                                type="checkbox"
+                                                checked
+                                                id="showSummary">
+
+                                            <label class="form-check-label">
+
+                                                AI Summary
+
+                                            </label>
+
+                                        </div>
+
+                                        <div class="form-check form-switch mb-3">
+
+                                            <input
+                                                class="form-check-input"
+                                                type="checkbox"
+                                                checked
+                                                id="showInsights">
+
+                                            <label>
+
+                                                Smart Insights
+
+                                            </label>
+
+                                        </div>
+
+                                        <div class="form-check form-switch mb-3">
+
+                                            <input
+                                                class="form-check-input"
+                                                type="checkbox"
+                                                checked
+                                                id="showBudgets">
+
+                                            <label>
+
+                                                Budget Engine
+
+                                            </label>
+
+                                        </div>
+
+                                        <div class="form-check form-switch mb-3">
+
+                                            <input
+                                                class="form-check-input"
+                                                type="checkbox"
+                                                checked
+                                                id="showGoals">
+
+                                            <label>
+
+                                                Goal Progress
+
+                                            </label>
+
+                                        </div>
+
+                                    </div>
+
+                                    <div class="col-md-6">
+
+                                        <div class="form-check form-switch mb-3">
+
+                                            <input
+                                                class="form-check-input"
+                                                checked
+                                                id="showHealth"
+                                                type="checkbox">
+
+                                            <label>
+
+                                                Financial Health
+
+                                            </label>
+
+                                        </div>
+
+                                        <div class="form-check form-switch mb-3">
+
+                                            <input
+                                                class="form-check-input"
+                                                checked
+                                                id="showRecommendations"
+                                                type="checkbox">
+
+                                            <label>
+
+                                                Recommendations
+
+                                            </label>
+
+                                        </div>
+
+                                        <div class="form-check form-switch mb-3">
+
+                                            <input
+                                                class="form-check-input"
+                                                checked
+                                                id="showTransactions"
+                                                type="checkbox">
+
+                                            <label>
+
+                                                Transactions
+
+                                            </label>
+
+                                        </div>
+
+                                    </div>
+
+                                </div>
+
+                                <div class="mt-4">
+
+                                    <label class="form-label">
+
+                                        Default Analytics
+
+                                    </label>
+
+                                    <select
+                                        class="form-select"
+                                        id="defaultChart">
+
+                                        <option>
+
+                                            Income vs Expenses
+
+                                        </option>
+
+                                        <option>
+
+                                            Expense Breakdown
+
+                                        </option>
+
+                                        <option>
+
+                                            Cash Flow
+
+                                        </option>
+
+                                        <option>
+
+                                            Budget Utilization
+
+                                        </option>
+
+                                        <option>
+
+                                            Financial Health
+
+                                        </option>
+
+                                    </select>
+
+                                </div>
+
+                            </div>
+
+                            <!-- ========================================= -->
+                            <!-- Notifications -->
+                            <!-- ========================================= -->
+
+                            <div
+                                class="tab-pane fade"
+                                id="notifications">
+
+                                <h5>
+
+                                    Notifications
+
+                                </h5>
+
+                                <hr>
+
+                                <div class="form-check form-switch mb-3">
+
+                                    <input
+                                        class="form-check-input"
+                                        checked
+                                        type="checkbox">
+
+                                    <label>
+
+                                        Budget Alerts
+
+                                    </label>
+
+                                </div>
+
+                                <div class="form-check form-switch mb-3">
+
+                                    <input
+                                        class="form-check-input"
+                                        checked
+                                        type="checkbox">
+
+                                    <label>
+
+                                        Goal Reminders
+
+                                    </label>
+
+                                </div>
+
+                                <div class="form-check form-switch mb-3">
+
+                                    <input
+                                        class="form-check-input"
+                                        checked
+                                        type="checkbox">
+
+                                    <label>
+
+                                        Weekly Summary
+
+                                    </label>
+
+                                </div>
+
+                                <div class="form-check form-switch mb-3">
+
+                                    <input
+                                        class="form-check-input"
+                                        checked
+                                        type="checkbox">
+
+                                    <label>
+
+                                        Browser Notifications
+
+                                    </label>
+
+                                </div>
+
+                            </div>
+
+                            <!-- ========================================= -->
+                            <!-- AI -->
+                            <!-- ========================================= -->
+
+                            <div
+                                class="tab-pane fade"
+                                id="assistant">
+
+                                <h5>
+
+                                    AI Preferences
+
+                                </h5>
+
+                                <hr>
+
+                                <div class="form-check form-switch mb-3">
+
+                                    <input
+                                        checked
+                                        class="form-check-input"
+                                        id="dailyBrief"
+                                        type="checkbox">
+
+                                    <label>
+
+                                        Daily Financial Brief
+
+                                    </label>
+
+                                </div>
+
+                                <div class="form-check form-switch mb-3">
+
+                                    <input
+                                        checked
+                                        class="form-check-input"
+                                        id="smartAlerts"
+                                        type="checkbox">
+
+                                    <label>
+
+                                        Smart Spending Alerts
+
+                                    </label>
+
+                                </div>
+
+                                <div class="form-check form-switch mb-3">
+
+                                    <input
+                                        checked
+                                        class="form-check-input"
+                                        id="goalReminders"
+                                        type="checkbox">
+
+                                    <label>
+
+                                        Goal Reminders
+
+                                    </label>
+
+                                </div>
+
+                                <div class="form-check form-switch">
+
+                                    <input
+                                        checked
+                                        class="form-check-input"
+                                        id="weeklyReport"
+                                        type="checkbox">
+
+                                    <label>
+
+                                        Weekly AI Report
+
+                                    </label>
+
+                                </div>
+
+                            </div>
+
+                            <!-- ========================================= -->
+                            <!-- Security -->
+                            <!-- ========================================= -->
+
+                            <div
+                                class="tab-pane fade"
+                                id="security">
+
+                                <h5>
+
+                                    Security
+
+                                </h5>
+
+                                <hr>
+
+                                <button class="btn btn-outline-primary mb-3">
+
+                                    <i class="bi bi-key-fill"></i>
+
+                                    Change Password
+
+                                </button>
+
+                                <button class="btn btn-outline-success mb-3">
+
+                                    <i class="bi bi-phone-fill"></i>
+
+                                    Enable Two-Factor Authentication
+
+                                </button>
+
+                                <button class="btn btn-outline-secondary">
+
+                                    <i class="bi bi-laptop"></i>
+
+                                    Active Sessions
+
+                                </button>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+            <!-- ========================================= -->
+            <!-- Footer -->
+            <!-- ========================================= -->
+
+            <div class="modal-footer">
+
+                <button
+                    class="btn btn-light"
+                    type="reset">
+
+                    <i class="bi bi-arrow-counterclockwise"></i>
+
+                    Reset
+
+                </button>
+
+                <button
+                    class="btn btn-primary"
+                    id="saveDashboardPreferences">
+
+                    <i class="bi bi-check-circle-fill"></i>
+
+                    Save Changes
+
+                </button>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>''

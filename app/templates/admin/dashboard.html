@@ -1,0 +1,942 @@
+{% extends "layouts/dashboard.html" %}
+
+{% block title %}
+Admin Dashboard
+{% endblock %}
+
+{% block content %}
+
+<div class="container-fluid py-4">
+
+    <!-- ===================================== -->
+    <!-- Page Header -->
+    <!-- ===================================== -->
+
+    <div class="d-flex justify-content-between align-items-center flex-wrap mb-4">
+
+        <div>
+
+            <h2 class="fw-bold mb-1">
+
+                <i class="bi bi-speedometer2 text-primary me-2"></i>
+
+                Admin Dashboard
+
+            </h2>
+
+            <p class="text-muted mb-0">
+                Welcome back,
+                <strong>{{ current_user.first_name }}</strong>
+
+                <span class="ms-2">
+                    • {{ dashboard.system.server_time.strftime("%d %b %Y") }}
+                </span>
+            </p>
+
+        </div>
+
+        <div>
+
+            <span class="badge bg-success fs-6">
+
+                <i class="bi bi-shield-check me-1"></i>
+
+                {{ current_user.primary_role.name if current_user.primary_role else "User" }}
+
+            </span>
+
+        </div>
+
+    </div>
+
+
+    <!-- ===================================== -->
+    <!-- Quick Actions -->
+    <!-- ===================================== -->
+
+    <div class="row g-3 mb-4">
+
+        {% if has_permission("users.create") %}
+        <div class="col-lg-2 col-md-4 col-6">
+
+            <a href="{{ url_for('admin_users.index') }}"
+               class="btn btn-primary w-100 py-3">
+
+                <i class="bi bi-person-plus-fill fs-4 d-block mb-2"></i>
+
+                Users
+
+            </a>
+
+        </div>
+        {% endif %}
+
+        {% if has_permission("roles.create") %}
+        <div class="col-lg-2 col-md-4 col-6">
+
+            <a href="{{ url_for('admin_roles.index') }}"
+               class="btn btn-success w-100 py-3">
+
+                <i class="bi bi-person-badge-fill fs-4 d-block mb-2"></i>
+
+                Roles
+
+            </a>
+
+        </div>
+        {% endif %}
+
+        {% if has_permission("permissions.create") %}
+        <div class="col-lg-2 col-md-4 col-6">
+
+            <a href="{{ url_for('admin_roles.index') }}"
+            class="btn btn-warning w-100 py-3 text-dark">
+
+                <i class="bi bi-key-fill fs-4 d-block mb-2"></i>
+
+                Permissions
+
+            </a>
+
+        </div>
+        {% endif %}
+
+        {% if has_permission("audit.view") %}
+        <div class="col-lg-2 col-md-4 col-6">
+
+            <a href="{{ url_for('admin.audit_logs') }}"
+               class="btn btn-info w-100 py-3 text-white">
+
+                <i class="bi bi-clock-history fs-4 d-block mb-2"></i>
+
+                Audit Logs
+
+            </a>
+
+        </div>
+        {% endif %}
+
+        {% if has_permission("settings.view") %}
+        <div class="col-lg-2 col-md-4 col-6">
+
+            <a href="{{ url_for('admin.settings') }}"
+               class="btn btn-dark w-100 py-3">
+
+                <i class="bi bi-gear-fill fs-4 d-block mb-2"></i>
+
+                Settings
+
+            </a>
+
+        </div>
+        {% endif %}
+
+        {% if has_permission("ai.view") %}
+        <div class="col-lg-2 col-md-4 col-6">
+
+            <a href="{{ url_for('admin.ai_settings') }}"
+               class="btn btn-secondary w-100 py-3">
+
+                <i class="bi bi-cpu-fill fs-4 d-block mb-2"></i>
+
+                AI Center
+
+            </a>
+
+        </div>
+        {% endif %}
+
+        {% if has_permission("subscriptions.view") %}
+        <div class="col-lg-2 col-md-4 col-6">
+
+            <a href="{{ url_for('admin.subscriptions') }}"
+            class="btn btn-primary w-100 py-3">
+
+                <i class="bi bi-credit-card fs-4 d-block mb-2"></i>
+
+                Subscriptions
+
+            </a>
+
+        </div>
+        {% endif %}
+
+    </div>
+
+    <!-- ===================================== -->
+    <!-- KPI Cards -->
+    <!-- ===================================== -->
+
+    <div class="row g-3 mb-4">
+
+        <!-- Users -->
+
+        <div class="col-6 col-xl-3">
+
+            <div class="card shadow-sm border-0 rounded-4 h-100">
+
+                <div class="card-body">
+
+                    <small class="text-muted">
+                        Total Users
+                    </small>
+
+                    <h4 class="fw-bold mt-2 text-break">
+                        {{ stats.total_users }}
+                    </h4>
+
+                    <span class="text-success small">
+
+                        {{ stats.new_users }}
+
+                        New Today
+
+                    </span>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <!-- Roles -->
+
+        <div class="col-6 col-xl-3">
+
+            <div class="card shadow-sm border-0 rounded-4 h-100">
+
+                <div class="card-body">
+
+                    <small class="text-muted">
+                        Roles
+                    </small>
+
+                    <h4 class="fw-bold text-success mt-2 text-break">
+                        {{ dashboard.rbac.roles }}
+                    </h4>
+
+                    <span class="text-muted small">
+                        System Roles
+                    </span>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <!-- Permissions -->
+
+        <div class="col-6 col-xl-3">
+
+            <div class="card shadow-sm border-0 rounded-4 h-100">
+
+                <div class="card-body">
+
+                    <small class="text-muted">
+                        Permissions
+                    </small>
+
+                    <h4 class="fw-bold text-warning mt-2 text-break">
+                        {{ dashboard.rbac.permissions }}
+                    </h4>
+
+                    <span class="text-muted small">
+                        Registered
+                    </span>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <!-- Audit -->
+
+        <div class="col-6 col-xl-3">
+
+            <div class="card shadow-sm border-0 rounded-4 h-100">
+
+                <div class="card-body">
+
+                    <small class="text-muted">
+                        Audit Events
+                    </small>
+
+                    <h4 class="fw-bold text-danger mt-2 text-break">
+                        {{ dashboard.security.audit_logs }}
+                    </h4>
+
+                    <span class="text-danger small">
+
+                        {{ dashboard.security.failed_logins }}
+
+                        Failed Logins
+
+                    </span>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- ===================================== -->
+    <!-- Financial Summary Cards -->
+    <!-- ===================================== -->
+
+    <div class="row g-3 mb-4">
+
+        <!-- Total Income -->
+
+        <div class="col-6 col-xl-3">
+
+            <div class="card shadow-sm border-0 rounded-4 h-100">
+
+                <div class="card-body">
+
+                    <small class="text-muted">
+                        Total Income
+                    </small>
+
+                    <h4 class="fw-bold text-success mt-2 text-break dashboard-amount">
+
+                        ₦{{ "{:,.2f}".format(
+                            dashboard.finance.income
+                        ) }}
+
+                    </h4>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <!-- Total Expenses -->
+
+        <div class="col-6 col-xl-3">
+
+            <div class="card shadow-sm border-0 rounded-4 h-100">
+
+                <div class="card-body">
+
+                    <small class="text-muted">
+                        Total Expenses
+                    </small>
+
+                    <h4 class="fw-bold text-danger mt-2 text-break dashboard-amount">
+
+                        ₦{{ "{:,.2f}".format(
+                            dashboard.finance.expense
+                        ) }}
+
+                    </h4>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <!-- Net Balance -->
+
+        <div class="col-6 col-xl-3">
+
+            <div class="card shadow-sm border-0 rounded-4 h-100">
+
+                <div class="card-body">
+
+                    <small class="text-muted">
+                        Net Balance
+                    </small>
+
+                    <h4
+                        class="fw-bold
+                            mt-2
+                            text-break
+                            dashboard-amount
+                            {% if dashboard.finance.balance >= 0 %}
+                                text-success
+                            {% else %}
+                                text-danger
+                            {% endif %}"
+                    >
+
+                        ₦{{ "{:,.2f}".format(
+                            dashboard.finance.balance
+                        ) }}
+
+                    </h4>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <!-- Total Transactions -->
+
+        <div class="col-6 col-xl-3">
+
+            <div class="card shadow-sm border-0 rounded-4 h-100">
+
+                <div class="card-body">
+
+                    <small class="text-muted">
+                        Total Transactions
+                    </small>
+
+                    <h4 class="fw-bold text-primary mt-2 text-break">
+
+                        {{ dashboard.finance.transactions }}
+
+                    </h4>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+<div class="row mt-4">
+
+    <div class="col-lg-8">
+
+        <div class="card shadow-sm border-0 h-100">
+
+            <div class="card-header bg-white">
+
+                <h5 class="mb-0">
+                    Monthly Financial Overview
+                </h5>
+
+            </div>
+
+            <div class="card-body">
+
+                <div style="height:350px;">
+                    <canvas id="financeChart"></canvas>
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+        <div class="col-lg-4">
+
+        <div class="card shadow-sm border-0 h-100">
+
+            <div class="card-header bg-white">
+
+                <h5 class="mb-0">
+
+                    User Statistics
+
+                </h5>
+
+            </div>
+
+            <div class="card-body">
+
+                <div class="d-flex justify-content-between mb-3">
+                    <span>Total Users</span>
+                    <strong>{{ stats.total_users }}</strong>
+                </div>
+
+                <div class="d-flex justify-content-between mb-3">
+                    <span>Active Users</span>
+                    <strong>{{ stats.active_users }}</strong>
+                </div>
+
+                <div class="d-flex justify-content-between mb-3">
+                    <span>Administrators</span>
+                    <strong>{{ stats.admin_users }}</strong>
+                </div>
+
+                <div class="d-flex justify-content-between">
+                    <span>New Today</span>
+                    <strong>{{ stats.new_users }}</strong>
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+<div class="row mt-4">
+
+    <div class="col-lg-8">
+
+        <div class="card shadow-sm border-0">
+
+            <div class="card-header bg-white">
+
+                <h5 class="mb-0">
+
+                    Recent Audit Logs
+
+                </h5>
+
+            </div>
+
+            <div class="table-responsive">
+
+                <table class="table table-hover mb-0">
+
+                    <thead>
+
+                        <tr>
+
+                            <th>Time</th>
+                            <th>User</th>
+                            <th>Action</th>
+                            <th>Status</th>
+
+                        </tr>
+
+                    </thead>
+
+                    <tbody>
+
+                        {% for log in recent_logs %}
+
+                        <tr>
+
+                            <td>{{ log.created_at.strftime("%d %b %H:%M") }}</td>
+
+                            <td>
+                                {{ (log.user.first_name ~ " " ~ log.user.last_name) if log.user else "System" }}
+                            </td>
+
+                            <td>{{ log.action }}</td>
+
+                            <td>
+
+                                {% if log.status == "success" %}
+
+                                <span class="badge bg-success">
+                                    Success
+                                </span>
+
+                                {% else %}
+
+                                <span class="badge bg-danger">
+                                    Failed
+                                </span>
+
+                                {% endif %}
+
+                            </td>
+
+                        </tr>
+
+                        {% else %}
+
+                        <tr>
+
+                            <td colspan="4" class="text-center text-muted py-4">
+
+                                No audit logs available.
+
+                            </td>
+
+                        </tr>
+
+                        {% endfor %}
+
+                    </tbody>
+
+                </table>
+
+            </div>
+
+        </div>
+
+    </div>
+        <div class="col-lg-4">
+
+        <div class="card shadow-sm border-0">
+
+            <div class="card-header bg-white">
+
+                <h5 class="mb-0">
+
+                    Roles
+
+                </h5>
+
+            </div>
+
+            <div class="card-body">
+
+                {% for role in role_stats %}
+
+                <div class="d-flex justify-content-between mb-3">
+
+                    <span>
+
+                        {{ role.name }}
+
+                    </span>
+
+                    <span class="badge bg-primary">
+
+                        {{ role.count }}
+
+                    </span>
+
+                </div>
+
+                {% endfor %}
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+<div class="row mt-4">
+
+    <div class="col-lg-6">
+
+        <div class="card shadow-sm border-0">
+
+            <div class="card-header bg-white">
+
+                <h5 class="mb-0">
+
+                    System Status
+
+                </h5>
+
+            </div>
+
+            <div class="card-body">
+
+                <div class="mb-3">
+                    <strong>Server Time</strong>
+
+                    <span class="text-muted float-end">
+                        {{ dashboard.system.server_time.strftime("%d %b %Y %H:%M") }}
+                    </span>
+                </div>
+
+                <div class="mb-3">
+                    <strong>Database</strong>
+
+                    <span class="badge bg-primary float-end">
+                        {{ dashboard.system.database }}
+                    </span>
+                </div>
+
+                <div class="mb-3">
+                    <strong>Version</strong>
+
+                    <span class="badge bg-info float-end">
+                        {{ dashboard.system.version }}
+                    </span>
+                </div>
+
+                <div>
+                    <strong>Generated</strong>
+
+                    <span class="text-muted float-end">
+                        {{ dashboard.system.generated.strftime("%d %b %Y %H:%M") }}
+                    </span>
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+    
+    <div class="col-lg-6">
+
+        <div class="card shadow-sm border-0">
+
+            <div class="card-header bg-white">
+
+                <h5 class="mb-0">
+
+                    Latest Users
+
+                </h5>
+
+            </div>
+
+            <div class="list-group list-group-flush">
+
+                {% if latest_users %}
+
+                    {% for user in latest_users %}
+
+                    <div class="list-group-item">
+
+                        <strong>
+                            {{ user.first_name }} {{ user.last_name }}
+                        </strong>
+
+                        <br>
+
+                        <small class="text-muted">
+                            {{ user.email }}
+                        </small>
+
+                    </div>
+
+                    {% endfor %}
+
+                {% else %}
+
+                    <div class="list-group-item text-center text-muted py-4">
+
+                        No users found.
+
+                    </div>
+
+                {% endif %}
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+
+document.addEventListener("DOMContentLoaded", function () {
+
+    const canvas = document.getElementById("financeChart");
+
+    if (!canvas) return;
+
+    const ctx = canvas.getContext("2d");
+
+    new Chart(ctx, {
+
+        type: "line",
+
+        data: {
+
+            labels: {{ chart.labels|tojson }},
+
+            datasets: [
+
+                {
+                    label: "Income",
+
+                    data: {{ chart.income|tojson }},
+
+                    borderColor: "#198754",
+
+                    backgroundColor: "rgba(25, 135, 84, 0.15)",
+
+                    pointBackgroundColor: "#198754",
+
+                    pointBorderColor: "#198754",
+
+                    pointHoverBackgroundColor: "#198754",
+
+                    pointHoverBorderColor: "#ffffff",
+
+                    pointRadius: 4,
+
+                    pointHoverRadius: 7,
+
+                    borderWidth: 3,
+
+                    fill: true,
+
+                    tension: 0.4
+                },
+
+                {
+                    label: "Expenses",
+
+                    data: {{ chart.expenses|tojson }},
+
+                    borderColor: "#dc3545",
+
+                    backgroundColor: "rgba(220, 53, 69, 0.15)",
+
+                    pointBackgroundColor: "#dc3545",
+
+                    pointBorderColor: "#dc3545",
+
+                    pointHoverBackgroundColor: "#dc3545",
+
+                    pointHoverBorderColor: "#ffffff",
+
+                    pointRadius: 4,
+
+                    pointHoverRadius: 7,
+
+                    borderWidth: 3,
+
+                    fill: true,
+
+                    tension: 0.4
+                }
+
+            ]
+
+        },
+
+        options: {
+
+            responsive: true,
+
+            maintainAspectRatio: false,
+
+            interaction: {
+
+                mode: "index",
+
+                intersect: false
+
+            },
+
+            plugins: {
+
+                legend: {
+
+                    position: "bottom",
+
+                    labels: {
+
+                        usePointStyle: true,
+
+                        pointStyle: "circle",
+
+                        padding: 20,
+
+                        font: {
+
+                            size: 13,
+
+                            weight: "600"
+
+                        }
+
+                    }
+
+                },
+
+                tooltip: {
+
+                    backgroundColor: "#212529",
+
+                    titleColor: "#ffffff",
+
+                    bodyColor: "#ffffff",
+
+                    padding: 12,
+
+                    displayColors: true,
+
+                    callbacks: {
+
+                        label: function(context) {
+
+                            return context.dataset.label + ": ₦" +
+                                Number(context.parsed.y).toLocaleString();
+
+                        }
+
+                    }
+
+                }
+
+            },
+
+            scales: {
+
+                x: {
+
+                    grid: {
+
+                        display: false
+
+                    },
+
+                    ticks: {
+
+                        color: "#6c757d"
+
+                    }
+
+                },
+
+                y: {
+
+                    beginAtZero: true,
+
+                    grid: {
+
+                        color: "#e9ecef"
+
+                    },
+
+                    ticks: {
+
+                        color: "#6c757d",
+
+                        callback: function(value) {
+
+                            return "₦" + Number(value).toLocaleString();
+
+                        }
+
+                    }
+
+                }
+
+            },
+
+            elements: {
+
+                line: {
+
+                    borderJoinStyle: "round"
+
+                }
+
+            }
+
+        }
+
+    });
+
+});
+
+</script>
+
+{% endblock %}

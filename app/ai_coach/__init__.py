@@ -1,0 +1,1 @@
+from .routes import ai_coach_bp

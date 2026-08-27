@@ -1,0 +1,24 @@
+{% extends "layouts/dashboard.html" %}
+{% block title %}Focost - Report Transactions{% endblock %}
+{% block content %}
+<div class="container-fluid px-2 px-md-3 px-lg-4 pb-5">
+  <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3 mb-4">
+    <div><h2 class="fw-bold mb-1"><i class="bi bi-list-ul text-primary me-2"></i>Report Transactions</h2><p class="text-muted mb-0">All transactions matching the current report filters.</p></div>
+    <div class="d-flex gap-2"><button class="btn btn-outline-secondary" onclick="window.print()"><i class="bi bi-printer me-1"></i>Print</button><a class="btn btn-outline-primary" href="{{ url_for('reports.index', start_date=start_date, end_date=end_date, category=category) }}"><i class="bi bi-arrow-left me-1"></i>Back to Report</a></div>
+  </div>
+  <div class="card border-0 shadow-sm rounded-4">
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+          <thead class="table-light"><tr><th class="ps-4">Date</th><th>Type</th><th>Category</th><th>Description</th><th class="text-end pe-4">Amount</th></tr></thead>
+          <tbody>
+          {% for tx in transactions %}
+            <tr><td class="ps-4 text-nowrap">{{ tx.date.strftime('%d %b %Y') }}</td><td><span class="badge {% if tx.type == 'Income' %}text-bg-success{% else %}text-bg-danger{% endif %}">{{ tx.type }}</span></td><td>{{ tx.category or 'Uncategorized' }}</td><td>{{ tx.description or '—' }}</td><td class="text-end pe-4 fw-semibold {% if tx.type == 'Income' %}text-success{% else %}text-danger{% endif %}">₦{{ "{:,.2f}".format(tx.amount) }}</td></tr>
+          {% else %}<tr><td colspan="5" class="text-center py-5 text-muted">No transactions match the selected filters.</td></tr>{% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

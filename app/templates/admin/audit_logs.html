@@ -1,0 +1,683 @@
+{% extends "layouts/dashboard.html" %}
+
+{% block title %}
+Audit Logs
+{% endblock %}
+
+
+{% block content %}
+
+<div class="container-fluid py-4">
+
+    <!-- ======================================================
+         PAGE HEADER
+    ======================================================= -->
+
+    <div class="d-flex justify-content-between align-items-center
+                flex-wrap gap-3 mb-4">
+
+        <div>
+
+            <h2 class="fw-bold mb-1">
+                <i class="bi bi-shield-lock text-primary me-2"></i>
+                Audit Logs
+            </h2>
+
+            <p class="text-muted mb-0">
+                Monitor administrative, security and system activity.
+            </p>
+
+        </div>
+
+        <div>
+
+            <span class="badge bg-light text-dark border px-3 py-2">
+                <i class="bi bi-clock-history me-1"></i>
+                {{ logs.total }} Events
+            </span>
+
+        </div>
+
+    </div>
+
+
+    <!-- ======================================================
+         FILTER CARD
+    ======================================================= -->
+
+    <div class="card border-0 shadow-sm mb-4">
+
+        <div class="card-body">
+
+            <form method="GET"
+                  action="{{ url_for('admin.audit_logs') }}">
+
+                <div class="row g-3 align-items-end">
+
+                    <!-- Search -->
+
+                    <div class="col-lg-5 col-md-6">
+
+                        <label class="form-label small fw-semibold">
+                            Search
+                        </label>
+
+                        <div class="input-group">
+
+                            <span class="input-group-text bg-white">
+                                <i class="bi bi-search"></i>
+                            </span>
+
+                            <input
+                                type="text"
+                                name="search"
+                                class="form-control"
+                                placeholder="Search actions, descriptions, resources..."
+                                value="{{ search }}"
+                            >
+
+                        </div>
+
+                    </div>
+
+
+                    <!-- Category -->
+
+                    <div class="col-lg-2 col-md-3">
+
+                        <label class="form-label small fw-semibold">
+                            Category
+                        </label>
+
+                        <select
+                            name="category"
+                            class="form-select"
+                        >
+
+                            <option value="">
+                                All Categories
+                            </option>
+
+                            {% for item in [
+                                "authentication",
+                                "security",
+                                "rbac",
+                                "user",
+                                "admin",
+                                "ai",
+                                "payment",
+                                "system"
+                            ] %}
+
+                                <option
+                                    value="{{ item }}"
+                                    {% if category == item %}
+                                        selected
+                                    {% endif %}
+                                >
+                                    {{ item|replace("_", " ")|title }}
+                                </option>
+
+                            {% endfor %}
+
+                        </select>
+
+                    </div>
+
+
+                    <!-- Status -->
+
+                    <div class="col-lg-2 col-md-3">
+
+                        <label class="form-label small fw-semibold">
+                            Status
+                        </label>
+
+                        <select
+                            name="status"
+                            class="form-select"
+                        >
+
+                            <option value="">
+                                All Statuses
+                            </option>
+
+                            <option
+                                value="success"
+                                {% if status == "success" %}
+                                    selected
+                                {% endif %}
+                            >
+                                Success
+                            </option>
+
+                            <option
+                                value="failed"
+                                {% if status == "failed" %}
+                                    selected
+                                {% endif %}
+                            >
+                                Failed
+                            </option>
+
+                        </select>
+
+                    </div>
+
+
+                    <!-- Buttons -->
+
+                    <div class="col-lg-3 col-md-12">
+
+                        <div class="d-flex gap-2">
+
+                            <button
+                                type="submit"
+                                class="btn btn-primary"
+                            >
+                                <i class="bi bi-funnel me-1"></i>
+                                Filter
+                            </button>
+
+                            <a
+                                href="{{ url_for('admin.audit_logs') }}"
+                                class="btn btn-outline-secondary"
+                            >
+                                <i class="bi bi-arrow-counterclockwise"></i>
+                                Reset
+                            </a>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </form>
+
+        </div>
+
+    </div>
+
+
+    <!-- ======================================================
+         AUDIT TABLE
+    ======================================================= -->
+
+    <div class="card border-0 shadow-sm">
+
+        <div class="card-header bg-white border-0 py-3">
+
+            <div class="d-flex justify-content-between
+                        align-items-center">
+
+                <h5 class="mb-0 fw-semibold">
+
+                    <i class="bi bi-list-check text-primary me-2"></i>
+
+                    Activity History
+
+                </h5>
+
+                <small class="text-muted">
+
+                    Page {{ logs.page }}
+                    of
+                    {{ logs.pages if logs.pages else 1 }}
+
+                </small>
+
+            </div>
+
+        </div>
+
+
+        <div class="table-responsive">
+
+            <table class="table table-hover align-middle mb-0">
+
+                <thead class="table-light">
+
+                    <tr>
+
+                        <th class="text-nowrap">
+                            Date / Time
+                        </th>
+
+                        <th>
+                            User
+                        </th>
+
+                        <th>
+                            Action
+                        </th>
+
+                        <th>
+                            Category
+                        </th>
+
+                        <th>
+                            Resource
+                        </th>
+
+                        <th>
+                            Status
+                        </th>
+
+                        <th class="text-end">
+                            Details
+                        </th>
+
+                    </tr>
+
+                </thead>
+
+
+                <tbody>
+
+                    {% for log in logs.items %}
+
+                    <tr>
+
+                        <!-- Date -->
+
+                        <td class="text-nowrap">
+
+                            <div class="fw-semibold small">
+
+                                {{ log.created_at.strftime("%d %b %Y") }}
+
+                            </div>
+
+                            <small class="text-muted">
+
+                                {{ log.created_at.strftime("%H:%M:%S") }}
+
+                            </small>
+
+                        </td>
+
+
+                        <!-- User -->
+
+                        <td>
+
+                            {% if log.user %}
+
+                                <div class="fw-semibold">
+
+                                    {{ log.user.first_name }}
+                                    {{ log.user.last_name }}
+
+                                </div>
+
+                                {% if log.user.email %}
+
+                                <small class="text-muted">
+
+                                    {{ log.user.email }}
+
+                                </small>
+
+                                {% endif %}
+
+                            {% else %}
+
+                                <span class="text-muted">
+                                    System
+                                </span>
+
+                            {% endif %}
+
+                        </td>
+
+
+                        <!-- Action -->
+
+                        <td>
+
+                            <code class="small">
+
+                                {{ log.action }}
+
+                            </code>
+
+                            {% if log.description %}
+
+                            <div class="small text-muted mt-1">
+
+                                {{ log.description }}
+
+                            </div>
+
+                            {% endif %}
+
+                        </td>
+
+
+                        <!-- Category -->
+
+                        <td>
+
+                            {% set category_class = {
+                                "authentication": "primary",
+                                "security": "danger",
+                                "rbac": "warning",
+                                "user": "info",
+                                "admin": "dark",
+                                "ai": "secondary",
+                                "payment": "success",
+                                "system": "secondary"
+                            }.get(log.category, "secondary") %}
+
+                            <span class="badge
+                                         bg-{{ category_class }}">
+
+                                {{ log.category|replace("_", " ")|title }}
+
+                            </span>
+
+                        </td>
+
+
+                        <!-- Resource -->
+
+                        <td>
+
+                            {% if log.resource %}
+
+                                <span class="small">
+
+                                    {{ log.resource }}
+
+                                    {% if log.resource_id %}
+
+                                        <span class="text-muted">
+                                            #{{ log.resource_id }}
+                                        </span>
+
+                                    {% endif %}
+
+                                </span>
+
+                            {% else %}
+
+                                <span class="text-muted">
+                                    —
+                                </span>
+
+                            {% endif %}
+
+                        </td>
+
+
+                        <!-- Status -->
+
+                        <td>
+
+                            {% if log.status == "success" %}
+
+                                <span class="badge bg-success">
+
+                                    <i class="bi bi-check-circle me-1"></i>
+                                    Success
+
+                                </span>
+
+                            {% elif log.status == "failed" %}
+
+                                <span class="badge bg-danger">
+
+                                    <i class="bi bi-x-circle me-1"></i>
+                                    Failed
+
+                                </span>
+
+                            {% else %}
+
+                                <span class="badge bg-secondary">
+
+                                    {{ log.status|title }}
+
+                                </span>
+
+                            {% endif %}
+
+                        </td>
+
+
+                        <!-- Details -->
+
+                        <td class="text-end">
+
+                            <button
+                                type="button"
+                                class="btn btn-sm btn-outline-primary audit-details-btn"
+                                data-bs-toggle="modal"
+                                data-bs-target="#auditDetailsModal"
+
+                                data-action="{{ log.action|e }}"
+                                data-category="{{ log.category|e }}"
+                                data-status="{{ log.status|e }}"
+
+                                data-user="
+                                {% if log.user %}
+                                    {{ log.user.first_name }} {{ log.user.last_name }}
+                                {% else %}
+                                    System
+                                {% endif %}
+                                "
+
+                                data-email="
+                                {% if log.user %}
+                                    {{ log.user.email or '' }}
+                                {% endif %}
+                                "
+
+                                data-ip="{{ log.ip_address or '' }}"
+                                data-method="{{ log.http_method or log.method or '' }}"
+                                data-path="{{ log.request_path or '' }}"
+                                data-endpoint="{{ log.endpoint or '' }}"
+
+                                data-description="{{ log.description or ''|e }}"
+                                data-user-agent="{{ log.user_agent or ''|e }}"
+
+                                data-extra='{{ log.extra_data|tojson|e }}'
+
+                                data-created="
+                                    {% if log.created_at %}
+                                        {{ log.created_at.strftime("%d %b %Y, %H:%M:%S") }}
+                                    {% endif %}
+                                "
+
+                                title="View audit event">
+
+                                <i class="bi bi-eye me-1"></i>
+                                <span class="d-none d-md-inline">View</span>
+
+                            </button>
+
+                        </td>
+
+                    </tr>
+                    
+                    {% else %}
+
+                    <tr>
+
+                        <td
+                            colspan="7"
+                            class="text-center py-5"
+                        >
+
+                            <div class="text-muted">
+
+                                <i class="bi bi-inbox fs-1 d-block mb-3"></i>
+
+                                <h6 class="fw-semibold">
+                                    No audit logs found
+                                </h6>
+
+                                <p class="small mb-0">
+                                    Try changing your search or filter criteria.
+                                </p>
+
+                            </div>
+
+                        </td>
+
+                    </tr>
+
+                    {% endfor %}
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+
+        <!-- ======================================================
+             PAGINATION
+        ======================================================= -->
+
+        {% if logs.pages > 1 %}
+
+        <div class="card-footer bg-white border-0 py-3">
+
+            <nav aria-label="Audit log pagination">
+
+                <ul class="pagination pagination-sm
+                           justify-content-center mb-0">
+
+                    <!-- Previous -->
+
+                    <li class="page-item
+                        {% if not logs.has_prev %}
+                            disabled
+                        {% endif %}"
+                    >
+
+                        {% if logs.has_prev %}
+
+                            <a
+                                class="page-link"
+                                href="{{ url_for(
+                                    'admin.audit_logs',
+                                    page=logs.prev_num,
+                                    search=search,
+                                    category=category,
+                                    status=status
+                                ) }}"
+                            >
+                                <i class="bi bi-chevron-left"></i>
+                            </a>
+
+                        {% else %}
+
+                            <span class="page-link">
+                                <i class="bi bi-chevron-left"></i>
+                            </span>
+
+                        {% endif %}
+
+                    </li>
+
+
+                    <!-- Page Numbers -->
+
+                    {% for page_num in logs.iter_pages(
+                        left_edge=1,
+                        right_edge=1,
+                        left_current=2,
+                        right_current=2
+                    ) %}
+
+                        {% if page_num %}
+
+                            <li class="page-item
+                                {% if page_num == logs.page %}
+                                    active
+                                {% endif %}"
+                            >
+
+                                <a
+                                    class="page-link"
+                                    href="{{ url_for(
+                                        'admin.audit_logs',
+                                        page=page_num,
+                                        search=search,
+                                        category=category,
+                                        status=status
+                                    ) }}"
+                                >
+                                    {{ page_num }}
+                                </a>
+
+                            </li>
+
+                        {% else %}
+
+                            <li class="page-item disabled">
+
+                                <span class="page-link">
+                                    …
+                                </span>
+
+                            </li>
+
+                        {% endif %}
+
+                    {% endfor %}
+
+
+                    <!-- Next -->
+
+                    <li class="page-item
+                        {% if not logs.has_next %}
+                            disabled
+                        {% endif %}"
+                    >
+
+                        {% if logs.has_next %}
+
+                            <a
+                                class="page-link"
+                                href="{{ url_for(
+                                    'admin.audit_logs',
+                                    page=logs.next_num,
+                                    search=search,
+                                    category=category,
+                                    status=status
+                                ) }}"
+                            >
+
+                                <i class="bi bi-chevron-right"></i>
+
+                            </a>
+
+                        {% else %}
+
+                            <span class="page-link">
+
+                                <i class="bi bi-chevron-right"></i>
+
+                            </span>
+
+                        {% endif %}
+
+                    </li>
+
+                </ul>
+
+            </nav>
+
+        </div>
+
+        {% endif %}
+
+    </div>
+
+</div>
+
+{% endblock %}
