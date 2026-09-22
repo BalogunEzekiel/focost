@@ -6,7 +6,7 @@ import time
 import uuid
 
 from .config import Config
-from .extensions import db, migrate, login_manager
+from .extensions import db, migrate, login_manager, csrf
 from .models import *
 
 
@@ -23,6 +23,7 @@ def create_app():
     db.init_app(app)
     migrate.init_app(app, db)
     login_manager.init_app(app)
+    csrf.init_app(app)
 
     # ---------------------------------------------------------
     # Request correlation + security headers
@@ -139,6 +140,9 @@ def create_app():
     from .rbac.middleware import RBACMiddleware
     from .context_processors import register_context_processors
     from app.routes.settings import settings_bp
+    from .routes.billing import billing_bp
+    from .routes.profile import profile_bp
+    from .routes.assets import assets_bp
 
     app.register_blueprint(dashboard_bp)
     app.register_blueprint(auth_bp)
@@ -155,6 +159,9 @@ def create_app():
     app.register_blueprint(admin_users_bp)
     app.register_blueprint(admin_roles_bp)
     app.register_blueprint(settings_bp)
+    app.register_blueprint(billing_bp)
+    app.register_blueprint(profile_bp)
+    app.register_blueprint(assets_bp)
 
     RBACMiddleware.init_app(app)
     register_context_processors(app)
@@ -172,6 +179,13 @@ def create_app():
     @click.argument("name")
     def seed_command(name):
         SeedManager.run(name)
+
+    @app.cli.command("create-paystack-plans")
+    def create_paystack_plans():
+        """Create missing monthly Paystack plans from FOCOST's DB plan catalog."""
+        from .subscriptions.paystack import PaystackService
+        for item in PaystackService.create_or_sync_plans():
+            print(item)
 
     @app.errorhandler(401)
     def unauthorized(error):

@@ -46,6 +46,7 @@ class NotificationService:
         action_url=None,
         icon=None,
         unique_key=None,
+        priority="normal",
         commit=True,
     ):
         """
@@ -95,6 +96,8 @@ class NotificationService:
 
             unique_key=unique_key,
 
+            priority=priority,
+
             created_at=datetime.utcnow(),
 
         )
@@ -103,6 +106,12 @@ class NotificationService:
 
         if commit:
             db.session.commit()
+            try:
+                if priority in {"high", "critical"}:
+                    from app.services.notification_delivery import NotificationDeliveryService
+                    NotificationDeliveryService.send_email(user_id, title, message)
+            except Exception:
+                pass
 
         return notification
 
@@ -116,9 +125,7 @@ class NotificationService:
         Get one notification.
         """
 
-        query = Notification.query.filter_by(
-            id=notification_id
-        )
+        query = Notification.query.filter_by(id=notification_id, is_deleted=False)
 
         if user_id is not None:
             query = query.filter_by(
@@ -142,7 +149,7 @@ class NotificationService:
 
         return (
             Notification.query
-            .filter_by(user_id=user_id)
+            .filter(Notification.user_id == user_id, Notification.is_deleted == False, (Notification.expires_at.is_(None) | (Notification.expires_at > datetime.utcnow())))
             .order_by(Notification.created_at.desc())
             .limit(limit)
             .all()
@@ -157,7 +164,7 @@ class NotificationService:
 
         return (
             Notification.query
-            .filter_by(user_id=user_id)
+            .filter(Notification.user_id == user_id, Notification.is_deleted == False)
             .order_by(Notification.created_at.desc())
             .all()
         )
@@ -270,7 +277,7 @@ class NotificationService:
             notification.is_read = True
             notification.read_at = datetime.utcnow()
 
-            db.session.commit()
+        db.session.commit()
 
         return True
 
@@ -283,9 +290,10 @@ class NotificationService:
 
         notifications = (
             Notification.query
-            .filter_by(
-                user_id=user_id,
-                is_read=False,
+            .filter(
+                Notification.user_id == user_id,
+                Notification.is_read == False,
+                Notification.is_deleted == False,
             )
             .all()
         )
@@ -300,6 +308,19 @@ class NotificationService:
         db.session.commit()
 
         return len(notifications)
+
+    # ==========================================================
+    # Dismiss Notification
+    # ==========================================================
+    @staticmethod
+    def dismiss(notification_id, user_id=None):
+        notification = NotificationService.get(notification_id, user_id)
+        if notification is None:
+            return False
+        notification.dismissed_at = datetime.utcnow()
+        notification.is_deleted = True
+        db.session.commit()
+        return True
 
     # ==========================================================
     # Delete Notification
@@ -511,7 +532,12 @@ class NotificationService:
         percentage,
         action_url=None,
         commit=True,
+        target_date=None,
     ):
+        # A goal with a future target date must never generate a
+        # "behind schedule" notification solely because funding is low.
+        if target_date and target_date > date.today():
+            return None
         return NotificationService.create(
             user_id=user_id,
             title="Goal Behind Schedule",
@@ -970,6 +996,24 @@ class NotificationService:
                     commit=False,
 
                 )
+
+        # ------------------------------------------------------
+        # Subscription + AI usage alerts
+        # ------------------------------------------------------
+        try:
+            from app.subscriptions.service import SubscriptionService
+            from app.services.ai_usage_service import AIUsageService
+            sub = SubscriptionService.current(user_id)
+            if sub and sub.is_trial and sub.trial_ends_at:
+                days_left = (sub.trial_ends_at.date() - date.today()).days
+                if 0 <= days_left <= 7:
+                    NotificationService.create(user_id=user_id, title="Trial ending soon", message=f"Your FOCOST free trial ends in {days_left} day(s). Choose a paid plan to keep paid AI access.", level="warning", notification_type="subscription", icon="bi-hourglass-split", action_url="/billing", unique_key=f"TRIAL_ENDING_{sub.id}_{days_left}", priority="high", commit=False)
+            usage = AIUsageService.monthly(user_id)
+            limit = usage.get("token_limit")
+            if limit and usage.get("total_tokens", 0) >= limit * 0.8:
+                NotificationService.create(user_id=user_id, title="AI usage nearing limit", message=f"You have used {usage['total_tokens']:,} of {limit:,} AI tokens this month.", level="warning", notification_type="ai_usage", icon="bi-cpu", action_url="/ai/", unique_key=f"AI_USAGE_80_{user_id}_{date.today().strftime('%Y-%m')}", priority="high", commit=False)
+        except Exception:
+            pass
 
         db.session.commit()
 

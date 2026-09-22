@@ -305,11 +305,18 @@
                         data-bs-toggle="dropdown"
                         aria-expanded="false">
 
-                        <div class="avatar-circle me-2">
-
-                            {{ current_user.first_name[:1]|upper }}
-
-                        </div>
+                        {% if current_user.avatar and current_user.avatar != "default-avatar.png" %}
+                            <img
+                                src="{{ url_for('profile.avatar', filename=current_user.avatar.split('/')[-1]) }}"
+                                alt="{{ current_user.first_name }} {{ current_user.last_name }}"
+                                class="avatar-circle me-2"
+                                style="width:36px;height:36px;object-fit:cover;border-radius:50%;"
+                            >
+                        {% else %}
+                            <div class="avatar-circle me-2">
+                                {{ current_user.first_name[:1]|upper }}
+                            </div>
+                        {% endif %}
 
                         <div class="text-start d-none d-md-block">
 
@@ -321,7 +328,7 @@
 
                             <small class="text-muted">
 
-                                {{ user_plan }}
+                                {% if current_user.role_slug == "user" %}{{ user_plan }}{% elif current_user.role_slug %}{{ current_user.role_slug|replace("_", " ")|title }}{% else %}{{ user_plan }}{% endif %}
 
                             </small>
 
@@ -351,12 +358,20 @@
 
                             <a
                                 class="dropdown-item"
-                                href="#">
+                                href="{{ url_for('profile.index') }}">
 
                                 <i class="bi bi-person me-2"></i>
 
                                 My Profile
 
+                            </a>
+
+                        </li>
+
+                        <li>
+                            <a class="dropdown-item" href="{{ url_for('billing.index') }}">
+                                <i class="bi bi-credit-card me-2"></i>
+                                Plan & Billing
                             </a>
 
                         </li>

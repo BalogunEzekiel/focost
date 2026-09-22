@@ -6,6 +6,7 @@ from app.models.base import BaseModel
 
 class Goal(BaseModel):
     __tablename__ = "goals"
+    __table_args__ = (db.CheckConstraint("target_amount > 0", name="ck_goals_target_amount_positive"),)
 
     user_id = db.Column(
         db.Integer,
@@ -74,9 +75,9 @@ class Goal(BaseModel):
 
     @property
     def saved_amount(self):
-        return sum(
-            contribution.amount
-            for contribution in self.contributions
+        return min(
+            float(self.target_amount or 0),
+            sum(float(contribution.amount or 0) for contribution in self.contributions if contribution.is_active)
         )
 
     @property

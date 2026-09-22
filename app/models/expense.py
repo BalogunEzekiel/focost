@@ -7,6 +7,7 @@ from app.models.base import BaseModel
 class Expense(BaseModel):
 
     __tablename__ = "expenses"
+    __table_args__ = (db.CheckConstraint("amount > 0", name="ck_expenses_amount_positive"),)
 
     user_id = db.Column(
         db.Integer,
@@ -51,6 +52,16 @@ class Expense(BaseModel):
         db.Boolean,
         default=False
     )
+
+    # Accounting classification for cash outflows that are not operating expenses.
+    # Values: expense, investment, goal_contribution.
+    transaction_class = db.Column(
+        db.String(30),
+        nullable=False,
+        default="expense",
+        index=True
+    )
+
 
     user = db.relationship(
         "User",

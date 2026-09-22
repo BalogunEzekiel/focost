@@ -49,8 +49,6 @@ admin_roles_bp = Blueprint(
 @permission_required("roles.view")
 def index():
 
-    print(">>> ADMIN ROLES INDEX CALLED <<<")
-
     page = request.args.get(
         "page",
         1,

@@ -11,4 +11,17 @@ from .role import Role
 from .permission import Permission
 from .role_permission import RolePermission
 from .user_role import UserRole
+from .user_settings import UserSettings
+from .subscription import (
+    SubscriptionPlan,
+    UserSubscription,
+    PaymentTransaction,
+    PaymentAttempt,
+    PaystackCustomer,
+    WebhookEvent,
+    SubscriptionEvent,
+)
+from .ai_usage import AIUsage
+from .asset import Asset
 
+from .investment_event import InvestmentEvent

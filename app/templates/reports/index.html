@@ -94,6 +94,14 @@
         <div class="col-6 col-xl-3"><div class="card shadow-sm rounded-4 h-100 report-kpi"><div class="card-body"><div class="d-flex justify-content-between"><small class="text-muted fw-bold text-uppercase">Transactions</small><span class="kpi-icon bg-warning-subtle text-warning"><i class="bi bi-arrow-left-right"></i></span></div><div class="report-value text-dark mt-3">{{ summary.transactions }}</div><small class="text-muted">{{ summary.income_transactions }} income · {{ summary.expense_transactions }} expenses</small></div></div></div>
     </div>
 
+    <!-- GOALS & INVESTMENT ACCOUNTING -->
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-lg-3"><div class="card shadow-sm rounded-4 h-100"><div class="card-body"><small class="text-muted fw-bold text-uppercase">Goal Contributions</small><div class="report-value text-danger mt-3">₦{{ "{:,.2f}".format(summary.goal_contributions) }}</div><small class="text-muted">Recorded as dated goal outflows</small></div></div></div>
+        <div class="col-6 col-lg-3"><div class="card shadow-sm rounded-4 h-100"><div class="card-body"><small class="text-muted fw-bold text-uppercase">Investment Funding</small><div class="report-value text-danger mt-3">₦{{ "{:,.2f}".format(summary.investment_funding) }}</div><small class="text-muted">Asset acquisition cash outflow</small></div></div></div>
+        <div class="col-6 col-lg-3"><div class="card shadow-sm rounded-4 h-100"><div class="card-body"><small class="text-muted fw-bold text-uppercase">Investment Gain / Loss</small><div class="report-value {% if summary.investment_gain_loss >= 0 %}text-success{% else %}text-danger{% endif %} mt-3">₦{{ "{:,.2f}".format(summary.investment_gain_loss) }}</div><small class="text-muted">Current active portfolio vs cost basis</small></div></div></div>
+        <div class="col-6 col-lg-3"><div class="card shadow-sm rounded-4 h-100"><div class="card-body"><small class="text-muted fw-bold text-uppercase">Liquidation Proceeds</small><div class="report-value text-success mt-3">₦{{ "{:,.2f}".format(summary.liquidation_proceeds) }}</div><small class="text-muted">Capital returned from investments</small></div></div></div>
+    </div>
+
     <!-- PERFORMANCE -->
     <div class="row g-4 mb-4">
         <div class="col-12 col-xl-8">

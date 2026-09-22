@@ -1,5 +1,6 @@
 import statistics
 from app.models.permission import Permission
+from app.extensions import db
 
 from flask import (
     Blueprint,
@@ -146,6 +147,35 @@ def audit_logs():
         category=category,
         status=status
     )
+
+@admin_bp.post("/subscriptions/plan/<int:plan_id>/paystack-code")
+@permission_required("subscriptions.edit")
+def update_paystack_plan_code(plan_id):
+    from flask import jsonify
+    from app.models.subscription import SubscriptionPlan
+    from app.extensions import db
+    plan = db.session.get(SubscriptionPlan, plan_id)
+    if not plan:
+        return jsonify({"success": False, "message": "Plan not found."}), 404
+    code = (request.get_json(silent=True) or {}).get("paystack_plan_code", "").strip() or None
+    plan.paystack_plan_code = code
+    db.session.commit()
+    AuditService.log(action="subscription.plan_code_updated", category=ADMIN, resource="SubscriptionPlan", resource_id=plan.public_id, description="Updated Paystack plan code")
+    return jsonify({"success": True})
+
+
+
+@admin_bp.post("/ai/usage/reset/<int:user_id>")
+@permission_required("ai.configure")
+def reset_ai_usage(user_id):
+    from flask import jsonify
+    from app.models.user import User
+    user = db.session.get(User, user_id)
+    if not user:
+        return jsonify({"success": False, "message": "User not found."}), 404
+    count = AdminService.reset_ai_usage(user_id)
+    AuditService.log(action="ai.usage_reset", category=ADMIN, resource="User", resource_id=user.public_id, description=f"Reset AI usage for {user.email}", metadata={"records_deleted": count})
+    return jsonify({"success": True, "message": f"Reset {count} AI usage records for {user.email}."})
 
 # ==========================================================
 # AI CENTER
@@ -300,12 +330,9 @@ def subscriptions():
         description="Viewed Subscription Management"
     )
 
+    from app.subscriptions.service import SubscriptionService
+    data = SubscriptionService.admin_summary()
     return render_template(
         "admin/subscriptions.html",
-        total_users=0,
-        active_subscriptions=0,
-        trial_subscriptions=0,
-        expired_subscriptions=0,
-        plans=[],
-        subscriptions=[]
+        **data
     )

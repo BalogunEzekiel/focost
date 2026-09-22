@@ -149,6 +149,12 @@ def add_income():
 
     if form.validate_on_submit():
 
+        from app.subscriptions.service import SubscriptionService
+        allowed, limit_message = SubscriptionService.can_add_transaction(current_user.id)
+        if not allowed:
+            flash(limit_message, "warning")
+            return render_template("income/add.html", form=form), 402
+
         income = Income(
             user_id=current_user.id,
             source=form.source.data,
@@ -198,6 +204,13 @@ def edit_income(income_id):
         id=income_id,
         user_id=current_user.id
     ).first_or_404()
+
+    if income.transaction_class != "income":
+        flash(
+            "This income record originated from an Investment. Please manage it from the Investments page.",
+            "info",
+        )
+        return redirect(url_for("income.list_income"))
 
     form = IncomeForm(obj=income)
 
@@ -249,6 +262,13 @@ def delete_income(income_id):
         id=income_id,
         user_id=current_user.id
     ).first_or_404()
+
+    if income.transaction_class != "income":
+        flash(
+            "This income record originated from an Investment and cannot be deleted here.",
+            "warning",
+        )
+        return redirect(url_for("income.list_income"))
 
     public_id = income.public_id
     source = income.source

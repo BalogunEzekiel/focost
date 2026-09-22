@@ -2779,6 +2779,44 @@ body.theme-default {
 }
 
 
+
+/* System theme follows the user's operating-system preference. */
+body.theme-system {
+    --focost-primary: #0d6efd;
+    --focost-surface: #ffffff;
+    --focost-background: #f8f9fa;
+    --focost-text: #212529;
+    background-color: var(--focost-background);
+    color: var(--focost-text);
+}
+
+@media (prefers-color-scheme: dark) {
+    body.theme-system {
+        --focost-primary: #6ea8fe;
+        --focost-surface: #212529;
+        --focost-background: #121212;
+        --focost-text: #f8f9fa;
+    }
+}
+
+body.theme-dark .card, body.theme-system .card,
+body.theme-dark .dropdown-menu, body.theme-system .dropdown-menu,
+body.theme-dark .modal-content, body.theme-system .modal-content {
+    background-color: var(--focost-surface);
+    color: var(--focost-text);
+}
+
+body.theme-dark .table, body.theme-system .table {
+    --bs-table-bg: transparent;
+    --bs-table-color: var(--focost-text);
+}
+
+body.theme-dark .bg-white, body.theme-system .bg-white {
+    background-color: var(--focost-surface) !important;
+}
+
+body.theme-dark .text-dark, body.theme-system .text-dark { color: var(--focost-text) !important; }
+
 /* Light */
 
 body.theme-light {

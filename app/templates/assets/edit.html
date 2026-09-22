@@ -1,0 +1,16 @@
+{% extends "layouts/dashboard.html" %}
+{% block title %}Update Investment{% endblock %}
+{% block content %}
+<div class="container-fluid"><div class="row"><div class="col-lg-8 mx-auto"><div class="card border-0 shadow-sm"><div class="card-header bg-white"><h4 class="fw-bold mb-0">Update Investment</h4><small class="text-muted">Changes to current value are recorded as dated investment gains or losses. Cost basis is preserved.</small></div><div class="card-body">
+<form method="post"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+<div class="row g-3">
+<div class="col-md-6"><label class="form-label">Investment name</label><input class="form-control" name="name" value="{{ asset.name }}" required></div>
+<div class="col-md-6"><label class="form-label">Investment type</label><input class="form-control" name="investment_type" value="{{ asset.investment_type or '' }}"></div>
+<div class="col-md-6"><label class="form-label">Cost basis</label><input class="form-control" value="{{ '%.2f'|format(asset.cost_basis if asset.cost_basis is not none else asset.acquisition_cost) }}" disabled></div>
+<div class="col-md-6"><label class="form-label">Current value</label><input class="form-control" type="number" step="0.01" min="0" name="current_value" value="{{ '%.2f'|format(asset.current_value) }}" required></div>
+<div class="col-md-6"><label class="form-label">Valuation date</label><input class="form-control" type="date" name="valuation_date" required></div>
+<div class="col-md-6"><label class="form-label">Quantity</label><input class="form-control" type="number" step="0.000001" min="0" name="quantity" value="{{ asset.quantity if asset.quantity is not none else '' }}"></div>
+<div class="col-12"><textarea class="form-control" name="notes" rows="3">{{ asset.notes or '' }}</textarea></div>
+</div><div class="mt-4"><button class="btn btn-primary">Save Valuation</button><a href="{{ url_for('assets.index') }}" class="btn btn-secondary ms-2">Cancel</a></div>
+</form></div></div></div></div></div>
+{% endblock %}

@@ -415,6 +415,18 @@
                 {% endif %}
 
 
+                <!-- Plan & Billing -->
+                <a href="{{ url_for('billing.index') }}" class="nav-link {% if request.endpoint and request.endpoint.startswith('billing.') %}active{% else %}text-white{% endif %}">
+                    <i class="bi bi-credit-card-2-front me-2"></i> Plan & Billing
+                </a>
+
+                <!-- Assets -->
+                {% if has_permission("dashboard.view") %}
+                    <a href="{{ url_for('assets.index') }}" class="nav-link {% if request.endpoint and request.endpoint.startswith('assets.') %}active{% else %}text-white{% endif %}">
+                        <i class="bi bi-briefcase me-2"></i> Investments
+                    </a>
+                {% endif %}
+
                 <!-- Reports -->
 
                 {% if has_permission("reports.view") %}
@@ -458,21 +470,21 @@
 
                 <!-- Avatar -->
 
-                <div
-                    class="rounded-circle
-                           bg-primary
-                           text-white
-                           d-flex
-                           align-items-center
-                           justify-content-center
-                           me-2
-                           flex-shrink-0"
-                    style="width:36px;height:36px;"
-                >
-
-                    {{ current_user.first_name[:1]|upper }}
-
-                </div>
+                {% if current_user.avatar and current_user.avatar != "default-avatar.png" %}
+                    <img
+                        src="{{ url_for('profile.avatar', filename=current_user.avatar.split('/')[-1]) }}"
+                        alt="{{ current_user.first_name }} {{ current_user.last_name }}"
+                        class="rounded-circle me-2 flex-shrink-0"
+                        style="width:36px;height:36px;object-fit:cover;"
+                    >
+                {% else %}
+                    <div
+                        class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center me-2 flex-shrink-0"
+                        style="width:36px;height:36px;"
+                    >
+                        {{ current_user.first_name[:1]|upper }}
+                    </div>
+                {% endif %}
 
 
                 <!-- Name / Role -->
@@ -489,7 +501,7 @@
 
                     </div>
 
- 
+
                     <small
                         class="text-secondary
                                text-truncate
@@ -500,6 +512,10 @@
 
                             Super Administrator
 
+                        {% elif current_role == "user" %}
+
+                            {{ user_plan }}
+
                         {% elif current_role %}
 
                             {{ current_role
@@ -508,7 +524,7 @@
 
                         {% else %}
 
-                            No Role
+                            {{ user_plan }}
 
                         {% endif %}
 

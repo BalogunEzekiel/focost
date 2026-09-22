@@ -1,19 +1,10 @@
-import traceback
-
-from flask import (
-    Blueprint,
-    render_template,
-    request,
-    jsonify
-)
-
-from flask_login import (
-    login_required,
-    current_user
-)
+from flask import Blueprint, render_template, request, jsonify, session
+from flask_login import login_required, current_user
 
 from app.services.ai_service import AIService
-from flask import session
+from app.services.ai_usage_service import AIUsageService
+from app.subscriptions.decorators import subscription_required
+
 
 ai_bp = Blueprint(
     "ai",
@@ -22,95 +13,154 @@ ai_bp = Blueprint(
 )
 
 
-@ai_bp.route("/")
+# ==========================================================
+# AI COACH PAGE
+# ==========================================================
+
+@ai_bp.get("/")
 @login_required
 def coach():
-    """
-    Render the AI Financial Coach page.
-    """
-    return render_template("ai/index.html")
+
+    return render_template(
+        "ai/index.html"
+    )
 
 
-@ai_bp.route("/chat", methods=["POST"])
+# ==========================================================
+# AI CHAT
+# ==========================================================
+
+@ai_bp.post("/chat")
 @login_required
+@subscription_required("ai_chat")
 def chat():
-    """
-    Handle AI chat requests.
-    """
 
-    try:
+    data = request.get_json(
+        silent=True
+    ) or {}
 
-        data = request.get_json(silent=True) or {}
+    message = str(
+        data.get("message", "")
+    ).strip()
 
-        message = data.get("message", "").strip()
-
-        if not message:
-
-            return jsonify({
-
-                "success": False,
-
-                "message": "Please enter a message."
-
-            }), 400
-
-        result = AIService.chat(
-            user_id=current_user.id,
-            message=message
-        )
-
-        return jsonify(result)
-
-    except Exception as e:
-
-        traceback.print_exc()
+    if not message:
 
         return jsonify({
-
             "success": False,
+            "message": "Please enter a message."
+        }), 400
 
-            "message": str(e)
+    result = AIService.chat(
+        current_user.id,
+        message
+    )
 
-        }), 500
+    if result.get("success"):
+
+        status = 200
+
+    elif result.get("code") == "AI_USAGE_LIMIT":
+
+        status = 429
+
+    else:
+
+        status = 503
+
+    return jsonify(result), status
 
 
+# ==========================================================
+# AI USAGE
+# ==========================================================
+
+@ai_bp.get("/usage")
+@login_required
+def usage():
+
+    return jsonify({
+        "success": True,
+        "usage": AIUsageService.monthly(
+            current_user.id
+        )
+    })
 
 
-@ai_bp.route("/clear", methods=["POST"])
+# ==========================================================
+# AI FORECAST
+# ==========================================================
+
+@ai_bp.get("/forecast")
+@login_required
+def forecast():
+
+    from app.services.dashboard_service import DashboardService
+
+    return jsonify({
+        "success": True,
+
+        "forecast":
+            DashboardService.advanced_forecast(
+                current_user.id
+            ),
+
+        "category_forecasts":
+            DashboardService.category_forecasts(
+                current_user.id
+            ),
+
+        "anomalies":
+            DashboardService.anomaly_analysis(
+                current_user.id
+            )
+    })
+
+
+# ==========================================================
+# CLEAR CURRENT AI SESSION
+# ==========================================================
+
+@ai_bp.post("/clear")
 @login_required
 def clear_chat():
 
-    session.pop("ai_history", None)
+    AIService.clear_session_history()
 
     return jsonify({
-
         "success": True
-
     })
 
-@ai_bp.route("/history")
+
+# ==========================================================
+# CURRENT SESSION HISTORY
+# ==========================================================
+
+@ai_bp.get("/history")
 @login_required
 def history():
-
-    history = session.get("ai_history", [])
-
-    messages = []
-
-    for item in history:
-
-        role = item.get("role", "assistant")
-        content = item.get("content", "")
-
-        messages.append({
-            "sender": "You" if role == "user" else "FOCOST AI",
-            "message": content,
-            "role": role
-        })
+    messages = session.get(
+        "ai_history",
+        []
+    )
 
     return jsonify({
-
         "first_name": current_user.first_name,
-
-        "messages": messages
-
+        "messages": [
+            {
+                "sender": (
+                    "You"
+                    if item.get("role") == "user"
+                    else "FOCOST AI"
+                ),
+                "message": item.get(
+                    "content",
+                    ""
+                ),
+                "role": item.get(
+                    "role"
+                ),
+            }
+            for item in messages
+            if isinstance(item, dict)
+        ],
     })

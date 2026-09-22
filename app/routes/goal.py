@@ -15,6 +15,7 @@ from app.extensions import db
 
 from app.models.goal import Goal
 from app.models.goal_contribution import GoalContribution
+from app.models.expense import Expense
 
 from app.forms.goal_form import GoalForm
 from app.forms.goal_contribution_form import GoalContributionForm
@@ -104,15 +105,13 @@ def edit(goal_id):
 
     if form.validate_on_submit():
 
-        GoalService.update_goal(
-            goal,
-            form
-        )
+        try:
+            GoalService.update_goal(goal, form)
+        except ValueError as exc:
+            flash(str(exc), "danger")
+            return render_template("goal/edit.html", form=form, goal=goal)
 
-        flash(
-            "Goal updated successfully.",
-            "success"
-        )
+        flash("Goal updated successfully.", "success")
 
         return redirect(
             url_for("goal.list_goals")
@@ -195,18 +194,30 @@ def contribute(goal_id):
         user_id=current_user.id
     ).first_or_404()
 
+    if goal.progress_percentage >= 100:
+        flash("This goal has already been achieved. Additional contributions are not permitted.", "info")
+        return redirect(url_for("goal.detail", goal_id=goal.id))
+
     form = GoalContributionForm()
 
     if form.validate_on_submit():
 
-        GoalService.add_contribution(
-            form,
-            goal,
-            current_user.id
-        )
+        try:
+            GoalService.add_contribution(
+                form,
+                goal,
+                current_user.id
+            )
+        except ValueError as exc:
+            flash(str(exc), "danger")
+            return render_template(
+                "goal/contribute.html",
+                form=form,
+                goal=goal,
+            )
 
         flash(
-            "Contribution added successfully.",
+            "Contribution recorded and deducted from your available balance.",
             "success"
         )
 
@@ -272,24 +283,14 @@ def edit_contribution(contribution_id):
     form = GoalContributionForm(obj=contribution)
 
     if form.validate_on_submit():
+        try:
+            GoalService.update_contribution(contribution, form, current_user.id)
+        except ValueError as exc:
+            flash(str(exc), "danger")
+            return render_template("goal/edit_contribution.html", form=form, contribution=contribution, goal=contribution.goal)
 
-        contribution.amount = form.amount.data
-        contribution.contribution_date = form.contribution_date.data
-        contribution.note = form.note.data
-
-        db.session.commit()
-
-        flash(
-            "Contribution updated successfully.",
-            "success"
-        )
-
-        return redirect(
-            url_for(
-                "goal.contributions",
-                goal_id=contribution.goal_id
-            )
-        )
+        flash("Contribution updated successfully.", "success")
+        return redirect(url_for("goal.contributions", goal_id=contribution.goal_id))
 
     return render_template(
         "goal/edit_contribution.html",
@@ -313,8 +314,11 @@ def delete_contribution(contribution_id):
     )
 
     goal_id = contribution.goal_id
+    linked_expense = contribution.expense
 
     db.session.delete(contribution)
+    if linked_expense:
+        db.session.delete(linked_expense)
     db.session.commit()
 
     flash(

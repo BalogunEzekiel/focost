@@ -105,6 +105,19 @@ def register_context_processors(app):
             notifications = []
             unread_count = 0
 
+        try:
+            from app.subscriptions.service import SubscriptionService
+            subscription = SubscriptionService.current(current_user.id)
+            if subscription and subscription.is_trial:
+                user_plan = "Free Trial" if subscription.is_active_access else "Trial Expired"
+            elif subscription and subscription.plan:
+                user_plan = subscription.plan.name if subscription.is_active_access else "Subscription Expired"
+            else:
+                user_plan = "No Active Plan"
+        except Exception:
+            logger.exception("Failed loading subscription status")
+            user_plan = "Subscription"
+
         return {
 
             # ==================================================
@@ -139,11 +152,7 @@ def register_context_processors(app):
 
             "current_user": current_user,
 
-            "user_plan": getattr(
-                current_user,
-                "plan",
-                "Basic"
-            ),
+            "user_plan": user_plan,
 
             # ==================================================
             # RBAC Helpers

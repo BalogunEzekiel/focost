@@ -324,48 +324,15 @@ Income
 
                                 <div class="action-buttons">
 
-                                    <!-- Edit -->
-
-                                    <a
-                                        href="{{ url_for(
-                                            'income.edit_income',
-                                            income_id=income.id
-                                        ) }}"
-                                        class="action-btn action-edit"
-                                        title="Edit Income"
-                                    >
-
-                                        <i class="bi bi-pencil-square"></i>
-
-                                    </a>
-
-
-                                    <!-- Delete -->
-
-                                    <form
-                                        method="POST"
-                                        action="{{ url_for(
-                                            'income.delete_income',
-                                            income_id=income.id
-                                        ) }}"
-                                        class="d-inline"
-                                    >
-
-                                        <button
-                                            type="submit"
-                                            class="action-btn action-delete"
-                                            title="Delete Income"
-                                            onclick="return confirm(
-                                                'Delete this income record?'
-                                            );"
-                                        >
-
-                                            <i class="bi bi-trash"></i>
-
-                                        </button>
-
+                                    {% if income.transaction_class in [None, 'income'] %}
+                                    <a href="{{ url_for('income.edit_income', income_id=income.id) }}" class="action-btn action-edit" title="Edit Income"><i class="bi bi-pencil-square"></i></a>
+                                    <form method="POST" action="{{ url_for('income.delete_income', income_id=income.id) }}" class="d-inline">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <button type="submit" class="action-btn action-delete" title="Delete Income" onclick="return confirm('Delete this income record?');"><i class="bi bi-trash"></i></button>
                                     </form>
-
+                                    {% else %}
+                                    <span class="badge text-bg-light">Investment-originated</span>
+                                    {% endif %}
                                 </div>
 
                             </td>

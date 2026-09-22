@@ -20,8 +20,6 @@ from app.extensions import db
 from app.models.user import User
 from app.forms.auth_forms import RegisterForm, LoginForm
 
-from app.ai_coach.chat_history import clear_session
-
 from app.audit.service import AuditService
 from app.audit.constants import (
     AUTH,
@@ -33,7 +31,7 @@ from app.audit.constants import (
 )
 
 from app.rbac.service import RBACService
-
+from app.services.ai_service import AIService
 
 auth_bp = Blueprint(
     "auth",
@@ -94,6 +92,11 @@ def register():
 
             # Assign default user role
             RBACService.assign_default_role(user)
+
+            # Start the time-limited trial. Trial state belongs to the
+            # subscription domain and is independent of AI processing.
+            from app.subscriptions.service import SubscriptionService
+            SubscriptionService.start_trial(user, commit=False)
 
             # Save everything
             db.session.commit()
@@ -624,11 +627,6 @@ def login():
 
         if not password_valid:
 
-            current_app.logger.warning(
-                "INVALID PASSWORD FOR: %s",
-                email
-            )
-
             try:
 
                 AuditService.log(
@@ -664,11 +662,6 @@ def login():
         # --------------------------------------------------
         # VALID LOGIN
         # --------------------------------------------------
-
-        current_app.logger.warning(
-            "VALID CREDENTIALS: %s",
-            user.email
-        )
 
         # --------------------------------------------------
         # LOGIN USER
@@ -800,22 +793,10 @@ def logout():
             "LOGOUT AUDIT FAILED"
         )
 
-    try:
+    # Clear non-persistent AI chat history.
+    AIService.clear_session_history()
 
-        clear_session(
-            current_user.id
-        )
 
-    except Exception:
-
-        current_app.logger.exception(
-            "CHAT SESSION CLEAR FAILED"
-        )
-
-    session.pop(
-        "ai_history",
-        None
-    )
 
     logout_user()
 

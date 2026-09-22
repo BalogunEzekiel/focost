@@ -9,6 +9,11 @@ from app.models.income import Income
 from app.models.expense import Expense
 from app.models.budget import Budget
 from app.models.goal import Goal
+from app.models.asset import Asset
+from app.models.goal_contribution import GoalContribution
+from app.models.user_settings import UserSettings
+from app.models.ai_usage import AIUsage
+from app.models.subscription import UserSubscription
 
 account_bp = Blueprint("account", __name__, url_prefix="/account")
 
@@ -45,6 +50,10 @@ def export_data():
     goals = Goal.query.filter_by(user_id=current_user.id).order_by(
         Goal.target_date.asc(), Goal.id.desc()
     ).all()
+    assets = Asset.query.filter_by(user_id=current_user.id).order_by(Asset.id.desc()).all()
+    settings = UserSettings.query.filter_by(user_id=current_user.id).first()
+    usage = AIUsage.query.filter_by(user_id=current_user.id).order_by(AIUsage.created_at.desc()).all()
+    subscriptions = UserSubscription.query.filter_by(user_id=current_user.id).order_by(UserSubscription.created_at.desc()).all()
 
     payload = {
         "schema_version": "1.0",
@@ -72,6 +81,7 @@ def export_data():
                 "expense_date": _iso(x.expense_date),
                 "notes": x.notes,
                 "recurring": bool(x.recurring),
+                "transaction_class": getattr(x, "transaction_class", "expense"),
             } for x in expenses
         ],
         "budgets": [
@@ -84,6 +94,49 @@ def export_data():
                 "end_date": _iso(x.end_date),
                 "spent": float(x.spent or 0),
             } for x in budgets
+        ],
+        "assets": [
+            {
+                "public_id": x.public_id,
+                "name": x.name,
+                "asset_type": x.asset_type,
+                "investment_type": x.investment_type,
+                "acquisition_date": _iso(x.acquisition_date),
+                "acquisition_cost": float(x.acquisition_cost or 0),
+                "current_value": float(x.current_value or 0),
+                "quantity": x.quantity,
+                "cost_basis": x.cost_basis,
+                "currency": x.currency,
+                "notes": x.notes,
+            } for x in assets
+        ],
+        "settings": settings.get_preferences() if settings else {},
+        "ai_usage": [
+            {
+                "public_id": x.public_id,
+                "request_id": x.request_id,
+                "provider": x.provider,
+                "model": x.model,
+                "input_tokens": x.input_tokens,
+                "output_tokens": x.output_tokens,
+                "total_tokens": x.total_tokens,
+                "duration_ms": x.duration_ms,
+                "estimated_cost_minor": x.estimated_cost_minor,
+                "status": x.status,
+                "created_at": _iso(x.created_at),
+            } for x in usage
+        ],
+        "subscriptions": [
+            {
+                "public_id": x.public_id,
+                "status": x.status,
+                "is_trial": bool(x.is_trial),
+                "trial_started_at": _iso(x.trial_started_at),
+                "trial_ends_at": _iso(x.trial_ends_at),
+                "current_period_start": _iso(x.current_period_start),
+                "current_period_end": _iso(x.current_period_end),
+                "cancel_at_period_end": bool(x.cancel_at_period_end),
+            } for x in subscriptions
         ],
         "goals": [
             {
@@ -101,7 +154,8 @@ def export_data():
                         "public_id": c.public_id,
                         "amount": float(c.amount or 0),
                         "date": _iso(getattr(c, "contribution_date", None) or getattr(c, "date", None)),
-                        "notes": getattr(c, "notes", None),
+                        "notes": getattr(c, "note", None),
+                        "expense_id": getattr(c, "expense_id", None),
                     }
                     for c in x.contributions
                 ],

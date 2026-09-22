@@ -1,0 +1,127 @@
+{% extends "layouts/dashboard.html" %}
+{% block title %}Plan & Billing{% endblock %}
+{% block content %}
+
+<div class="container-fluid py-4">
+  <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
+    <div><h2 class="fw-bold mb-1">Plan & Billing</h2><p class="text-muted mb-0">Manage your FOCOST subscription and AI access.</p></div>
+    <div class="badge bg-primary-subtle text-primary fs-6 px-3 py-2">{{ entitlements.get('plan_name', 'Free Trial') }}</div>
+  </div>
+
+  <div class="alert alert-info border-0 shadow-sm">
+    {% if subscription and subscription.is_trial %}
+    Your 30-day free trial ends <strong>{{ subscription.trial_ends_at.strftime('%d %b %Y') if subscription.trial_ends_at else 'soon' }}</strong>. Choose a paid plan before it expires to retain paid AI capabilities.
+    {% elif subscription and subscription.is_active_access %}
+    Your subscription is active through <strong>{{ subscription.current_period_end.strftime('%d %b %Y') if subscription.current_period_end else 'the current period' }}</strong>.
+    {% else %}
+    Your paid access is inactive. Choose a plan to continue.
+    {% endif %}
+  </div>
+
+  <div class="row g-4">
+    {% for plan in plans %}
+    <div class="col-lg-4">
+      <div class="card h-100 border-0 shadow-sm">
+        <div class="card-body p-4 d-flex flex-column">
+          <h4 class="fw-bold">{{ plan.name }}</h4>
+          <p class="text-muted">{{ plan.description }}</p>
+
+
+      <div class="display-6 fw-bold mb-3">
+        ₦{{ '{:,.0f}'.format(plan.amount) }}
+        <small class="fs-6 text-muted">/month</small>
+      </div>
+
+      <ul class="list-unstyled small mb-4">
+        <li class="mb-2">
+          <i class="bi bi-check-circle text-success me-2"></i>
+          {{ '{:,}'.format(plan.ai_token_limit) }} AI tokens/month
+        </li>
+        <li class="mb-2">
+          <i class="bi bi-check-circle text-success me-2"></i>
+          {{ '{:,}'.format(plan.ai_request_limit) }} AI requests/month
+        </li>
+
+        {% if plan.transaction_limit %}
+        <li class="mb-2">
+          <i class="bi bi-check-circle text-success me-2"></i>
+          Up to {{ '{:,}'.format(plan.transaction_limit) }} tracked transactions
+        </li>
+        {% endif %}
+
+        {% for key, enabled in plan.entitlements().items() if enabled %}
+        <li class="mb-2">
+          <i class="bi bi-check-circle text-success me-2"></i>
+          {{ key|replace('_',' ')|title }}
+        </li>
+        {% endfor %}
+      </ul>
+
+      <button class="btn btn-primary mt-auto subscribe-btn" data-plan="{{ plan.slug }}">
+        Subscribe
+      </button>
+    </div>
+  </div>
+</div>
+{% endfor %}
+
+
+  </div>
+
+  <div class="card border-0 shadow-sm mt-4">
+    <div class="card-body">
+      <h5 class="fw-bold">Current AI usage</h5>
+      <div id="usagePanel" class="text-muted">
+        Usage is enforced server-side against your active entitlement.
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %} <meta name="csrf-token" content="{{ csrf_token() }}">
+
+<script>
+fetch('/ai/usage').then(r => r.json()).then(d => {
+  const u = d.usage || {};
+  const panel = document.getElementById('usagePanel');
+
+  if (panel) {
+    panel.innerHTML = `${Number(u.total_tokens || 0).toLocaleString()} tokens used / ${u.token_limit == null ? 'unlimited' : Number(u.token_limit).toLocaleString()} allowed · ${Number(u.requests || 0).toLocaleString()} requests used / ${u.request_limit == null ? 'unlimited' : Number(u.request_limit).toLocaleString()} allowed`;
+  }
+}).catch(() => {});
+
+document.querySelectorAll('.subscribe-btn').forEach(btn => btn.addEventListener('click', async () => {
+  btn.disabled = true;
+  btn.textContent = 'Connecting…';
+
+  try {
+    const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+
+    const r = await fetch('{{ url_for("billing.initialize") }}', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': csrfToken
+      },
+      body: JSON.stringify({
+        plan: btn.dataset.plan
+      })
+    });
+
+    const d = await r.json();
+
+    if (!d.success) {
+      throw new Error(d.message || 'Payment initialization failed');
+    }
+
+    window.location.href = d.authorization_url;
+  } catch (e) {
+    alert(e.message);
+    btn.disabled = false;
+    btn.textContent = 'Subscribe';
+  }
+}));
+</script>
+
+{% endblock %}

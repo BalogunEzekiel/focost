@@ -11,6 +11,8 @@ from app.models.permission import Permission
 from app.models.user_role import UserRole
 from app.models.role_permission import RolePermission
 from app.models.audit_log import AuditLog
+from app.models.ai_usage import AIUsage
+from app.models.subscription import UserSubscription, SubscriptionPlan
 
 # Optional models
 try:
@@ -227,16 +229,19 @@ class AdminService:
     @staticmethod
     def subscription_stats():
 
+        rows = (
+            db.session.query(UserSubscription.status, func.count(UserSubscription.id))
+            .group_by(UserSubscription.status)
+            .all()
+        )
+        stats = {status: int(count) for status, count in rows}
         return {
-
-            "total": 0,
-
-            "basic": 0,
-
-            "pro": 0,
-
-            "enterprise": 0
-
+            "total": UserSubscription.query.count(),
+            "active": stats.get("active", 0),
+            "trial": stats.get("trial", 0),
+            "past_due": stats.get("past_due", 0),
+            "expired": stats.get("expired", 0),
+            "canceled": stats.get("canceled", 0),
         }
 
     # ======================================================
@@ -245,18 +250,58 @@ class AdminService:
 
     @staticmethod
     def ai_stats():
-
+        total = AIUsage.query.count()
+        success = AIUsage.query.filter_by(status="success").count()
+        failed = AIUsage.query.filter(AIUsage.status != "success").count()
+        tokens = db.session.query(func.coalesce(func.sum(AIUsage.total_tokens), 0)).scalar() or 0
+        input_tokens = db.session.query(func.coalesce(func.sum(AIUsage.input_tokens), 0)).scalar() or 0
+        output_tokens = db.session.query(func.coalesce(func.sum(AIUsage.output_tokens), 0)).scalar() or 0
+        cost_minor = db.session.query(func.coalesce(func.sum(AIUsage.estimated_cost_minor), 0)).scalar() or 0
+        provider_rows = db.session.query(AIUsage.provider, func.count(AIUsage.id), func.sum(AIUsage.total_tokens)).group_by(AIUsage.provider).all()
+        providers = {provider or "Unknown": {"requests": int(count), "tokens": int(tokens or 0)} for provider, count, tokens in provider_rows}
         return {
-
-            "requests": 0,
-
-            "success": 0,
-
-            "failed": 0,
-
-            "providers": {}
-
+            "requests": total,
+            "success": success,
+            "failed": failed,
+            "total_tokens": int(tokens),
+            "input_tokens": int(input_tokens),
+            "output_tokens": int(output_tokens),
+            "estimated_cost_minor": int(cost_minor),
+            "providers": providers,
+            "recent": AIUsage.query.order_by(AIUsage.created_at.desc()).limit(20).all(),
+            "user_usage": (
+                db.session.query(
+                    User.id, User.first_name, User.last_name, User.email,
+                    func.count(AIUsage.id).label("requests"),
+                    func.coalesce(func.sum(AIUsage.total_tokens), 0).label("tokens")
+                )
+                .outerjoin(AIUsage, AIUsage.user_id == User.id)
+                .group_by(User.id)
+                .order_by(func.coalesce(func.sum(AIUsage.total_tokens), 0).desc())
+                .limit(100).all()
+            ),
         }
+
+    @staticmethod
+    def reset_ai_usage(user_id=None):
+        from app.services.ai_usage_service import AIUsageService
+        from datetime import timedelta
+        start, _ = AIUsageService.current_period(user_id) if user_id is not None else (datetime.utcnow().replace(day=1, hour=0, minute=0, second=0, microsecond=0), None)
+        query = AIUsage.query.filter(
+            AIUsage.status == "success",
+            (
+                (AIUsage.billing_period_start == start)
+                | (AIUsage.billing_period_start.is_(None) & (AIUsage.created_at >= start))
+            )
+        )
+        if user_id is not None:
+            query = query.filter(AIUsage.user_id == user_id)
+        rows = query.all()
+        reset_marker = start - timedelta(microseconds=1)
+        for row in rows:
+            row.billing_period_start = reset_marker
+        db.session.commit()
+        return len(rows)
 
     # ======================================================
     # RECENT AUDIT EVENTS

@@ -391,51 +391,17 @@ Expenses
                                 <td class="text-center">
 
                                     <div class="action-buttons">
-
-
-                                        <!-- EDIT -->
-
-                                        <a
-                                            href="{{ url_for(
-                                                'expense.edit_expense',
-                                                expense_id=expense.id
-                                            ) }}"
-                                            class="action-btn action-edit"
-                                            title="Edit Expense"
-                                        >
-
-                                            <i class="bi bi-pencil-square"></i>
-
-                                        </a>
-
-
-                                        <!-- DELETE -->
-
-                                        <form
-                                            method="POST"
-                                            action="{{ url_for(
-                                                'expense.delete_expense',
-                                                expense_id=expense.id
-                                            ) }}"
-                                            class="d-inline"
-                                        >
-
-                                            <button
-                                                type="submit"
-                                                class="action-btn action-delete"
-                                                title="Delete Expense"
-                                                onclick="return confirm(
-                                                    'Delete this expense record?'
-                                                );"
-                                            >
-
-                                                <i class="bi bi-trash"></i>
-
-                                            </button>
-
+                                        {% if expense.transaction_class in [None, 'expense'] %}
+                                        <a href="{{ url_for('expense.edit_expense', expense_id=expense.id) }}" class="action-btn action-edit" title="Edit Expense"><i class="bi bi-pencil-square"></i></a>
+                                        <form method="POST" action="{{ url_for('expense.delete_expense', expense_id=expense.id) }}" class="d-inline">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                            <button type="submit" class="action-btn action-delete" title="Delete Expense" onclick="return confirm('Delete this expense record?');"><i class="bi bi-trash"></i></button>
                                         </form>
-
-
+                                        {% else %}
+                                        <span class="badge text-bg-light" title="Managed from its originating page">
+                                            {% if expense.transaction_class == 'goal_contribution' %}Goal{% elif expense.transaction_class == 'investment' %}Investment{% elif expense.transaction_class == 'investment_loss' %}Investment Loss{% else %}System-linked{% endif %}
+                                        </span>
+                                        {% endif %}
                                     </div>
 
                                 </td>

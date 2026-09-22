@@ -1,674 +1,205 @@
-<!-- ==========================================================
-     FOCOST SETTINGS MODAL
-=========================================================== -->
-
-<div class="modal fade"
-     id="settingsModal"
-     tabindex="-1"
-     aria-labelledby="settingsModalLabel"
-     aria-hidden="true">
-
-    <div class="modal-dialog modal-xl modal-dialog-scrollable">
-
-        <div class="modal-content settings-modal">
-
-            <!-- ========================================= -->
-            <!-- Header -->
-            <!-- ========================================= -->
-
-            <div class="modal-header">
-
-                <div>
-
-                    <h4
-                        class="modal-title"
-                        id="settingsModalLabel">
-
-                        <i class="bi bi-gear-fill text-primary"></i>
-
-                        Settings
-
-                    </h4>
-
-                    <small class="text-muted">
-
-                        Customize your FOCOST workspace and preferences
-
-                    </small>
-
-                </div>
-
-                <button
-                    class="btn-close"
-                    data-bs-dismiss="modal">
-                </button>
-
-            </div>
-
-            <!-- ========================================= -->
-            <!-- Body -->
-            <!-- ========================================= -->
-
-            <div class="modal-body">
-
-                <div class="row">
-
-                    <!-- ========================================= -->
-                    <!-- Left Navigation -->
-                    <!-- ========================================= -->
-
-                    <div class="col-lg-3">
-
-                        <div class="list-group settings-nav">
-
-                            <button
-                                class="list-group-item list-group-item-action active"
-                                data-bs-toggle="pill"
-                                data-bs-target="#appearance">
-
-                                <i class="bi bi-palette-fill"></i>
-
-                                Appearance
-
-                            </button>
-
-                            <button
-                                class="list-group-item list-group-item-action"
-                                data-bs-toggle="pill"
-                                data-bs-target="#dashboard">
-
-                                <i class="bi bi-grid-fill"></i>
-
-                                Dashboard
-
-                            </button>
-
-                            <button
-                                class="list-group-item list-group-item-action"
-                                data-bs-toggle="pill"
-                                data-bs-target="#notifications">
-
-                                <i class="bi bi-bell-fill"></i>
-
-                                Notifications
-
-                            </button>
-
-                            <button
-                                class="list-group-item list-group-item-action"
-                                data-bs-toggle="pill"
-                                data-bs-target="#assistant">
-
-                                <i class="bi bi-stars"></i>
-
-                                AI Preferences
-
-                            </button>
-
-                            <button
-                                class="list-group-item list-group-item-action"
-                                data-bs-toggle="pill"
-                                data-bs-target="#security">
-
-                                <i class="bi bi-shield-lock-fill"></i>
-
-                                Security
-
-                            </button>
-
-                            <button
-                                class="list-group-item list-group-item-action"
-                                data-bs-toggle="pill"
-                                data-bs-target="#data">
-
-                                <i class="bi bi-cloud-arrow-down-fill"></i>
-
-                                Data & Export
-
-                            </button>
-
-                        </div>
-
-                    </div>
-
-                    <!-- ========================================= -->
-                    <!-- Right Content -->
-                    <!-- ========================================= -->
-
-                    <div class="col-lg-9">
-
-                        <div class="tab-content">
-
-                            <!-- ========================================= -->
-                            <!-- Appearance -->
-                            <!-- ========================================= -->
-
-                            <div
-                                class="tab-pane fade show active"
-                                id="appearance">
-
-                                <h5>
-
-                                    Appearance
-
-                                </h5>
-
-                                <hr>
-
-                                <div class="row">
-
-                                    <div class="col-md-6 mb-4">
-
-                                        <label class="form-label">
-
-                                            Dashboard Theme
-
-                                        </label>
-
-                                        <select
-                                            class="form-select"
-                                            id="dashboardTheme">
-
-                                            <option value="default">
-
-                                                Default
-
-                                            </option>
-
-                                            <option value="light">
-
-                                                Light
-
-                                            </option>
-
-                                            <option value="dark">
-
-                                                Dark
-
-                                            </option>
-
-                                            <option value="blue">
-
-                                                Blue Professional
-
-                                            </option>
-
-                                            <option value="green">
-
-                                                Finance Green
-
-                                            </option>
-
-                                        </select>
-
-                                    </div>
-
-                                    <div class="col-md-6 mb-4">
-
-                                        <label class="form-label">
-
-                                            Dashboard Density
-
-                                        </label>
-
-                                        <select
-                                            class="form-select"
-                                            id="dashboardDensity">
-
-                                            <option>
-
-                                                Comfortable
-
-                                            </option>
-
-                                            <option>
-
-                                                Compact
-
-                                            </option>
-
-                                            <option>
-
-                                                Spacious
-
-                                            </option>
-
-                                        </select>
-
-                                    </div>
-
-                                </div>
-
-                            </div>
-
-                            <!-- ========================================= -->
-                            <!-- Dashboard -->
-                            <!-- ========================================= -->
-
-                            <div
-                                class="tab-pane fade"
-                                id="dashboard">
-
-                                <h5>
-
-                                    Dashboard Widgets
-
-                                </h5>
-
-                                <hr>
-
-                                <div class="row">
-
-                                    <div class="col-md-6">
-
-                                        <div class="form-check form-switch mb-3">
-
-                                            <input
-                                                class="form-check-input"
-                                                type="checkbox"
-                                                checked
-                                                id="showSummary">
-
-                                            <label class="form-check-label">
-
-                                                AI Summary
-
-                                            </label>
-
-                                        </div>
-
-                                        <div class="form-check form-switch mb-3">
-
-                                            <input
-                                                class="form-check-input"
-                                                type="checkbox"
-                                                checked
-                                                id="showInsights">
-
-                                            <label>
-
-                                                Smart Insights
-
-                                            </label>
-
-                                        </div>
-
-                                        <div class="form-check form-switch mb-3">
-
-                                            <input
-                                                class="form-check-input"
-                                                type="checkbox"
-                                                checked
-                                                id="showBudgets">
-
-                                            <label>
-
-                                                Budget Engine
-
-                                            </label>
-
-                                        </div>
-
-                                        <div class="form-check form-switch mb-3">
-
-                                            <input
-                                                class="form-check-input"
-                                                type="checkbox"
-                                                checked
-                                                id="showGoals">
-
-                                            <label>
-
-                                                Goal Progress
-
-                                            </label>
-
-                                        </div>
-
-                                    </div>
-
-                                    <div class="col-md-6">
-
-                                        <div class="form-check form-switch mb-3">
-
-                                            <input
-                                                class="form-check-input"
-                                                checked
-                                                id="showHealth"
-                                                type="checkbox">
-
-                                            <label>
-
-                                                Financial Health
-
-                                            </label>
-
-                                        </div>
-
-                                        <div class="form-check form-switch mb-3">
-
-                                            <input
-                                                class="form-check-input"
-                                                checked
-                                                id="showRecommendations"
-                                                type="checkbox">
-
-                                            <label>
-
-                                                Recommendations
-
-                                            </label>
-
-                                        </div>
-
-                                        <div class="form-check form-switch mb-3">
-
-                                            <input
-                                                class="form-check-input"
-                                                checked
-                                                id="showTransactions"
-                                                type="checkbox">
-
-                                            <label>
-
-                                                Transactions
-
-                                            </label>
-
-                                        </div>
-
-                                    </div>
-
-                                </div>
-
-                                <div class="mt-4">
-
-                                    <label class="form-label">
-
-                                        Default Analytics
-
-                                    </label>
-
-                                    <select
-                                        class="form-select"
-                                        id="defaultChart">
-
-                                        <option>
-
-                                            Income vs Expenses
-
-                                        </option>
-
-                                        <option>
-
-                                            Expense Breakdown
-
-                                        </option>
-
-                                        <option>
-
-                                            Cash Flow
-
-                                        </option>
-
-                                        <option>
-
-                                            Budget Utilization
-
-                                        </option>
-
-                                        <option>
-
-                                            Financial Health
-
-                                        </option>
-
-                                    </select>
-
-                                </div>
-
-                            </div>
-
-                            <!-- ========================================= -->
-                            <!-- Notifications -->
-                            <!-- ========================================= -->
-
-                            <div
-                                class="tab-pane fade"
-                                id="notifications">
-
-                                <h5>
-
-                                    Notifications
-
-                                </h5>
-
-                                <hr>
-
-                                <div class="form-check form-switch mb-3">
-
-                                    <input
-                                        class="form-check-input"
-                                        checked
-                                        type="checkbox">
-
-                                    <label>
-
-                                        Budget Alerts
-
-                                    </label>
-
-                                </div>
-
-                                <div class="form-check form-switch mb-3">
-
-                                    <input
-                                        class="form-check-input"
-                                        checked
-                                        type="checkbox">
-
-                                    <label>
-
-                                        Goal Reminders
-
-                                    </label>
-
-                                </div>
-
-                                <div class="form-check form-switch mb-3">
-
-                                    <input
-                                        class="form-check-input"
-                                        checked
-                                        type="checkbox">
-
-                                    <label>
-
-                                        Weekly Summary
-
-                                    </label>
-
-                                </div>
-
-                                <div class="form-check form-switch mb-3">
-
-                                    <input
-                                        class="form-check-input"
-                                        checked
-                                        type="checkbox">
-
-                                    <label>
-
-                                        Browser Notifications
-
-                                    </label>
-
-                                </div>
-
-                            </div>
-
-                            <!-- ========================================= -->
-                            <!-- AI -->
-                            <!-- ========================================= -->
-
-                            <div
-                                class="tab-pane fade"
-                                id="assistant">
-
-                                <h5>
-
-                                    AI Preferences
-
-                                </h5>
-
-                                <hr>
-
-                                <div class="form-check form-switch mb-3">
-
-                                    <input
-                                        checked
-                                        class="form-check-input"
-                                        id="dailyBrief"
-                                        type="checkbox">
-
-                                    <label>
-
-                                        Daily Financial Brief
-
-                                    </label>
-
-                                </div>
-
-                                <div class="form-check form-switch mb-3">
-
-                                    <input
-                                        checked
-                                        class="form-check-input"
-                                        id="smartAlerts"
-                                        type="checkbox">
-
-                                    <label>
-
-                                        Smart Spending Alerts
-
-                                    </label>
-
-                                </div>
-
-                                <div class="form-check form-switch mb-3">
-
-                                    <input
-                                        checked
-                                        class="form-check-input"
-                                        id="goalReminders"
-                                        type="checkbox">
-
-                                    <label>
-
-                                        Goal Reminders
-
-                                    </label>
-
-                                </div>
-
-                                <div class="form-check form-switch">
-
-                                    <input
-                                        checked
-                                        class="form-check-input"
-                                        id="weeklyReport"
-                                        type="checkbox">
-
-                                    <label>
-
-                                        Weekly AI Report
-
-                                    </label>
-
-                                </div>
-
-                            </div>
-
-                            <!-- ========================================= -->
-                            <!-- Security -->
-                            <!-- ========================================= -->
-
-                            <div
-                                class="tab-pane fade"
-                                id="security">
-
-                                <h5>
-
-                                    Security
-
-                                </h5>
-
-                                <hr>
-
-                                <button class="btn btn-outline-primary mb-3">
-
-                                    <i class="bi bi-key-fill"></i>
-
-                                    Change Password
-
-                                </button>
-
-                                <button class="btn btn-outline-success mb-3">
-
-                                    <i class="bi bi-phone-fill"></i>
-
-                                    Enable Two-Factor Authentication
-
-                                </button>
-
-                                <button class="btn btn-outline-secondary">
-
-                                    <i class="bi bi-laptop"></i>
-
-                                    Active Sessions
-
-                                </button>
-
-                            </div>
-
-                        </div>
-
-                    </div>
-
-                </div>
-
-            </div>
-
-            <!-- ========================================= -->
-            <!-- Footer -->
-            <!-- ========================================= -->
-
-            <div class="modal-footer">
-
-                <button
-                    class="btn btn-light"
-                    type="reset">
-
-                    <i class="bi bi-arrow-counterclockwise"></i>
-
-                    Reset
-
-                </button>
-
-                <button
-                    class="btn btn-primary"
-                    id="saveDashboardPreferences">
-
-                    <i class="bi bi-check-circle-fill"></i>
-
-                    Save Changes
-
-                </button>
-
-            </div>
-
+<div class="modal fade" id="settingsModal" tabindex="-1" aria-labelledby="settingsModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content border-0 shadow-lg">
+      <div class="modal-header">
+        <div>
+          <h5 class="modal-title fw-bold" id="settingsModalLabel"><i class="bi bi-gear me-2"></i>Settings</h5>
+          <small class="text-muted">Manage your FOCOST preferences and personal data.</small>
         </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
 
+      <div class="modal-body">
+        <div class="row g-4">
+          <div class="col-lg-3">
+            <div class="list-group settings-nav" role="tablist">
+              <button class="list-group-item list-group-item-action active" data-bs-toggle="pill" data-bs-target="#focostAppearance" type="button">Appearance</button>
+              <button class="list-group-item list-group-item-action" data-bs-toggle="pill" data-bs-target="#focostDashboard" type="button">Dashboard</button>
+              <button class="list-group-item list-group-item-action" data-bs-toggle="pill" data-bs-target="#focostNotifications" type="button">Notifications</button>
+              <button class="list-group-item list-group-item-action" data-bs-toggle="pill" data-bs-target="#focostAssistant" type="button">AI Preferences</button>
+              <button class="list-group-item list-group-item-action" data-bs-toggle="pill" data-bs-target="#focostData" type="button">Data & Export</button>
+            </div>
+          </div>
+
+          <div class="col-lg-9">
+            <div class="tab-content">
+              <div class="tab-pane fade show active" id="focostAppearance">
+                <h5 class="fw-bold">Appearance</h5><hr>
+                <div class="row g-3">
+                  <div class="col-md-6">
+                    <label class="form-label">Dashboard Theme</label>
+                    <select class="form-select" id="dashboardTheme">
+                      <option value="system">System</option><option value="light">Light</option><option value="dark">Dark</option><option value="blue">Blue Professional</option><option value="green">Finance Green</option><option value="default">Default</option>
+                    </select>
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label">Dashboard Density</label>
+                    <select class="form-select" id="dashboardDensity">
+                      <option value="comfortable">Comfortable</option><option value="compact">Compact</option><option value="spacious">Spacious</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <div class="tab-pane fade" id="focostDashboard">
+                <h5 class="fw-bold">Dashboard</h5><hr>
+                <div class="row g-3">
+                  <div class="col-md-6">
+                    <div class="form-check form-switch mb-3"><input class="form-check-input" type="checkbox" id="showSummary"><label class="form-check-label" for="showSummary">Summary</label></div>
+                    <div class="form-check form-switch mb-3"><input class="form-check-input" type="checkbox" id="showInsights"><label class="form-check-label" for="showInsights">Smart Insights</label></div>
+                    <div class="form-check form-switch mb-3"><input class="form-check-input" type="checkbox" id="showBudgets"><label class="form-check-label" for="showBudgets">Budgets</label></div>
+                    <div class="form-check form-switch mb-3"><input class="form-check-input" type="checkbox" id="showGoals"><label class="form-check-label" for="showGoals">Goals</label></div>
+                  </div>
+                  <div class="col-md-6">
+                    <div class="form-check form-switch mb-3"><input class="form-check-input" type="checkbox" id="showHealth"><label class="form-check-label" for="showHealth">Financial Health</label></div>
+                    <div class="form-check form-switch mb-3"><input class="form-check-input" type="checkbox" id="showRecommendations"><label class="form-check-label" for="showRecommendations">Recommendations</label></div>
+                    <div class="form-check form-switch mb-3"><input class="form-check-input" type="checkbox" id="showTransactions"><label class="form-check-label" for="showTransactions">Transactions</label></div>
+                  </div>
+                </div>
+                <label class="form-label mt-2">Default Analytics</label>
+                <select class="form-select" id="defaultChart">
+                  <option value="Income vs Expenses">Income vs Expenses</option><option value="Expense Breakdown">Expense Breakdown</option><option value="Cash Flow">Cash Flow</option><option value="Budget Utilization">Budget Utilization</option><option value="Financial Health">Financial Health</option>
+                </select>
+              </div>
+
+              <div class="tab-pane fade" id="focostNotifications">
+                <h5 class="fw-bold">Notifications</h5><hr>
+                <div class="row g-3">
+                  <div class="col-md-6">
+                    <div class="form-check form-switch mb-3"><input class="form-check-input" type="checkbox" id="financialAlerts"><label class="form-check-label" for="financialAlerts">Financial alerts</label></div>
+                    <div class="form-check form-switch mb-3"><input class="form-check-input" type="checkbox" id="budgetAlerts"><label class="form-check-label" for="budgetAlerts">Budget alerts</label></div>
+                    <div class="form-check form-switch mb-3"><input class="form-check-input" type="checkbox" id="goalAlerts"><label class="form-check-label" for="goalAlerts">Goal alerts</label></div>
+                    <div class="form-check form-switch mb-3"><input class="form-check-input" type="checkbox" id="subscriptionAlerts"><label class="form-check-label" for="subscriptionAlerts">Subscription alerts</label></div>
+                  </div>
+                  <div class="col-md-6">
+                    <div class="form-check form-switch mb-3"><input class="form-check-input" type="checkbox" id="aiUsageAlerts"><label class="form-check-label" for="aiUsageAlerts">AI usage alerts</label></div>
+                    <div class="form-check form-switch mb-3"><input class="form-check-input" type="checkbox" id="insightAlerts"><label class="form-check-label" for="insightAlerts">Financial insights</label></div>
+                    <div class="form-check form-switch mb-3"><input class="form-check-input" type="checkbox" id="emailNotifications"><label class="form-check-label" for="emailNotifications">Email notifications</label></div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="tab-pane fade" id="focostAssistant">
+                <h5 class="fw-bold">AI Preferences</h5><hr>
+                <div class="form-check form-switch mb-3"><input class="form-check-input" type="checkbox" id="dailyBrief"><label class="form-check-label" for="dailyBrief">Daily Financial Brief</label></div>
+                <div class="form-check form-switch mb-3"><input class="form-check-input" type="checkbox" id="smartAlerts"><label class="form-check-label" for="smartAlerts">Smart Spending Alerts</label></div>
+                <div class="form-check form-switch mb-3"><input class="form-check-input" type="checkbox" id="goalReminders"><label class="form-check-label" for="goalReminders">Goal Reminders</label></div>
+                <div class="form-check form-switch"><input class="form-check-input" type="checkbox" id="weeklyReport"><label class="form-check-label" for="weeklyReport">Weekly AI Report</label></div>
+              </div>
+
+              <div class="tab-pane fade" id="focostData">
+                <h5 class="fw-bold">Data & Export</h5><hr>
+                <div class="alert alert-light border">
+                  <i class="bi bi-shield-check me-2"></i>Your export contains your profile, financial records, budgets, goals, investments, subscription information, settings and AI usage records. Passwords and secrets are never exported.
+                </div>
+                <a href="{{ url_for('account.export_data') }}" class="btn btn-outline-primary">
+                  <i class="bi bi-download me-2"></i>Export My FOCOST Data
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div id="settingsStatus" class="small mt-3" role="status" aria-live="polite"></div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-light border" type="button" id="resetDashboardPreferences"><i class="bi bi-arrow-counterclockwise me-1"></i>Reset</button>
+        <button class="btn btn-primary px-4" type="button" id="saveDashboardPreferences"><i class="bi bi-check-circle me-1"></i>Save Changes</button>
+      </div>
     </div>
+  </div>
+</div>
 
-</div>''
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  const ids = {
+    widgets: {summary:"showSummary", insights:"showInsights", budgets:"showBudgets", goals:"showGoals", health:"showHealth", recommendations:"showRecommendations", transactions:"showTransactions"},
+    ai: {daily_brief:"dailyBrief", smart_alerts:"smartAlerts", goal_reminders:"goalReminders", weekly_report:"weeklyReport"},
+    notifications: {financial_alerts:"financialAlerts", budget_alerts:"budgetAlerts", goal_alerts:"goalAlerts", subscription_alerts:"subscriptionAlerts", ai_usage_alerts:"aiUsageAlerts", insights:"insightAlerts", email:"emailNotifications"}
+  };
+  const defaults = {
+    appearance:{theme:"system",density:"comfortable"},
+    widgets:{summary:true,insights:true,budgets:true,goals:true,health:true,recommendations:true,transactions:true},
+    analytics:{default_chart:"Income vs Expenses"},
+    ai:{daily_brief:true,smart_alerts:true,goal_reminders:true,weekly_report:true},
+    notifications:{financial_alerts:true,budget_alerts:true,goal_alerts:true,subscription_alerts:true,ai_usage_alerts:true,insights:true,email:false},
+    privacy:{analytics:true}
+  };
+  const $ = id => document.getElementById(id);
+  const status = $("settingsStatus");
+  function clone(x){ return JSON.parse(JSON.stringify(x)); }
+  function merge(saved){
+    const out=clone(defaults);
+    Object.keys(out).forEach(k=>{
+      if(saved && saved[k] && typeof saved[k]==="object" && !Array.isArray(saved[k])) out[k]={...out[k],...saved[k]};
+    });
+    return out;
+  }
+  function apply(p){
+    p=merge(p);
+    $("dashboardTheme").value=p.appearance.theme;
+    $("dashboardDensity").value=p.appearance.density;
+    $("defaultChart").value=p.analytics.default_chart;
+    Object.entries(ids.widgets).forEach(([k,id])=>{if($(id)) $(id).checked=!!p.widgets[k];});
+    Object.entries(ids.ai).forEach(([k,id])=>{if($(id)) $(id).checked=!!p.ai[k];});
+    Object.entries(ids.notifications).forEach(([k,id])=>{if($(id)) $(id).checked=!!p.notifications[k];});
+    document.documentElement.setAttribute("data-focost-theme",p.appearance.theme);
+    document.body.classList.remove("density-comfortable","density-compact","density-spacious");
+    document.body.classList.add("density-"+p.appearance.density);
+    document.body.classList.remove("theme-default","theme-system","theme-light","theme-dark","theme-blue","theme-green");
+    document.body.classList.add("theme-"+p.appearance.theme);
+
+    Object.entries(p.widgets).forEach(([widget, visible]) => {
+      document.querySelectorAll('[data-focost-widget="' + widget + '"]').forEach(el => {
+        el.style.display = visible ? "" : "none";
+        el.setAttribute("aria-hidden", visible ? "false" : "true");
+      });
+    });
+  }
+  function collect(){
+    const p=clone(defaults);
+    p.appearance={theme:$("dashboardTheme").value,density:$("dashboardDensity").value};
+    p.analytics={default_chart:$("defaultChart").value};
+    Object.entries(ids.widgets).forEach(([k,id])=>p.widgets[k]=!!$(id)?.checked);
+    Object.entries(ids.ai).forEach(([k,id])=>p.ai[k]=!!$(id)?.checked);
+    Object.entries(ids.notifications).forEach(([k,id])=>p.notifications[k]=!!$(id)?.checked);
+    return p;
+  }
+  function show(msg,type="success"){ if(!status)return; status.className="small mt-3 text-"+type; status.textContent=msg; setTimeout(()=>{if(status)status.textContent=""},4000); }
+  async function load(){
+    try{
+      const r=await fetch("{{ url_for('settings.get_settings') }}",{credentials:"same-origin"});
+      const d=await r.json();
+      if(!r.ok || !d.success) throw new Error(d.message||"Unable to load settings.");
+      apply(d.preferences);
+      localStorage.setItem("focost_preferences",JSON.stringify(d.preferences));
+    }catch(e){
+      try{const local=JSON.parse(localStorage.getItem("focost_preferences")||"null");apply(local||defaults);}catch(_){apply(defaults);}
+    }
+  }
+  async function save(){
+    const btn=$("saveDashboardPreferences"); btn.disabled=true;
+    try{
+      const r=await fetch("{{ url_for('settings.update_settings') }}",{method:"PUT",credentials:"same-origin",headers:{"Content-Type":"application/json","Accept":"application/json","X-CSRFToken":document.querySelector('meta[name="csrf-token"]')?.content||""},body:JSON.stringify({preferences:collect()})});
+      const d=await r.json();
+      if(!r.ok || !d.success) throw new Error(d.message||"Unable to save settings.");
+      apply(d.preferences); localStorage.setItem("focost_preferences",JSON.stringify(d.preferences)); show("Settings saved successfully.");
+    }catch(e){ show(e.message||"Unable to save settings.","danger"); }
+    finally{btn.disabled=false;}
+  }
+  async function reset(){
+    if(!confirm("Reset all FOCOST preferences to their defaults?")) return;
+    const btn=$("resetDashboardPreferences"); btn.disabled=true;
+    try{
+      const r=await fetch("{{ url_for('settings.reset_settings') }}",{method:"POST",credentials:"same-origin",headers:{"Accept":"application/json","X-CSRFToken":document.querySelector('meta[name="csrf-token"]')?.content||""}});
+      const d=await r.json();
+      if(!r.ok || !d.success) throw new Error(d.message||"Unable to reset settings.");
+      apply(d.preferences); localStorage.removeItem("focost_preferences"); localStorage.setItem("focost_preferences",JSON.stringify(d.preferences)); show("Settings reset successfully.");
+    }catch(e){show(e.message||"Unable to reset settings.","danger");}
+    finally{btn.disabled=false;}
+  }
+  $("saveDashboardPreferences")?.addEventListener("click",save);
+  $("resetDashboardPreferences")?.addEventListener("click",reset);
+  load();
+});
+</script>

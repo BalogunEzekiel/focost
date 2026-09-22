@@ -5,6 +5,7 @@ from app.models.base import BaseModel
 
 class Income(BaseModel):
     __tablename__ = "income"
+    __table_args__ = (db.CheckConstraint("amount > 0", name="ck_income_amount_positive"),)
 
     user_id = db.Column(
         db.Integer,
@@ -39,6 +40,15 @@ class Income(BaseModel):
     recurring = db.Column(
         db.Boolean,
         default=False
+    )
+
+    # Distinguishes ordinary income from investment-generated cash inflows.
+    # Values: income, investment_gain, investment_liquidation.
+    transaction_class = db.Column(
+        db.String(30),
+        nullable=False,
+        default="income",
+        index=True
     )
 
     user = db.relationship(

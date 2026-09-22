@@ -17,6 +17,7 @@ from sqlalchemy import or_
 from app.extensions import db
 from app.forms.expense_forms import ExpenseForm
 from app.models.expense import Expense
+from app.models.asset import Asset
 from app.audit.service import AuditService
 
 
@@ -236,6 +237,12 @@ def add_expense():
 
     if form.validate_on_submit():
 
+        from app.subscriptions.service import SubscriptionService
+        allowed, limit_message = SubscriptionService.can_add_transaction(current_user.id)
+        if not allowed:
+            flash(limit_message, "warning")
+            return render_template("expense/add.html", form=form), 402
+
         expense = Expense(
 
             user_id=current_user.id,
@@ -262,7 +269,6 @@ def add_expense():
 
 
         db.session.add(expense)
-
         db.session.commit()
 
 
@@ -297,13 +303,16 @@ def add_expense():
 def edit_expense(expense_id):
 
     expense = Expense.query.filter_by(
-
         id=expense_id,
-
         user_id=current_user.id
-
     ).first_or_404()
 
+    if expense.transaction_class not in (None, "expense"):
+        flash(
+            "This transaction originated from a Goal or Investment. Please manage it from the originating page.",
+            "info",
+        )
+        return redirect(url_for("expense.list_expense"))
 
     form = ExpenseForm(
         obj=expense
@@ -344,7 +353,14 @@ def edit_expense(expense_id):
             form.recurring.data
         )
 
+        if expense.transaction_class not in (None, "expense"):
+            flash(
+                "This record originated from a Goal or Investment. Update it from the originating page instead.",
+                "warning",
+            )
+            return redirect(url_for("expense.list_expense"))
 
+        expense.transaction_class = "expense"
         db.session.commit()
 
 
@@ -382,17 +398,18 @@ def edit_expense(expense_id):
 def delete_expense(expense_id):
 
     expense = Expense.query.filter_by(
-
         id=expense_id,
-
         user_id=current_user.id
-
     ).first_or_404()
 
+    if expense.transaction_class not in (None, "expense"):
+        flash(
+            "This transaction originated from a Goal or Investment and cannot be deleted here. Manage it from the originating page.",
+            "warning",
+        )
+        return redirect(url_for("expense.list_expense"))
 
-    db.session.delete(
-        expense
-    )
+    db.session.delete(expense)
 
     db.session.commit()
 

@@ -46,35 +46,25 @@ def index():
 @notifications_bp.route("/api")
 @login_required
 def api():
-
-    limit = request.args.get(
-        "limit",
-        default=5,
-        type=int,
-    )
-
-    limit = max(
-        1,
-        min(limit, 100)
-    )
-
-    notifications = NotificationService.get_recent(
-        current_user.id,
-        limit=limit,
-    )
-
-    return jsonify(
-        {
-            "notification_count": NotificationService.get_unread_count(
-                current_user.id
-            ),
-            "notifications": [
-                notification.to_dict()
-                for notification in notifications
-            ],
-        }
-    )
-
+    limit = max(1, min(request.args.get("limit", 10, type=int), 100))
+    page = max(1, request.args.get("page", 1, type=int))
+    kind = (request.args.get("type") or "").strip()
+    status = (request.args.get("status") or "").strip().lower()
+    q = NotificationService.get_all(current_user.id)
+    if kind:
+        q = [n for n in q if n.notification_type == kind]
+    if status == "unread":
+        q = [n for n in q if not n.is_read]
+    elif status == "read":
+        q = [n for n in q if n.is_read]
+    total = len(q)
+    start = (page - 1) * limit
+    items = q[start:start + limit]
+    return jsonify({
+        "notification_count": NotificationService.get_unread_count(current_user.id),
+        "page": page, "limit": limit, "total": total, "pages": max(1, (total + limit - 1) // limit),
+        "notifications": [notification.to_dict() for notification in items],
+    })
 
 # ---------------------------------------------------------
 # Mark One Read
@@ -117,6 +107,17 @@ def mark_all_read():
             "notification_count": 0,
         }
     )
+
+
+# ---------------------------------------------------------
+# Dismiss Notification
+# ---------------------------------------------------------
+
+@notifications_bp.route("/dismiss/<int:notification_id>", methods=["POST"])
+@login_required
+def dismiss(notification_id):
+    success = NotificationService.dismiss(notification_id, current_user.id)
+    return jsonify({"success": success, "notification_count": NotificationService.get_unread_count(current_user.id)})
 
 
 # ---------------------------------------------------------

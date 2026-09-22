@@ -6,6 +6,8 @@ from app.models.income import Income
 from app.models.expense import Expense
 from app.models.budget import Budget
 from app.models.goal import Goal
+from app.models.asset import Asset
+from app.models.investment_event import InvestmentEvent
 
 
 class ReportService:
@@ -123,12 +125,49 @@ class ReportService:
 
         income_total = sum(float(x.amount or 0) for x in incomes)
         expense_total = sum(float(x.amount or 0) for x in expenses)
+        operating_expense_total = sum(
+            float(x.amount or 0) for x in expenses
+            if x.transaction_class in (None, "expense")
+        )
         savings = income_total - expense_total
         savings_rate = (savings / income_total * 100) if income_total else 0
+
+        # Financial-position components that are intentionally kept separate
+        # from ordinary operating income/expense totals.
+        investment_funding = sum(float(x.amount or 0) for x in Expense.query.filter(
+            Expense.user_id == user_id, Expense.transaction_class == "investment",
+            Expense.expense_date >= ReportService._date(start_date) if ReportService._date(start_date) else True,
+            Expense.expense_date <= ReportService._date(end_date) if ReportService._date(end_date) else True,
+        ).all())
+        goal_contributions = sum(float(x.amount or 0) for x in Expense.query.filter(
+            Expense.user_id == user_id, Expense.transaction_class == "goal_contribution",
+            Expense.expense_date >= ReportService._date(start_date) if ReportService._date(start_date) else True,
+            Expense.expense_date <= ReportService._date(end_date) if ReportService._date(end_date) else True,
+        ).all())
+        investment_losses = sum(float(x.amount or 0) for x in Expense.query.filter(
+            Expense.user_id == user_id, Expense.transaction_class == "investment_loss",
+            Expense.expense_date >= ReportService._date(start_date) if ReportService._date(start_date) else True,
+            Expense.expense_date <= ReportService._date(end_date) if ReportService._date(end_date) else True,
+        ).all())
+        investment_gains = sum(float(x.amount or 0) for x in Income.query.filter(
+            Income.user_id == user_id, Income.transaction_class == "investment_gain",
+            Income.received_date >= ReportService._date(start_date) if ReportService._date(start_date) else True,
+            Income.received_date <= ReportService._date(end_date) if ReportService._date(end_date) else True,
+        ).all())
+        liquidation_proceeds = sum(float(x.amount or 0) for x in Income.query.filter(
+            Income.user_id == user_id, Income.transaction_class == "investment_liquidation",
+            Income.received_date >= ReportService._date(start_date) if ReportService._date(start_date) else True,
+            Income.received_date <= ReportService._date(end_date) if ReportService._date(end_date) else True,
+        ).all())
+        active_investments = Asset.query.filter_by(user_id=user_id, is_active=True).filter(Asset.asset_type.ilike("investment")).all()
+        investment_cost_basis = sum(float(a.cost_basis if a.cost_basis is not None else a.acquisition_cost or 0) for a in active_investments)
+        investment_current_value = sum(float(a.current_value or 0) for a in active_investments)
 
         return {
             "income": income_total,
             "expenses": expense_total,
+            "operating_expenses": operating_expense_total,
+            "cash_outflows": expense_total,
             "savings": savings,
             "savings_rate": savings_rate,
             "savings_progress": max(
@@ -142,6 +181,14 @@ class ReportService:
             "goals": Goal.query.filter_by(user_id=user_id).all(),
             "income_records": incomes,
             "expense_records": expenses,
+            "goal_contributions": goal_contributions,
+            "investment_funding": investment_funding,
+            "investment_losses": investment_losses,
+            "investment_gains": investment_gains,
+            "liquidation_proceeds": liquidation_proceeds,
+            "investment_cost_basis": investment_cost_basis,
+            "investment_current_value": investment_current_value,
+            "investment_gain_loss": investment_current_value - investment_cost_basis,
         }
 
     @staticmethod
@@ -180,7 +227,10 @@ class ReportService:
             ).filter(Income.user_id == user_id, Income.received_date >= start, Income.received_date <= end)
             expense_rows = db.session.query(
                 extract("year", Expense.expense_date), extract("month", Expense.expense_date), func.sum(Expense.amount)
-            ).filter(Expense.user_id == user_id, Expense.expense_date >= start, Expense.expense_date <= end)
+            ).filter(
+                Expense.user_id == user_id,
+                Expense.expense_date >= start, Expense.expense_date <= end
+            )
             if category:
                 income_rows = income_rows.filter(Income.category == category)
                 expense_rows = expense_rows.filter(Expense.category == category)
@@ -200,7 +250,8 @@ class ReportService:
             Income.user_id == user_id, Income.received_date >= start, Income.received_date <= end
         )
         expense_rows = db.session.query(extract("month", Expense.expense_date), func.sum(Expense.amount)).filter(
-            Expense.user_id == user_id, Expense.expense_date >= start, Expense.expense_date <= end
+            Expense.user_id == user_id,
+            Expense.expense_date >= start, Expense.expense_date <= end
         )
         if category:
             income_rows = income_rows.filter(Income.category == category)

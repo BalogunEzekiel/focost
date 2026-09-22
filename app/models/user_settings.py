@@ -49,7 +49,7 @@ class UserSettings(db.Model):
 
     DEFAULTS = {
         "appearance": {
-            "theme": "default",
+            "theme": "system",
             "density": "comfortable"
         },
 
@@ -72,6 +72,20 @@ class UserSettings(db.Model):
             "smart_alerts": True,
             "goal_reminders": True,
             "weekly_report": True
+        },
+
+        "notifications": {
+            "financial_alerts": True,
+            "budget_alerts": True,
+            "goal_alerts": True,
+            "subscription_alerts": True,
+            "ai_usage_alerts": True,
+            "insights": True,
+            "email": False
+        },
+
+        "privacy": {
+            "analytics": True
         }
     }
 

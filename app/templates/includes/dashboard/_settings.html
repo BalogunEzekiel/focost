@@ -102,6 +102,10 @@
                             Default
                         </option>
 
+                        <option value="system">
+                            System
+                        </option>
+
                         <option value="light">
                             Light
                         </option>
@@ -894,7 +898,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
         appearance: {
 
-            theme: "default",
+            theme: "system",
 
             density: "comfortable"
 
@@ -1085,6 +1089,7 @@ document.addEventListener("DOMContentLoaded", function () {
         const validThemes = [
 
             "default",
+            "system",
             "light",
             "dark",
             "blue",
@@ -1114,6 +1119,7 @@ document.addEventListener("DOMContentLoaded", function () {
         document.body.classList.remove(
 
             "theme-default",
+            "theme-system",
             "theme-light",
             "theme-dark",
             "theme-blue",
@@ -1667,7 +1673,10 @@ document.addEventListener("DOMContentLoaded", function () {
                         headers: {
 
                             "Accept":
-                                "application/json"
+                                "application/json",
+
+                            "X-CSRFToken":
+                                document.querySelector('meta[name="csrf-token"]')?.content || ""
 
                         },
 
@@ -1800,7 +1809,10 @@ document.addEventListener("DOMContentLoaded", function () {
                                 "application/json",
 
                             "Accept":
-                                "application/json"
+                                "application/json",
+
+                            "X-CSRFToken":
+                                document.querySelector('meta[name="csrf-token"]')?.content || ""
 
                         },
 
@@ -1966,7 +1978,10 @@ document.addEventListener("DOMContentLoaded", function () {
                         headers: {
 
                             "Accept":
-                                "application/json"
+                                "application/json",
+
+                            "X-CSRFToken":
+                                document.querySelector('meta[name="csrf-token"]')?.content || ""
 
                         },
 

@@ -288,6 +288,49 @@ Admin Dashboard
 
 
     <!-- ===================================== -->
+    <!-- AI USAGE & CONSUMPTION -->
+    <!-- ===================================== -->
+
+    {% if has_permission("ai.view") %}
+    <div class="card shadow-sm border-0 rounded-4 mb-4">
+        <div class="card-header bg-white d-flex justify-content-between align-items-center">
+            <div>
+                <h5 class="mb-1"><i class="bi bi-cpu me-2"></i>AI Usage & Consumption</h5>
+                <small class="text-muted">Persistent platform-wide AI consumption and operational usage.</small>
+            </div>
+            <a href="{{ url_for('admin.ai_settings') }}" class="btn btn-sm btn-outline-primary">AI Center</a>
+        </div>
+        <div class="card-body">
+            <div class="row g-3 mb-4">
+                <div class="col-6 col-lg-3"><div class="border rounded-3 p-3"><small class="text-muted">Requests</small><h4 class="fw-bold mb-0">{{ dashboard.ai.requests }}</h4></div></div>
+                <div class="col-6 col-lg-3"><div class="border rounded-3 p-3"><small class="text-muted">Successful</small><h4 class="fw-bold text-success mb-0">{{ dashboard.ai.success }}</h4></div></div>
+                <div class="col-6 col-lg-3"><div class="border rounded-3 p-3"><small class="text-muted">Failed</small><h4 class="fw-bold text-danger mb-0">{{ dashboard.ai.failed }}</h4></div></div>
+                <div class="col-6 col-lg-3"><div class="border rounded-3 p-3"><small class="text-muted">Total Tokens</small><h4 class="fw-bold text-primary mb-0">{{ "{:,}".format(dashboard.ai.total_tokens) }}</h4></div></div>
+            </div>
+            {% if has_permission("ai.configure") and dashboard.ai.user_usage %}
+            <div class="table-responsive">
+                <table class="table table-sm align-middle mb-0">
+                    <thead><tr><th>User</th><th>Requests</th><th>Tokens</th><th class="text-end">Control</th></tr></thead>
+                    <tbody>
+                    {% for row in dashboard.ai.user_usage %}
+                    <tr>
+                        <td><strong>{{ row.first_name }} {{ row.last_name }}</strong><div class="small text-muted">{{ row.email }}</div></td>
+                        <td>{{ row.requests }}</td>
+                        <td>{{ "{:,}".format(row.tokens) }}</td>
+                        <td class="text-end">
+                            <button class="btn btn-sm btn-outline-danger reset-ai-usage" data-user-id="{{ row.id }}">Reset</button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- ===================================== -->
     <!-- Financial Summary Cards -->
     <!-- ===================================== -->
 
@@ -727,6 +770,31 @@ Admin Dashboard
 {% endblock %}
 
 {% block scripts %}
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  document.querySelectorAll(".reset-ai-usage").forEach(function (button) {
+    button.addEventListener("click", async function () {
+      const userId = this.dataset.userId;
+      if (!confirm("Reset this user's persistent AI usage records? Historical usage will be removed.")) return;
+      this.disabled = true;
+      try {
+        const response = await fetch("{{ url_for('admin.reset_ai_usage', user_id=0) }}".replace("/0", "/" + userId), {
+          method: "POST",
+          headers: {"X-CSRFToken": document.querySelector('meta[name="csrf-token"]')?.content || "", "Accept": "application/json"},
+          credentials: "same-origin"
+        });
+        const data = await response.json();
+        if (!response.ok || !data.success) throw new Error(data.message || "Unable to reset AI usage.");
+        location.reload();
+      } catch (error) {
+        alert(error.message);
+        this.disabled = false;
+      }
+    });
+  });
+});
+</script>
+
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 

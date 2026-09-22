@@ -130,6 +130,10 @@ class Notification(BaseModel):
         default=False
     )
 
+    read_at = db.Column(db.DateTime)
+    dismissed_at = db.Column(db.DateTime)
+    expires_at = db.Column(db.DateTime, index=True)
+
     # ---------------------------------------------------------
     # Relationships
     # ---------------------------------------------------------
