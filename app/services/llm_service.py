@@ -17,8 +17,8 @@ class LLMService:
     Centralized LLM provider service.
 
     Provider strategy:
-    1. Try all configured Groq keys first.
-    2. If Groq cannot answer, try configured Cerebras keys.
+    1. Use configured Groq keys only.
+    2. Rotate through configured Groq API keys.
     3. Retry transient failures.
     4. Skip permanent failures.
     5. Protect providers from oversized requests.
@@ -73,29 +73,6 @@ class LLMService:
                     "keys": groq_keys,
                 }
             )
-
-        cerebras_keys = self._get_keys(
-            "CEREBRAS"
-        )
-
-        if cerebras_keys:
-            cerebras_model = os.getenv(
-                "CEREBRAS_MODEL_NAME",
-                "",
-            ).strip()
-
-            if cerebras_model:
-                providers.append(
-                    {
-                        "name": "Cerebras",
-                        "base_url": os.getenv(
-                            "CEREBRAS_BASE_URL",
-                            "https://api.cerebras.ai/v1",
-                        ),
-                        "model": cerebras_model,
-                        "keys": cerebras_keys,
-                    }
-                )
 
         return providers
 
