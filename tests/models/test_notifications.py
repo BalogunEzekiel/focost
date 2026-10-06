@@ -1,10 +1,8 @@
-from datetime import datetime, timedelta
-
 from app.models.notification import Notification
+from app.utils.timezone import utc_now
 
 
 def make_notification():
-
     return Notification(
         user_id=1,
         title="Budget Alert",
@@ -17,7 +15,7 @@ def make_notification():
         unique_key="TEST_BUDGET_001",
         is_read=False,
         is_deleted=False,
-        created_at=datetime.utcnow(),
+        created_at=utc_now(),
     )
 
 
@@ -72,6 +70,6 @@ def test_notification_time(app):
 
         notification = make_notification()
 
-        notification.created_at = datetime.utcnow()
+        notification.created_at = utc_now()
 
         assert notification.time == "Just now"

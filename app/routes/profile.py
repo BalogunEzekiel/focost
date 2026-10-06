@@ -6,6 +6,7 @@ from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
 from PIL import Image
 
+from app.rbac.decorators import permission_required
 from app.extensions import db
 
 profile_bp = Blueprint("profile", __name__, url_prefix="/profile")
@@ -13,7 +14,7 @@ ALLOWED = {"png", "jpg", "jpeg", "webp"}
 
 
 @profile_bp.route("/", methods=["GET", "POST"])
-@login_required
+@permission_required("profile.edit")
 def index():
     if request.method == "POST":
         current_user.first_name = request.form.get("first_name", current_user.first_name).strip()[:80]
@@ -59,7 +60,7 @@ def index():
 
 
 @profile_bp.get("/avatar/<path:filename>")
-@login_required
+@permission_required("profile.view")
 def avatar(filename):
     # Avatar files are private user assets. Only serve the authenticated user's
     # own uploaded avatar; never allow arbitrary file access.

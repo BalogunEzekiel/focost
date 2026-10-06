@@ -1,0 +1,24 @@
+{% extends "layouts/public.html" %}
+{% block title %}FAQ | FOCOST{% endblock %}
+{% block content %}
+<div class="container pb-5" style="max-width:980px;margin-top:-15rem;">
+  <div class="text-center mb-5"><span class="badge bg-primary-subtle text-primary px-3 py-2">FOCOST Help</span><h1 class="fw-bold mt-3">Frequently Asked Questions</h1><p class="lead text-muted">Answers to common questions about accounts, financial data, AI, subscriptions and security.</p></div>
+  <div class="accordion shadow-sm rounded-4 overflow-hidden" id="faqAccordion">
+    {% set faqs = [
+      ('What is FOCOST?', 'FOCOST is an AI-assisted personal financial management platform for recording income and expenses, managing budgets and goals, reviewing reports, tracking investments and receiving data-grounded financial insights.'),
+      ('Is FOCOST a bank or investment adviser?', 'No. FOCOST is a financial-management and educational technology platform. Its AI output is not regulated investment, tax, legal, accounting or fiduciary advice.'),
+      ('How does the free trial work?', 'New accounts receive the configured 30-day trial. Before the trial ends, you can choose a paid plan from the public pricing catalogue if you want continued paid access.'),
+      ('How are payments handled?', 'FOCOST uses its configured payment provider for web subscription payments and performs server-side verification. FOCOST is designed not to store full payment-card credentials.'),
+      ('Why do I need to verify my email?', 'Email verification helps confirm account ownership and is required before a new account is activated when email verification is enabled.'),
+      ('What financial data does the AI use?', 'FOCOST AI receives only the financial context needed for the requested feature. Application calculations are intended to be the authoritative source for financial figures presented by the AI.'),
+      ('Are investment valuation gains and losses treated as income or expenses?', 'No. Non-cash investment valuation gains and losses are excluded from income, expenses, savings and balance calculations. Investment funding and qualifying goal contributions remain cash outflows, while liquidation proceeds are treated according to the application’s transaction rules.'),
+      ('Can I export or delete my data?', 'FOCOST provides account data portability and deletion workflows subject to security, legal and operational retention requirements.'),
+      ('How do I report a security issue?', 'Use the security contact on the Security page or the machine-readable /.well-known/security.txt contact. Do not send passwords, API keys, card details or unnecessary personal information.'),
+      ('How do I contact support?', 'Visit the Support Centre for account, billing and general support. Product feedback can be submitted through the internal FOCOST Feedback page. Security reports should use the published security contact.'),
+    ] %}
+    {% for question,answer in faqs %}
+    <div class="accordion-item"><h2 class="accordion-header" id="faq-heading-{{ loop.index }}"><button class="accordion-button {% if not loop.first %}collapsed{% endif %}" type="button" data-bs-toggle="collapse" data-bs-target="#faq-{{ loop.index }}" aria-expanded="{{ 'true' if loop.first else 'false' }}" aria-controls="faq-{{ loop.index }}">{{ question }}</button></h2><div id="faq-{{ loop.index }}" class="accordion-collapse collapse {% if loop.first %}show{% endif %}" aria-labelledby="faq-heading-{{ loop.index }}" data-bs-parent="#faqAccordion"><div class="accordion-body text-muted">{{ answer }}</div></div></div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

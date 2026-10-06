@@ -149,18 +149,7 @@ Goal Contributions
             <div class="progress mb-3" style="height:15px;">
 
 
-                <div class="progress-bar
-
-                    {% if goal.percentage_completed >=100 %}
-                        bg-success
-                    {% elif goal.percentage_completed >=75 %}
-                        bg-info
-                    {% elif goal.percentage_completed >=50 %}
-                        bg-warning
-                    {% else %}
-                        bg-danger
-                    {% endif %}"
-
+                <div class="progress-bar {{ goal.progress_color }}"
                     style="width: {{ goal.percentage_completed }}%;">
 
                     {{ goal.percentage_completed }}%

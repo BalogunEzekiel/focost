@@ -399,7 +399,7 @@ Expenses
                                         </form>
                                         {% else %}
                                         <span class="badge text-bg-light" title="Managed from its originating page">
-                                            {% if expense.transaction_class == 'goal_contribution' %}Goal{% elif expense.transaction_class == 'investment' %}Investment{% elif expense.transaction_class == 'investment_loss' %}Investment Loss{% else %}System-linked{% endif %}
+                                            {% if expense.transaction_class == 'goal_contribution' %}Goal{% elif expense.transaction_class == 'investment' %}Investment{% elif expense.transaction_class == 'investment_loss' %}System-linked{% else %}System-linked{% endif %}
                                         </span>
                                         {% endif %}
                                     </div>

@@ -146,6 +146,21 @@ Admin Dashboard
         </div>
         {% endif %}
 
+        {% if has_permission("feedback.view") %}
+        <div class="col-lg-2 col-md-4 col-6">
+
+            <a href="{{ url_for('admin.feedback') }}"
+               class="btn btn-outline-primary w-100 py-3">
+
+                <i class="bi bi-chat-square-heart fs-4 d-block mb-2"></i>
+
+                Feedback
+
+            </a>
+
+        </div>
+        {% endif %}
+
         {% if has_permission("subscriptions.view") %}
         <div class="col-lg-2 col-md-4 col-6">
 
@@ -770,43 +785,146 @@ Admin Dashboard
 {% endblock %}
 
 {% block scripts %}
-<script>
-document.addEventListener("DOMContentLoaded", function () {
-  document.querySelectorAll(".reset-ai-usage").forEach(function (button) {
-    button.addEventListener("click", async function () {
-      const userId = this.dataset.userId;
-      if (!confirm("Reset this user's persistent AI usage records? Historical usage will be removed.")) return;
-      this.disabled = true;
-      try {
-        const response = await fetch("{{ url_for('admin.reset_ai_usage', user_id=0) }}".replace("/0", "/" + userId), {
-          method: "POST",
-          headers: {"X-CSRFToken": document.querySelector('meta[name="csrf-token"]')?.content || "", "Accept": "application/json"},
-          credentials: "same-origin"
-        });
-        const data = await response.json();
-        if (!response.ok || !data.success) throw new Error(data.message || "Unable to reset AI usage.");
-        location.reload();
-      } catch (error) {
-        alert(error.message);
-        this.disabled = false;
-      }
-    });
-  });
-});
-</script>
-
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-<script>
+<!-- Server-generated chart data.
+     Keeping Jinja out of executable JavaScript prevents VS Code
+     JavaScript parser errors while preserving Flask/Jinja rendering. -->
+<script id="finance-chart-data" type="application/json">
+{
+    "labels": {{ chart.labels|tojson }},
+    "income": {{ chart.income|tojson }},
+    "expenses": {{ chart.expenses|tojson }}
+}
+</script>
 
+<script>
 document.addEventListener("DOMContentLoaded", function () {
+
+    /* =========================================================
+       AI USAGE RESET
+       ========================================================= */
+
+    document.querySelectorAll(".reset-ai-usage").forEach(function (button) {
+
+        button.addEventListener("click", async function () {
+
+            const userId = this.dataset.userId;
+
+            if (
+                !confirm(
+                    "Reset this user's persistent AI usage records? Historical usage will be removed."
+                )
+            ) {
+                return;
+            }
+
+            this.disabled = true;
+
+            try {
+
+                const csrfToken =
+                    document.querySelector('meta[name="csrf-token"]')?.content || "";
+
+                const resetUrl =
+                    "{{ url_for('admin.reset_ai_usage', user_id=0) }}"
+                    .replace("/0", "/" + encodeURIComponent(userId));
+
+                const response = await fetch(resetUrl, {
+                    method: "POST",
+                    headers: {
+                        "X-CSRFToken": csrfToken,
+                        "Accept": "application/json"
+                    },
+                    credentials: "same-origin"
+                });
+
+                const data = await response.json();
+
+                if (!response.ok || !data.success) {
+                    throw new Error(
+                        data.message || "Unable to reset AI usage."
+                    );
+                }
+
+                window.location.reload();
+
+            } catch (error) {
+
+                alert(
+                    error instanceof Error
+                        ? error.message
+                        : "Unable to reset AI usage."
+                );
+
+                this.disabled = false;
+            }
+        });
+
+    });
+
+
+    /* =========================================================
+       FINANCIAL CHART
+       ========================================================= */
 
     const canvas = document.getElementById("financeChart");
 
-    if (!canvas) return;
+    if (!canvas) {
+        return;
+    }
+
+    const chartDataElement =
+        document.getElementById("finance-chart-data");
+
+    if (!chartDataElement) {
+        console.error("Finance chart data element was not found.");
+        return;
+    }
+
+    let chartData;
+
+    try {
+
+        chartData = JSON.parse(
+            chartDataElement.textContent.trim()
+        );
+
+    } catch (error) {
+
+        console.error(
+            "Unable to parse finance chart data:",
+            error
+        );
+
+        return;
+    }
+
+    if (
+        !chartData ||
+        !Array.isArray(chartData.labels) ||
+        !Array.isArray(chartData.income) ||
+        !Array.isArray(chartData.expenses)
+    ) {
+        console.error(
+            "Invalid finance chart data received from the server."
+        );
+
+        return;
+    }
+
+    if (typeof Chart === "undefined") {
+        console.error("Chart.js failed to load.");
+        return;
+    }
 
     const ctx = canvas.getContext("2d");
+
+    if (!ctx) {
+        console.error("Unable to obtain finance chart canvas context.");
+        return;
+    }
 
     new Chart(ctx, {
 
@@ -814,14 +932,14 @@ document.addEventListener("DOMContentLoaded", function () {
 
         data: {
 
-            labels: {{ chart.labels|tojson }},
+            labels: chartData.labels,
 
             datasets: [
 
                 {
                     label: "Income",
 
-                    data: {{ chart.income|tojson }},
+                    data: chartData.income,
 
                     borderColor: "#198754",
 
@@ -849,7 +967,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 {
                     label: "Expenses",
 
-                    data: {{ chart.expenses|tojson }},
+                    data: chartData.expenses,
 
                     borderColor: "#dc3545",
 
@@ -875,7 +993,6 @@ document.addEventListener("DOMContentLoaded", function () {
                 }
 
             ]
-
         },
 
         options: {
@@ -889,7 +1006,6 @@ document.addEventListener("DOMContentLoaded", function () {
                 mode: "index",
 
                 intersect: false
-
             },
 
             plugins: {
@@ -911,11 +1027,8 @@ document.addEventListener("DOMContentLoaded", function () {
                             size: 13,
 
                             weight: "600"
-
                         }
-
                     }
-
                 },
 
                 tooltip: {
@@ -932,17 +1045,16 @@ document.addEventListener("DOMContentLoaded", function () {
 
                     callbacks: {
 
-                        label: function(context) {
+                        label: function (context) {
 
-                            return context.dataset.label + ": ₦" +
-                                Number(context.parsed.y).toLocaleString();
-
+                            return (
+                                context.dataset.label +
+                                ": ₦" +
+                                Number(context.parsed.y).toLocaleString()
+                            );
                         }
-
                     }
-
                 }
-
             },
 
             scales: {
@@ -952,15 +1064,12 @@ document.addEventListener("DOMContentLoaded", function () {
                     grid: {
 
                         display: false
-
                     },
 
                     ticks: {
 
                         color: "#6c757d"
-
                     }
-
                 },
 
                 y: {
@@ -970,23 +1079,21 @@ document.addEventListener("DOMContentLoaded", function () {
                     grid: {
 
                         color: "#e9ecef"
-
                     },
 
                     ticks: {
 
                         color: "#6c757d",
 
-                        callback: function(value) {
+                        callback: function (value) {
 
-                            return "₦" + Number(value).toLocaleString();
-
+                            return (
+                                "₦" +
+                                Number(value).toLocaleString()
+                            );
                         }
-
                     }
-
                 }
-
             },
 
             elements: {
@@ -994,17 +1101,12 @@ document.addEventListener("DOMContentLoaded", function () {
                 line: {
 
                     borderJoinStyle: "round"
-
                 }
-
             }
-
         }
-
     });
 
 });
-
 </script>
 
 {% endblock %}

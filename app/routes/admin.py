@@ -7,7 +7,10 @@ from flask import (
     render_template,
     request,
     abort,
-    current_app
+    current_app,
+    flash,
+    redirect,
+    url_for,
 )
 
 from flask_login import (
@@ -335,4 +338,146 @@ def subscriptions():
     return render_template(
         "admin/subscriptions.html",
         **data
+    )
+
+# ==========================================================
+# Feedback Management
+# ==========================================================
+
+@admin_bp.route("/feedback")
+@permission_required("feedback.view")
+def feedback():
+    from app.services.feedback_service import FeedbackService
+
+    page = request.args.get("page", 1, type=int)
+    search = request.args.get("search", "", type=str).strip()
+    category = request.args.get("category", "", type=str).strip()
+    status = request.args.get("status", "", type=str).strip()
+    priority = request.args.get("priority", "", type=str).strip()
+
+    feedback_page = FeedbackService.list(
+        page=page,
+        search=search,
+        category=category,
+        status=status,
+        priority=priority,
+    )
+
+    return render_template(
+        "admin/feedback.html",
+        feedback_page=feedback_page,
+        statistics=FeedbackService.statistics(),
+        search=search,
+        category=category,
+        status=status,
+        priority=priority,
+    )
+
+
+@admin_bp.route("/feedback/<public_id>")
+@permission_required("feedback.view")
+def feedback_detail(public_id):
+    from app.services.feedback_service import FeedbackService
+
+    feedback_item = FeedbackService.get(public_id)
+
+    if not feedback_item:
+        abort(404)
+
+    from app.forms.feedback_forms import FeedbackAdminForm
+
+    form = FeedbackAdminForm(
+        status=feedback_item.status,
+        priority=feedback_item.priority,
+        admin_notes=feedback_item.admin_notes or "",
+    )
+
+    return render_template(
+        "admin/feedback_detail.html",
+        feedback=feedback_item,
+        form=form,
+    )
+
+
+@admin_bp.post("/feedback/<public_id>/update")
+@permission_required("feedback.manage")
+def feedback_update(public_id):
+    from app.forms.feedback_forms import FeedbackAdminForm
+    from app.services.feedback_service import FeedbackService
+
+    feedback_item = FeedbackService.get(public_id)
+
+    if not feedback_item:
+        abort(404)
+
+    form = FeedbackAdminForm()
+
+    if not form.validate_on_submit():
+        flash(
+            "Please correct the feedback review fields.",
+            "danger",
+        )
+        return redirect(
+            url_for(
+                "admin.feedback_detail",
+                public_id=public_id,
+            )
+        )
+
+    previous_status = feedback_item.status
+    previous_priority = feedback_item.priority
+
+    FeedbackService.update_review(
+        feedback_item,
+        status=form.status.data,
+        priority=form.priority.data,
+        admin_notes=form.admin_notes.data,
+        reviewed_by_id=current_user.id,
+    )
+
+    AuditService.log(
+        action="feedback.reviewed",
+        category=ADMIN,
+        resource="Feedback",
+        resource_id=feedback_item.public_id,
+        description=(
+            f"Reviewed feedback: status "
+            f"{previous_status} -> {feedback_item.status}; "
+            f"priority {previous_priority} -> "
+            f"{feedback_item.priority}."
+        ),
+        metadata={
+            "previous_status": previous_status,
+            "new_status": feedback_item.status,
+            "previous_priority": previous_priority,
+            "new_priority": feedback_item.priority,
+        },
+    )
+
+    flash(
+        "Feedback review updated successfully.",
+        "success",
+    )
+
+    return redirect(
+        url_for(
+            "admin.feedback_detail",
+            public_id=public_id,
+        )
+    )
+
+
+@admin_bp.route("/compliance/users/<public_id>")
+@permission_required("compliance.view")
+def compliance_user(public_id):
+    from app.models.user import User
+    from app.models.compliance import PolicyAcceptance
+    user = User.query.filter_by(public_id=public_id).first_or_404()
+    history = PolicyAcceptance.query.filter_by(
+        user_id=user.id
+    ).order_by(PolicyAcceptance.accepted_at.desc()).all()
+    return render_template(
+        "admin/compliance_user.html",
+        user=user,
+        history=history,
     )

@@ -1,75 +1,121 @@
 from flask_login import UserMixin
+
 from werkzeug.security import (
     generate_password_hash,
-    check_password_hash
+    check_password_hash,
 )
 
-from app.extensions import db, login_manager
+from app.extensions import (
+    db,
+    login_manager,
+)
+
 from app.models.base import BaseModel
 
 
 @login_manager.user_loader
 def load_user(user_id):
-    return db.session.get(User, int(user_id))
+    return db.session.get(
+        User,
+        int(user_id),
+    )
 
 
 class User(BaseModel, UserMixin):
 
     __tablename__ = "users"
 
+    # ==========================================================
+    # IDENTITY
+    # ==========================================================
+
     first_name = db.Column(
         db.String(80),
-        nullable=False
+        nullable=False,
     )
 
     last_name = db.Column(
         db.String(80),
-        nullable=False
+        nullable=False,
     )
 
     email = db.Column(
         db.String(120),
         unique=True,
         nullable=False,
-        index=True
+        index=True,
     )
 
     phone = db.Column(
-        db.String(20)
+        db.String(20),
     )
 
     country = db.Column(
         db.String(80),
-        default="Nigeria"
+        default="Nigeria",
     )
 
     currency = db.Column(
         db.String(10),
-        default="NGN"
+        default="NGN",
     )
 
     occupation = db.Column(
-        db.String(120)
+        db.String(120),
     )
 
     monthly_income = db.Column(
         db.Float,
-        default=0
+        default=0,
     )
 
     avatar = db.Column(
         db.String(255),
-        default="default-avatar.png"
+        default="default-avatar.png",
     )
+
+    # ==========================================================
+    # AUTHENTICATION
+    # ==========================================================
 
     password_hash = db.Column(
         db.String(255),
-        nullable=False
+        nullable=False,
     )
 
     email_verified = db.Column(
         db.Boolean,
-        default=False
+        default=False,
+    )
+
+    # Incremented whenever credentials or account state must
+    # invalidate existing sessions/tokens.
+    auth_version = db.Column(
+        db.Integer,
+        nullable=False,
+        default=1,
+        server_default="1",
+    )
+
+    # ==========================================================
+    # ADMINISTRATIVE CREATOR HIERARCHY
+    # ==========================================================
+
+    created_by_id = db.Column(
+        db.Integer,
+        db.ForeignKey(
+            "users.id",
+            ondelete="SET NULL",
+        ),
+        nullable=True,
+        index=True,
+    )
+
+    created_by = db.relationship(
+        "User",
+        remote_side="User.id",
+        foreign_keys=[created_by_id],
+        uselist=False,
     )
 
     # ==========================================================
@@ -83,7 +129,7 @@ class User(BaseModel, UserMixin):
         back_populates="user",
         cascade="all, delete-orphan",
         uselist=False,
-        lazy="selectin"
+        lazy="selectin",
     )
 
     # ==========================================================
@@ -93,7 +139,7 @@ class User(BaseModel, UserMixin):
     audit_logs = db.relationship(
         "AuditLog",
         back_populates="user",
-        lazy="selectin"
+        lazy="selectin",
     )
 
     # ==========================================================
@@ -101,16 +147,14 @@ class User(BaseModel, UserMixin):
     # ==========================================================
 
     def set_password(self, password):
-
         self.password_hash = generate_password_hash(
             password
         )
 
     def check_password(self, password):
-
         return check_password_hash(
             self.password_hash,
-            password
+            password,
         )
 
     # ==========================================================
@@ -119,7 +163,6 @@ class User(BaseModel, UserMixin):
 
     @property
     def role(self):
-
         if not self.role_assignment:
             return None
 
@@ -127,7 +170,6 @@ class User(BaseModel, UserMixin):
 
     @property
     def role_slug(self):
-
         if not self.role:
             return None
 
@@ -135,12 +177,10 @@ class User(BaseModel, UserMixin):
 
     @property
     def primary_role(self):
-
         return self.role
 
     @property
     def roles_list(self):
-
         if not self.role:
             return []
 
@@ -148,7 +188,6 @@ class User(BaseModel, UserMixin):
 
     @property
     def is_super_admin(self):
-
         return self.role_slug == "super_admin"
 
     # ==========================================================
@@ -156,15 +195,12 @@ class User(BaseModel, UserMixin):
     # ==========================================================
 
     def has_role(self, slug):
-
         return self.role_slug == slug
 
     def has_any_role(self, *roles):
-
         return self.role_slug in roles
 
     def has_all_roles(self, *roles):
-
         if not self.role_slug:
             return False
 
@@ -184,10 +220,7 @@ class User(BaseModel, UserMixin):
         if not role:
             return False
 
-        # Only check this if your Role model
-        # actually has an is_active field.
         if hasattr(role, "is_active"):
-
             if not role.is_active:
                 return False
 
@@ -199,12 +232,10 @@ class User(BaseModel, UserMixin):
                 continue
 
             if hasattr(permission, "is_active"):
-
                 if not permission.is_active:
                     continue
 
             if permission.code == permission_code:
-
                 return True
 
         return False
@@ -231,7 +262,6 @@ class User(BaseModel, UserMixin):
                 continue
 
             if hasattr(permission, "is_active"):
-
                 if not permission.is_active:
                     continue
 
@@ -247,9 +277,8 @@ class User(BaseModel, UserMixin):
 
     def has_any_permission(
         self,
-        *permissions
+        *permissions,
     ):
-
         return any(
             permission in self.permissions
             for permission in permissions
@@ -257,9 +286,8 @@ class User(BaseModel, UserMixin):
 
     def has_all_permissions(
         self,
-        *permissions
+        *permissions,
     ):
-
         return all(
             permission in self.permissions
             for permission in permissions
@@ -270,5 +298,34 @@ class User(BaseModel, UserMixin):
     # ==========================================================
 
     def __repr__(self):
-
         return f"<User {self.email}>"
+
+
+# ==============================================================
+# SUPER ADMIN DELETE PROTECTION
+# ==============================================================
+
+from sqlalchemy import event
+
+
+@event.listens_for(
+    User,
+    "before_delete",
+)
+def _protect_super_admin_before_delete(
+    mapper,
+    connection,
+    target,
+):
+    """
+    Database/business-logic boundary protection.
+
+    Even if another code path attempts to physically delete the
+    seeded Super Admin, the operation is rejected.
+    """
+
+    if target.role_slug == "super_admin":
+        raise ValueError(
+            "The Super Admin account is system-protected "
+            "and cannot be deleted."
+        )

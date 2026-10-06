@@ -156,7 +156,7 @@ class FinanceQueries:
     @staticmethod
     def total_income(user_id, period=None):
         """
-        Total income within a period.
+        Total active income within a period.
         """
 
         query = (
@@ -167,7 +167,8 @@ class FinanceQueries:
                 )
             )
             .filter(
-                Income.user_id == user_id
+                Income.user_id == user_id,
+                Income.is_active.is_(True),
             )
         )
 
@@ -318,66 +319,33 @@ class FinanceQueries:
         )
 
     @staticmethod
-    def income_sources(user_id):
-
-        return (
-            db.session.query(
-
-                Income.source,
-
-                func.sum(
-                    Income.amount
-                ).label("total")
-
-            )
-
-            .filter(
-                Income.user_id == user_id
-            )
-
-            .group_by(
-                Income.source
-            )
-
-            .order_by(
-                func.sum(
-                    Income.amount
-                ).desc()
-            )
-
-            .all()
-        )
+    def income_breakdown(user_id, period=None):
+        """Authoritative income breakdown consumed by AI and other features."""
+        query = db.session.query(
+            Income.source.label("source"),
+            Income.category.label("category"),
+            func.sum(Income.amount).label("total")
+        ).filter(Income.user_id == user_id)
+        query = FinanceQueries.apply_date_filter(query, Income, "received_date", period)
+        return query.group_by(Income.source, Income.category).order_by(func.sum(Income.amount).desc()).all()
 
     @staticmethod
-    def income_categories(user_id):
+    def income_sources(user_id, period=None):
+        query = db.session.query(
+            Income.source,
+            func.sum(Income.amount).label("total")
+        ).filter(Income.user_id == user_id)
+        query = FinanceQueries.apply_date_filter(query, Income, "received_date", period)
+        return query.group_by(Income.source).order_by(func.sum(Income.amount).desc()).all()
 
-        return (
-            db.session.query(
-
-                Income.category,
-
-                func.sum(
-                    Income.amount
-                ).label("total")
-
-            )
-
-            .filter(
-                Income.user_id == user_id
-            )
-
-            .group_by(
-                Income.category
-            )
-
-            .order_by(
-                func.sum(
-                    Income.amount
-                ).desc()
-            )
-
-            .all()
-        )
+    @staticmethod
+    def income_categories(user_id, period=None):
+        query = db.session.query(
+            Income.category,
+            func.sum(Income.amount).label("total")
+        ).filter(Income.user_id == user_id)
+        query = FinanceQueries.apply_date_filter(query, Income, "received_date", period)
+        return query.group_by(Income.category).order_by(func.sum(Income.amount).desc()).all()
 
     @staticmethod
     def latest_income(user_id):
@@ -400,7 +368,7 @@ class FinanceQueries:
     @staticmethod
     def total_expense(user_id, period=None):
         """
-        Total expenses within a period.
+        Total active expenses within a period.
         """
 
         query = (
@@ -411,7 +379,8 @@ class FinanceQueries:
                 )
             )
             .filter(
-                Expense.user_id == user_id
+                Expense.user_id == user_id,
+                Expense.is_active.is_(True),
             )
         )
 
@@ -1472,19 +1441,20 @@ class FinanceQueries:
 
     @staticmethod
     def monthly_cash_flow(user_id):
+        income = FinanceQueries.total_income(
+            user_id,
+            period="month"
+        )
 
-        income = FinanceQueries.income_this_month(user_id)
-
-        expense = FinanceQueries.expense_this_month(user_id)
+        expense = FinanceQueries.total_expense(
+            user_id,
+            period="month"
+        )
 
         return {
-
             "income": income,
-
             "expense": expense,
-
-            "balance": income - expense
-
+            "balance": income - expense,
         }
     
     @staticmethod

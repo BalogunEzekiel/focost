@@ -325,14 +325,75 @@ Income
                                 <div class="action-buttons">
 
                                     {% if income.transaction_class in [None, 'income'] %}
-                                    <a href="{{ url_for('income.edit_income', income_id=income.id) }}" class="action-btn action-edit" title="Edit Income"><i class="bi bi-pencil-square"></i></a>
-                                    <form method="POST" action="{{ url_for('income.delete_income', income_id=income.id) }}" class="d-inline">
-                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                        <button type="submit" class="action-btn action-delete" title="Delete Income" onclick="return confirm('Delete this income record?');"><i class="bi bi-trash"></i></button>
-                                    </form>
+
+                                        <a
+                                            href="{{ url_for(
+                                                'income.edit_income',
+                                                income_id=income.id
+                                            ) }}"
+                                            class="action-btn action-edit"
+                                            title="Edit Income"
+                                        >
+                                            <i class="bi bi-pencil-square"></i>
+                                        </a>
+
+                                        <form
+                                            method="POST"
+                                            action="{{ url_for(
+                                                'income.delete_income',
+                                                income_id=income.id
+                                            ) }}"
+                                            class="d-inline"
+                                        >
+
+                                            <input
+                                                type="hidden"
+                                                name="csrf_token"
+                                                value="{{ csrf_token() }}"
+                                            >
+
+                                            <button
+                                                type="submit"
+                                                class="action-btn action-delete"
+                                                title="Delete Income"
+                                                onclick="return confirm(
+                                                    'Delete this income record?'
+                                                );"
+                                            >
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+
+                                        </form>
+
+                                    {% elif income.transaction_class == 'investment_liquidation' %}
+
+                                        <span
+                                            class="badge text-bg-light"
+                                            title="Automatically generated from investment liquidation"
+                                        >
+                                            Investment-originated
+                                        </span>
+
+                                    {% elif income.transaction_class == 'goal_termination' %}
+
+                                        <span
+                                            class="badge text-bg-light"
+                                            title="Automatically generated when a goal was terminated"
+                                        >
+                                            Goal-returned
+                                        </span>
+
                                     {% else %}
-                                    <span class="badge text-bg-light">Investment-originated</span>
+
+                                        <span
+                                            class="badge text-bg-light"
+                                            title="System-generated income"
+                                        >
+                                            System-generated
+                                        </span>
+
                                     {% endif %}
+
                                 </div>
 
                             </td>

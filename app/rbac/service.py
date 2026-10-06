@@ -49,7 +49,12 @@ class RBACService:
 
         "ai.chat",
 
-        "settings.view_profile"
+        "settings.view_profile",
+
+        "categories.view",
+        "profile.view",
+        "profile.edit",
+        "investments.view"
     }
 
     # ======================================================
@@ -123,6 +128,11 @@ class RBACService:
             return True
 
         if role.slug == "user":
+            # The database RolePermission registry is authoritative in
+            # production. The legacy default set is only a bootstrap fallback
+            # for unseeded test/development role records.
+            if getattr(role, "permissions", None):
+                return current_user.has_permission(permission)
             return permission in RBACService.DEFAULT_USER_PERMISSIONS
 
         return current_user.has_permission(permission)
@@ -196,7 +206,7 @@ class RBACService:
         if role.slug == "super_admin":
             return {"*"}
 
-        if role.slug == "user":
+        if role.slug == "user" and not getattr(role, "permissions", None):
             return set(RBACService.DEFAULT_USER_PERMISSIONS)
 
         return current_user.permissions

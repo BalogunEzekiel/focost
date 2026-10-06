@@ -1,43 +1,44 @@
 {% extends "layouts/public.html" %}
-
-{% block title %}
-Security — FOCOST
-{% endblock %}
-
+{% block title %}Security & Responsible Disclosure | FOCOST{% endblock %}
 {% block content %}
 
-<div class="container pt-0 pb-5" style="max-width:900px; margin-top:-220px;">
+<style>
+.security-page {
+        margin-top: -15rem;
+        padding: 0 0 0px;
+}
+</style>
 
-    <span class="badge bg-success-subtle text-success px-3 py-2">
-        Security
-    </span>
+<div class="container pb-5" style="max-width:980px;margin-top:-12rem;">
+  <div class="card border-0 shadow-sm rounded-4">
+    <div class="card-body p-4 p-md-5">
+      <span class="badge bg-success-subtle text-success px-3 py-2">Security & Responsible Disclosure</span>
+      <h1 class="fw-bold mt-3">FOCOST Security</h1>
+      <p class="lead text-muted">FOCOST applies security controls designed to protect account access, financial records, payment references, AI interactions and administrative functions.</p>
 
-    <h1 class="fw-bold mt-3">
-        FOCOST Security & Responsible Disclosure
-    </h1>
+      <div class="row g-4 mt-2">
+        <div class="col-md-6"><div class="border rounded-4 p-4 h-100"><h5 class="fw-bold">Account security</h5><p class="text-muted mb-0">Password hashing, email verification, password-reset tokens, authentication throttling, secure sessions, CSRF protection and session invalidation controls are used to reduce common account-compromise risks.</p></div></div>
+        <div class="col-md-6"><div class="border rounded-4 p-4 h-100"><h5 class="fw-bold">Access control</h5><p class="text-muted mb-0">Role-based permissions, least-privilege administration, audit logging and protected administrative routes are used for privileged operations.</p></div></div>
+        <div class="col-md-6"><div class="border rounded-4 p-4 h-100"><h5 class="fw-bold">Financial and payment security</h5><p class="text-muted mb-0">FOCOST is designed to minimise payment-card data exposure. Payment processing uses the configured payment provider and server-side verification rather than trusting a browser redirect alone.</p></div></div>
+        <div class="col-md-6"><div class="border rounded-4 p-4 h-100"><h5 class="fw-bold">Data protection</h5><p class="text-muted mb-0">Security headers, environment-managed secrets, controlled migrations, audit trails and data export/deletion controls form part of the platform's security and governance model.</p></div></div>
+      </div>
 
-    <p class="lead text-muted">
-        FOCOST is designed with least-privilege access, auditability, secure sessions and user-owned financial data in mind.
-    </p>
+      <hr class="my-5">
+      <h2 class="h4 fw-bold">Responsible disclosure</h2>
+      <p>If you believe you have identified a security vulnerability in FOCOST, report it promptly to <a href="mailto:{{ config.FOCOST_SECURITY_EMAIL }}?subject=FOCOST%20Security%20Report">{{ config.FOCOST_SECURITY_EMAIL }}</a>.</p>
+      <ul>
+        <li>Provide enough technical detail to reproduce the issue.</li>
+        <li>Include the affected URL, feature or component and relevant timestamps where available.</li>
+        <li>Do not include passwords, API keys, payment-card details or unnecessary personal data.</li>
+        <li>Do not intentionally access, alter, delete or disclose another person's data.</li>
+        <li>Allow FOCOST reasonable time to investigate and remediate before public disclosure.</li>
+      </ul>
+      <p class="mb-0 text-muted">For security reporting, the machine-readable security contact is published at <a href="{{ url_for('security_txt', _external=True) }}"><code>/.well-known/security.txt</code></a>.</p>
 
-    <div class="card border-0 shadow-sm rounded-4 mt-4">
-
-        <div class="card-body p-4">
-
-            <h5 class="fw-bold">
-                Report a vulnerability
-            </h5>
-
-            <p class="text-muted mb-0">
-                Please contact the security team using the address published in
-                <code>/.well-known/security.txt</code>.
-                Do not include passwords, API keys or unnecessary personal information in a report.
-            </p>
-
-        </div>
-
+      <div class="alert alert-light border mt-4 mb-0">
+        <strong>Important:</strong> No internet-connected service can guarantee absolute security. Security controls are continuously reviewed and improved as FOCOST evolves.
+      </div>
     </div>
-
+  </div>
 </div>
-
 {% endblock %}

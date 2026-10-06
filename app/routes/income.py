@@ -12,9 +12,11 @@ from flask_login import (
     current_user,
 )
 
+from app.rbac.decorators import permission_required
 from app.extensions import db
 from app.forms.income_forms import IncomeForm
 from app.models.income import Income
+from app.services.category_service import CategoryService
 from app.audit.service import AuditService
 
 
@@ -30,7 +32,7 @@ income_bp = Blueprint(
 # ==========================================================
 
 @income_bp.route("/")
-@login_required
+@permission_required("income.view")
 def list_income():
 
     # ------------------------------------------------------
@@ -142,12 +144,16 @@ def list_income():
 # ==========================================================
 
 @income_bp.route("/add", methods=["GET", "POST"])
-@login_required
+@permission_required("income.create")
 def add_income():
 
     form = IncomeForm()
+    form.category.choices = [(c.name, c.name) for c in CategoryService.list_for_user(current_user.id, 'income')]
 
     if form.validate_on_submit():
+        if not CategoryService.is_valid_for_user(current_user.id, 'income', form.category.data):
+            flash('Please select a valid income category.', 'danger')
+            return render_template('income/add.html', form=form), 400
 
         from app.subscriptions.service import SubscriptionService
         allowed, limit_message = SubscriptionService.can_add_transaction(current_user.id)
@@ -197,7 +203,7 @@ def add_income():
     "/edit/<int:income_id>",
     methods=["GET", "POST"]
 )
-@login_required
+@permission_required("income.edit")
 def edit_income(income_id):
 
     income = Income.query.filter_by(
@@ -206,15 +212,37 @@ def edit_income(income_id):
     ).first_or_404()
 
     if income.transaction_class != "income":
-        flash(
-            "This income record originated from an Investment. Please manage it from the Investments page.",
-            "info",
+
+        if income.transaction_class == "investment_liquidation":
+            message = (
+                "This income record originated from an Investment "
+                "and cannot be deleted here."
+            )
+
+        elif income.transaction_class == "goal_termination":
+            message = (
+                "This income record was automatically created when the "
+                "goal was terminated and cannot be deleted."
+            )
+
+        else:
+            message = (
+                "This system-generated income record cannot be deleted."
+            )
+
+        flash(message, "warning")
+
+        return redirect(
+            url_for("income.list_income")
         )
-        return redirect(url_for("income.list_income"))
 
     form = IncomeForm(obj=income)
+    form.category.choices = [(c.name, c.name) for c in CategoryService.list_for_user(current_user.id, 'income')]
 
     if form.validate_on_submit():
+        if not CategoryService.is_valid_for_user(current_user.id, 'income', form.category.data):
+            flash('Please select a valid income category.', 'danger')
+            return render_template('income/edit.html', form=form, income=income), 400
 
         income.source = form.source.data
         income.category = form.category.data
@@ -255,7 +283,7 @@ def edit_income(income_id):
     "/delete/<int:income_id>",
     methods=["POST"]
 )
-@login_required
+@permission_required("income.delete")
 def delete_income(income_id):
 
     income = Income.query.filter_by(

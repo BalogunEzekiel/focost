@@ -73,6 +73,10 @@ class RBACSeed:
             ).first()
 
             if permission:
+                permission.module = permission_data["module"]
+                permission.action = permission_data["action"]
+                permission.name = permission_data["name"]
+                permission.description = permission_data.get("description")
                 continue
 
             db.session.add(
@@ -81,9 +85,7 @@ class RBACSeed:
                     module=permission_data["module"],
                     action=permission_data["action"],
                     name=permission_data["name"],
-                    description=permission_data.get(
-                        "description"
-                    )
+                    description=permission_data.get("description")
                 )
             )
 
@@ -140,8 +142,36 @@ class RBACSeed:
             "to Super Admin"
         )
 
+
+
+    @staticmethod
+    def assign_default_user_permissions():
+        user_role = Role.query.filter_by(slug="user").first()
+        if not user_role:
+            return
+
+        default_codes = {
+            "dashboard.view", "income.view", "income.create", "income.edit", "income.delete",
+            "expenses.view", "expenses.create", "expenses.edit", "expenses.delete",
+            "budgets.view", "budgets.create", "budgets.edit", "budgets.delete",
+            "goals.view", "goals.create", "goals.edit", "goals.delete",
+            "reports.view", "profile.view", "profile.edit", "notifications.view",
+            "ai.chat", "settings.view_profile", "investments.view",
+        }
+        permissions = Permission.query.filter(Permission.code.in_(default_codes)).all()
+        for permission in permissions:
+            exists = RolePermission.query.filter_by(
+                role_id=user_role.id, permission_id=permission.id
+            ).first()
+            if not exists:
+                db.session.add(RolePermission(
+                    role_id=user_role.id, permission_id=permission.id
+                ))
+        db.session.commit()
+        print("✓ Default User permissions synchronized")
+
     # ==========================================================
-    # INITIAL SUPER ADMIN
+    # INITIAL / PRIMARY SUPER ADMIN
     # ==========================================================
 
     @staticmethod
@@ -176,7 +206,7 @@ class RBACSeed:
         if not email or not password:
 
             print(
-                "⚠ Super Admin not created."
+                "⚠ Super Admin not created/updated."
             )
 
             print(
@@ -186,6 +216,8 @@ class RBACSeed:
             )
 
             return
+
+        email = email.strip().lower()
 
         # ------------------------------------------------------
         # Find Super Admin role
@@ -198,7 +230,7 @@ class RBACSeed:
         if not super_admin_role:
 
             print(
-                "✗ Cannot create Super Admin user."
+                "✗ Cannot create/update Super Admin."
             )
 
             print(
@@ -208,108 +240,164 @@ class RBACSeed:
             return
 
         # ------------------------------------------------------
-        # Find existing user
+        # Find the existing Super Admin account
+        #
+        # IMPORTANT:
+        # We find the account through its role assignment,
+        # NOT through the new email.
+        #
+        # This preserves the existing User.id and all related
+        # records.
         # ------------------------------------------------------
 
-        user = User.query.filter_by(
-            email=email.strip().lower()
-        ).first()
+        existing_super_admin_assignment = (
+            UserRole.query
+            .filter_by(
+                role_id=super_admin_role.id
+            )
+            .first()
+        )
 
         # ------------------------------------------------------
-        # Create user if necessary
+        # CASE 1:
+        # Existing Super Admin found
         # ------------------------------------------------------
 
-        if not user:
+        if existing_super_admin_assignment:
 
-            user = User(
-                first_name=first_name,
-                last_name=last_name,
-                email=email.strip().lower(),
-                email_verified=True
+            user = User.query.get(
+                existing_super_admin_assignment.user_id
             )
 
+            if not user:
+
+                raise RuntimeError(
+                    "Super Admin role assignment points "
+                    "to a missing user."
+                )
+
+            # --------------------------------------------------
+            # Safety check:
+            # Do not silently take over another user account
+            # that already owns the configured email.
+            # --------------------------------------------------
+
+            email_owner = User.query.filter(
+                User.email == email,
+                User.id != user.id
+            ).first()
+
+            if email_owner:
+
+                raise RuntimeError(
+                    f"Cannot update Super Admin email to "
+                    f"'{email}'. That email already belongs "
+                    f"to User ID {email_owner.id}."
+                )
+
+            old_email = user.email
+            old_first_name = user.first_name
+            old_last_name = user.last_name
+
+            # --------------------------------------------------
+            # Update ONLY the Super Admin identity fields
+            # --------------------------------------------------
+
+            user.first_name = first_name
+            user.last_name = last_name
+            user.email = email
+            user.email_verified = True
+
+            # Set the new password
             user.set_password(password)
-
-            db.session.add(user)
-
-            db.session.flush()
-
-            print(
-                f"✓ Super Admin user created: {user.email}"
-            )
-
-        else:
-
-            print(
-                f"✓ Super Admin user already exists: "
-                f"{user.email}"
-            )
-
-        # ------------------------------------------------------
-        # ONE USER = ONE ROLE
-        # ------------------------------------------------------
-        #
-        # A user must NEVER have another role in addition
-        # to Super Admin.
-        #
-        # Because UserRole.user_id is UNIQUE, only one
-        # UserRole record can exist for this user.
-        # ------------------------------------------------------
-
-        existing_assignment = UserRole.query.filter_by(
-            user_id=user.id
-        ).first()
-
-        if existing_assignment:
-
-            if existing_assignment.role_id == super_admin_role.id:
-
-                print(
-                    "✓ User already has Super Admin role"
-                )
-
-            else:
-
-                old_role = existing_assignment.role
-
-                old_role_name = (
-                    old_role.slug
-                    if old_role
-                    else "unknown"
-                )
-
-                print(
-                    f"⚠ User already has role "
-                    f"'{old_role_name}'."
-                )
-
-                print(
-                    "No automatic role replacement "
-                    "was performed."
-                )
-
-                print(
-                    "Each account may have only one role."
-                )
-
-                return
-
-        else:
-
-            assignment = UserRole(
-                user_id=user.id,
-                role_id=super_admin_role.id,
-                assigned_by_id=None
-            )
-
-            db.session.add(assignment)
 
             db.session.commit()
 
             print(
-                f"✓ Super Admin role assigned "
-                f"to {user.email}"
+                "✓ Existing Super Admin account updated."
             )
+
+            print(
+                f"   User ID preserved: {user.id}"
+            )
+
+            print(
+                f"   Name: "
+                f"{old_first_name} {old_last_name}"
+                f" → "
+                f"{user.first_name} {user.last_name}"
+            )
+
+            print(
+                f"   Email: "
+                f"{old_email}"
+                f" → "
+                f"{user.email}"
+            )
+
+            print(
+                "   Password: updated"
+            )
+
+            print(
+                "   Role: super_admin"
+            )
+
+            print(
+                "   Existing user data and relationships preserved."
+            )
+
+            return
+
+        # ------------------------------------------------------
+        # CASE 2:
+        # No existing Super Admin exists
+        #
+        # Only in this situation do we create a new account.
+        # ------------------------------------------------------
+
+        user = User.query.filter_by(
+            email=email
+        ).first()
+
+        if user:
+
+            raise RuntimeError(
+                f"User with email '{email}' already exists "
+                "but is not the Super Admin. "
+                "Refusing to take over the account."
+            )
+
+        user = User(
+            first_name=first_name,
+            last_name=last_name,
+            email=email,
+            email_verified=True
+        )
+
+        user.set_password(password)
+
+        db.session.add(user)
+
+        db.session.flush()
+
+        assignment = UserRole(
+            user_id=user.id,
+            role_id=super_admin_role.id,
+            assigned_by_id=None
+        )
+
+        db.session.add(assignment)
+
+        db.session.commit()
+
+        print(
+            f"✓ Super Admin user created: {user.email}"
+        )
+
+        print(
+            f"   User ID: {user.id}"
+        )
 
     # ==========================================================
     # VALIDATE ONE-ROLE RULE
@@ -372,6 +460,8 @@ class RBACSeed:
         cls.seed_permissions()
 
         cls.assign_super_admin_permissions()
+
+        cls.assign_default_user_permissions()
 
         cls.seed_super_admin()
 

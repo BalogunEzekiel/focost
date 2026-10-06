@@ -35,13 +35,15 @@ def test_robots_endpoint(client):
     assert b"User-agent: *" in response.data
 
 
-def test_security_txt_endpoint(client):
+def test_security_txt_endpoint(client, app):
     response = client.get("/.well-known/security.txt")
 
     assert response.status_code == 200
     assert response.content_type.startswith("text/plain")
-    assert b"security@focost.ai" in response.data
-
+    assert (
+        f"mailto:{app.config['FOCOST_SECURITY_EMAIL']}".encode()
+        in response.data
+    )
 
 def test_security_headers(client):
     response = client.get("/healthz")

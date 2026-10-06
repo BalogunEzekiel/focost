@@ -114,6 +114,26 @@ class AICoachService:
         if intent == "income":
 
             # ------------------------------------------
+            # Income Breakdown (authoritative query)
+            # ------------------------------------------
+
+            if any(phrase in normalized for phrase in [
+                "break it down", "breakdown", "break down",
+                "by source", "by category", "sources of income",
+                "income sources", "income categories"
+            ]):
+                rows = FinanceQueries.income_breakdown(user.id, period)
+                if not rows:
+                    return respond(user.id, "No income records are available for that period to break down.")
+                lines = ["Income Breakdown"]
+                for row in rows:
+                    label = row.source or row.category or "Unclassified"
+                    if row.source and row.category and row.source != row.category:
+                        label = f"{row.source} ({row.category})"
+                    lines.append(f"• {label}: ₦{row.total:,.2f}")
+                return respond(user.id, "\n".join(lines))
+
+            # ------------------------------------------
             # Income by Category
             # ------------------------------------------
 
@@ -327,7 +347,7 @@ class AICoachService:
             ):
 
                 categories = FinanceQueries.income_categories(
-                    user.id
+                    user.id, period
                 )
 
                 if not categories:
@@ -361,7 +381,7 @@ class AICoachService:
             ):
 
                 sources = FinanceQueries.income_sources(
-                    user.id
+                    user.id, period
                 )
 
                 if not sources:

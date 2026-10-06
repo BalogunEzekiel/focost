@@ -1,3 +1,7 @@
+####################################################################################################
+# FILE: app/routes/goal.py
+####################################################################################################
+
 from flask import (
     Blueprint,
     render_template,
@@ -11,6 +15,7 @@ from flask_login import (
     current_user,
 )
 
+from app.rbac.decorators import permission_required
 from app.extensions import db
 
 from app.models.goal import Goal
@@ -35,7 +40,7 @@ goal_bp = Blueprint(
 # =====================================
 
 @goal_bp.route("/")
-@login_required
+@permission_required("goals.view")
 def list_goals():
 
     goals = (
@@ -61,7 +66,7 @@ def list_goals():
 # =====================================
 
 @goal_bp.route("/add", methods=["GET", "POST"])
-@login_required
+@permission_required("goals.create")
 def add():
 
     form = GoalForm()
@@ -93,7 +98,7 @@ def add():
 # =====================================
 
 @goal_bp.route("/edit/<int:goal_id>", methods=["GET", "POST"])
-@login_required
+@permission_required("goals.edit")
 def edit(goal_id):
 
     goal = Goal.query.filter_by(
@@ -129,7 +134,7 @@ def edit(goal_id):
 # =====================================
 
 @goal_bp.route("/delete/<int:goal_id>")
-@login_required
+@permission_required("goals.delete")
 def delete(goal_id):
 
     goal = Goal.query.filter_by(
@@ -137,12 +142,19 @@ def delete(goal_id):
         user_id=current_user.id
     ).first_or_404()
 
-    GoalService.delete_goal(goal)
+    returned_amount = GoalService.delete_goal(goal)
 
-    flash(
-        "Goal deleted successfully.",
-        "success"
-    )
+    if returned_amount > 0:
+        flash(
+            f"Goal deleted successfully. ₦{returned_amount:,.2f} in contributions "
+            "was returned to your income.",
+            "success"
+        )
+    else:
+        flash(
+            "Goal deleted successfully.",
+            "success"
+        )
 
     return redirect(
         url_for("goal.list_goals")
@@ -154,7 +166,7 @@ def delete(goal_id):
 # =====================================
 
 @goal_bp.route("/<int:goal_id>")
-@login_required
+@permission_required("goals.view")
 def detail(goal_id):
 
     goal = Goal.query.filter_by(
@@ -186,7 +198,7 @@ def detail(goal_id):
     "/<int:goal_id>/contribute",
     methods=["GET", "POST"]
 )
-@login_required
+@permission_required("goals.create")
 def contribute(goal_id):
 
     goal = Goal.query.filter_by(
@@ -240,7 +252,7 @@ def contribute(goal_id):
 # =====================================
 
 @goal_bp.route("/<int:goal_id>/history")
-@login_required
+@permission_required("goals.view")
 def contributions(goal_id):
 
     goal = Goal.query.filter_by(
@@ -267,7 +279,7 @@ def contributions(goal_id):
     "/contribution/<int:contribution_id>/edit",
     methods=["GET", "POST"]
 )
-@login_required
+@permission_required("goals.edit")
 def edit_contribution(contribution_id):
 
     contribution = (
@@ -300,7 +312,7 @@ def edit_contribution(contribution_id):
     )
 
 @goal_bp.route("/contribution/<int:contribution_id>/delete")
-@login_required
+@permission_required("goals.edit")
 def delete_contribution(contribution_id):
 
     contribution = (

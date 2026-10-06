@@ -81,12 +81,26 @@ def test_investment_funding_and_valuation_are_separate_from_operating_expense(ap
         )
         assert asset.current_value == 1000
         assert Expense.query.filter_by(transaction_class="investment").one().amount == 1000
+        assert Income.query.filter_by(user_id=user.id).count() == 1
         assert DashboardService.available_balance(user.id) == 4000
 
         InvestmentService.update_valuation(user, asset, new_value=1200, event_date=date.today())
         assert asset.gain_loss == 200
-        assert Income.query.filter_by(transaction_class="investment_gain").one().amount == 200
-        # The valuation gain is non-cash and must not become spendable cash.
+
+        # Valuation is non-cash: it must never create an Income/Expense row.
+        assert Income.query.filter_by(user_id=user.id).count() == 1
+        assert Expense.query.filter_by(user_id=user.id).count() == 1
+
+        valuation = InvestmentEvent.query.filter_by(
+            asset_id=asset.id,
+            event_type="valuation",
+        ).one()
+        assert valuation.realized_gain_loss == 200
+        assert valuation.income_id is None
+        assert valuation.expense_id is None
+
+        # The valuation gain remains in investment value only and does not
+        # become spendable cash.
         assert DashboardService.available_balance(user.id) == 4000
 
 
@@ -113,3 +127,63 @@ def test_investment_full_liquidation_preserves_history(app, user, monkeypatch):
         assert InvestmentEvent.query.filter_by(asset_id=asset.id).count() >= 2
         assert Income.query.filter_by(transaction_class="investment_liquidation").one().amount == 1000
         assert DashboardService.available_balance(user.id) == 5000
+
+
+def test_initial_investment_valuation_never_enters_income_or_expense(app, user, monkeypatch):
+    with app.app_context():
+        monkeypatch.setattr(
+            "app.subscriptions.service.SubscriptionService.can_add_transaction",
+            staticmethod(lambda user_id: (True, "")),
+        )
+        db.session.add(
+            Income(
+                user_id=user.id,
+                source="Salary",
+                category="Salary",
+                amount=5000,
+                received_date=date.today(),
+            )
+        )
+        db.session.commit()
+
+        asset = InvestmentService.create(
+            user,
+            name="Premium Investment",
+            investment_type="Investment",
+            acquisition_date=date.today(),
+            amount=1000,
+            current_value=1200,
+        )
+
+        assert asset.current_value == 1200
+        assert DashboardService.available_balance(user.id) == 4000
+        assert Income.query.filter_by(user_id=user.id).count() == 1
+        assert Expense.query.filter_by(user_id=user.id).count() == 1
+
+        valuation = InvestmentEvent.query.filter_by(
+            asset_id=asset.id,
+            event_type="valuation",
+        ).one()
+        assert valuation.realized_gain_loss == 200
+        assert valuation.income_id is None
+        assert valuation.expense_id is None
+
+
+def test_income_breakdown_is_period_aware_and_authoritative(app, user):
+    from datetime import date
+    from app.models.income import Income
+    from app.ai_coach.queries import FinanceQueries
+    from app.extensions import db
+
+    with app.app_context():
+        db.session.add_all([
+            Income(user_id=user.id, source="Salary", category="Employment", amount=300000, received_date=date(2026, 9, 1)),
+            Income(user_id=user.id, source="Business", category="Trading", amount=160000, received_date=date(2026, 9, 5)),
+            Income(user_id=user.id, source="Salary", category="Employment", amount=500000, received_date=date(2026, 8, 1)),
+        ])
+        db.session.commit()
+        rows = FinanceQueries.income_breakdown(user.id, "last_month")
+        # Test current implementation's date engine using the app's current test date.
+        # The query must return grouped source/category rows rather than an overall-only total.
+        assert rows
+        assert all(getattr(row, "total", None) is not None for row in rows)

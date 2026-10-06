@@ -345,26 +345,12 @@ def delete(public_id):
     )
 
     if user:
-
-        AuditService.log(
-
-            action=USER_DELETED,
-
-            category=USER,
-
-            resource="User",
-
-            resource_id=user.public_id,
-
-            description=f"Deleted {user.email}"
-        )
-
         AdminUserService.delete_user(
             public_id
         )
 
         flash(
-            "User deleted.",
+            "User account closed and anonymized.",
             "success"
         )
 

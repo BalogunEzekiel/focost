@@ -14,6 +14,7 @@ from flask_login import (
     current_user,
 )
 
+from app.rbac.decorators import permission_required
 from app.reports import reports_bp
 from app.reports.services import ReportService
 from app.reports.exports import ExportService
@@ -160,7 +161,7 @@ def _report_data():
 # ==========================================================
 
 @reports_bp.route("/")
-@login_required
+@permission_required("reports.view")
 def index():
 
     try:
@@ -278,7 +279,7 @@ def index():
 # ==========================================================
 
 @reports_bp.route("/export/pdf")
-@login_required
+@permission_required("reports.view")
 def export_pdf():
 
     try:
@@ -328,7 +329,7 @@ def export_pdf():
 # ==========================================================
 
 @reports_bp.route("/export/excel")
-@login_required
+@permission_required("reports.view")
 def export_excel():
 
     try:
@@ -381,7 +382,7 @@ def export_excel():
 # ==========================================================
 
 @reports_bp.route("/transactions")
-@login_required
+@permission_required("reports.view")
 def transactions():
 
     try:

@@ -288,17 +288,15 @@ User Management
 
                         {% endif %}
 
-                        {% if has_permission("users.update") %}
+                        {% if has_permission("users.update") and user.role_slug != "super_admin" %}
 
                             {% if user.is_active %}
 
                             <a
                                 href="{{ url_for('admin_users.deactivate', public_id=user.public_id) }}"
-                                class="btn btn-sm btn-warning role-action-btn"
-                                title="Deactivate User">
+                                class="btn btn-warning">
 
-                                <i class="bi bi-person-dash"></i>
-                                <span class="action-label">Deactivate</span>
+                                Deactivate
 
                             </a>
 
@@ -306,11 +304,9 @@ User Management
 
                             <a
                                 href="{{ url_for('admin_users.activate', public_id=user.public_id) }}"
-                                class="btn btn-sm btn-success role-action-btn"
-                                title="Activate User">
+                                class="btn btn-success">
 
-                                <i class="bi bi-person-check"></i>
-                                <span class="action-label">Activate</span>
+                                Activate
 
                             </a>
 
@@ -318,16 +314,14 @@ User Management
 
                         {% endif %}
 
-                        {% if has_permission("users.delete") %}
+                        {% if has_permission("users.delete") and user.role_slug != "super_admin" %}
 
                         <a
                             href="{{ url_for('admin_users.delete', public_id=user.public_id) }}"
-                            class="btn btn-sm btn-danger role-action-btn"
-                            title="Delete User"
-                            onclick="return confirm('Delete this user?')">
+                            class="btn btn-danger"
+                            onclick="return confirm('Close and anonymize this user account?')">
 
-                            <i class="bi bi-trash"></i>
-                            <span class="action-label">Delete</span>
+                            Delete User
 
                         </a>
 

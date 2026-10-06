@@ -6,7 +6,7 @@ Create Account
 
 {% block content %}
 
-<div class="container pt-0 pb-4" style="margin-top:-15rem;">
+<div class="container register-page-container pb-4">
 
     <div class="row justify-content-center align-items-center min-vh-75">
 
@@ -29,7 +29,6 @@ Create Account
                     </div>
 
                     <form method="POST">
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
                         {{ form.hidden_tag() }}
 
@@ -92,6 +91,47 @@ Create Account
 
                         </div>
 
+                        <div class="form-check mb-4">
+
+                            {{ form.accept_terms(class="form-check-input") }}
+
+                            <label
+                                class="form-check-label small"
+                                for="accept_terms">
+
+                                I agree to the
+                                <a
+                                    href="{{ url_for('compliance.terms') }}"
+                                    target="_blank"
+                                    rel="noopener noreferrer">
+                                    Terms of Service
+                                </a>,
+                                <a
+                                    href="{{ url_for('compliance.privacy') }}"
+                                    target="_blank"
+                                    rel="noopener noreferrer">
+                                    Privacy Policy
+                                </a>
+                                and
+                                <a
+                                    href="{{ url_for('compliance.ai_disclosure') }}"
+                                    target="_blank"
+                                    rel="noopener noreferrer">
+                                    AI & Financial Disclaimer
+                                </a>.
+
+                            </label>
+
+                            {% for error in form.accept_terms.errors %}
+
+                                <div class="text-danger small">
+                                    {{ error }}
+                                </div>
+
+                            {% endfor %}
+
+                        </div>
+
                         <div class="d-grid">
 
                             {{ form.submit(
@@ -103,6 +143,19 @@ Create Account
                     </form>
 
                     <hr class="my-4">
+
+                    <p class="text-center mb-3">
+
+                        By creating an account, you confirm that you have reviewed
+                        the current policies. Need help?
+
+                        <a
+                            href="{{ url_for('showcase.support') }}"
+                            class="text-decoration-none">
+                            Contact Support
+                        </a>.
+
+                    </p>
 
                     <p class="text-center mb-0">
 
@@ -134,51 +187,68 @@ Create Account
 
 <style>
 
-.min-vh-75{
-    min-height:75vh;
+.min-vh-75 {
+    min-height: 60vh;
 }
 
-.card{
-    transition:all .25s ease;
+.register-page-container {
+    margin-top: 0rem;
 }
 
-.card:hover{
-    transform:translateY(-2px);
+.card {
+    transition: all .25s ease;
 }
 
-.form-control{
-    border-radius:.75rem;
+.card:hover {
+    transform: translateY(-2px);
 }
 
-.btn{
-    border-radius:.75rem;
+.form-control {
+    border-radius: .75rem;
 }
 
-@media (max-width:576px){
+.btn {
+    border-radius: .75rem;
+}
 
-    .card-body{
-        padding:1.5rem !important;
+@media (max-width: 576px) {
+
+    .register-page-container {
+        padding-top: 0;
+        padding-bottom: 1.5rem !important;
     }
 
-    h2{
-        font-size:1.7rem;
+    .min-vh-75 {
+        min-height: auto;
     }
 
-    .form-control-lg{
-        font-size:1rem;
-        padding:.75rem 1rem;
+    .card {
+        margin-top: -10rem;
     }
 
-    .btn-lg{
-        padding:.75rem;
+    .card-body {
+        padding: 1.5rem !important;
+    }
+
+    h2 {
+        font-size: 1.7rem;
+    }
+
+    .form-control-lg {
+        font-size: 1rem;
+        padding: .75rem 1rem;
+    }
+
+    .btn-lg {
+        padding: .75rem;
     }
 
 }
 
-@media (min-width:577px) and (max-width:991px){
+@media (min-width: 577px) and (max-width: 991px) {
 
-    .card-body{
-        padding:2rem !important;
+    .card-body {
+        padding: 2rem !important;
     }
 
 }

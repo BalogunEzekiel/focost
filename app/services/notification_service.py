@@ -1,9 +1,8 @@
-from datetime import datetime, date
-
 from sqlalchemy import func
 
 from app.extensions import db
 from app.models.notification import Notification
+from app.utils.timezone import today, utc_now
 
 
 class NotificationService:
@@ -27,10 +26,6 @@ class NotificationService:
     """
 
     DEFAULT_LIMIT = 10
-
-    # ==========================================================
-    # Create Notification
-    # ==========================================================
 
     # ==========================================================
     # Create Notification
@@ -98,7 +93,7 @@ class NotificationService:
 
             priority=priority,
 
-            created_at=datetime.utcnow(),
+            created_at=utc_now(),
 
         )
 
@@ -109,7 +104,11 @@ class NotificationService:
             try:
                 if priority in {"high", "critical"}:
                     from app.services.notification_delivery import NotificationDeliveryService
-                    NotificationDeliveryService.send_email(user_id, title, message)
+                    NotificationDeliveryService.send_email(
+                        user_id,
+                        title,
+                        message,
+                    )
             except Exception:
                 pass
 
@@ -125,7 +124,10 @@ class NotificationService:
         Get one notification.
         """
 
-        query = Notification.query.filter_by(id=notification_id, is_deleted=False)
+        query = Notification.query.filter_by(
+            id=notification_id,
+            is_deleted=False,
+        )
 
         if user_id is not None:
             query = query.filter_by(
@@ -149,7 +151,14 @@ class NotificationService:
 
         return (
             Notification.query
-            .filter(Notification.user_id == user_id, Notification.is_deleted == False, (Notification.expires_at.is_(None) | (Notification.expires_at > datetime.utcnow())))
+            .filter(
+                Notification.user_id == user_id,
+                Notification.is_deleted == False,
+                (
+                    Notification.expires_at.is_(None)
+                    | (Notification.expires_at > utc_now())
+                ),
+            )
             .order_by(Notification.created_at.desc())
             .limit(limit)
             .all()
@@ -164,7 +173,10 @@ class NotificationService:
 
         return (
             Notification.query
-            .filter(Notification.user_id == user_id, Notification.is_deleted == False)
+            .filter(
+                Notification.user_id == user_id,
+                Notification.is_deleted == False,
+            )
             .order_by(Notification.created_at.desc())
             .all()
         )
@@ -275,7 +287,7 @@ class NotificationService:
         if not notification.is_read:
 
             notification.is_read = True
-            notification.read_at = datetime.utcnow()
+            notification.read_at = utc_now()
 
         db.session.commit()
 
@@ -298,7 +310,7 @@ class NotificationService:
             .all()
         )
 
-        now = datetime.utcnow()
+        now = utc_now()
 
         for notification in notifications:
 
@@ -312,14 +324,23 @@ class NotificationService:
     # ==========================================================
     # Dismiss Notification
     # ==========================================================
+
     @staticmethod
     def dismiss(notification_id, user_id=None):
-        notification = NotificationService.get(notification_id, user_id)
+
+        notification = NotificationService.get(
+            notification_id,
+            user_id,
+        )
+
         if notification is None:
             return False
-        notification.dismissed_at = datetime.utcnow()
+
+        notification.dismissed_at = utc_now()
         notification.is_deleted = True
+
         db.session.commit()
+
         return True
 
     # ==========================================================
@@ -397,7 +418,7 @@ class NotificationService:
                 user_id
             ),
         }
-    
+
     # ==========================================================
     # Budget Notification
     # ==========================================================
@@ -536,8 +557,9 @@ class NotificationService:
     ):
         # A goal with a future target date must never generate a
         # "behind schedule" notification solely because funding is low.
-        if target_date and target_date > date.today():
+        if target_date and target_date > today():
             return None
+
         return NotificationService.create(
             user_id=user_id,
             title="Goal Behind Schedule",
@@ -739,7 +761,7 @@ class NotificationService:
             action_url=action_url,
             commit=commit,
         )
-    
+
     # ==========================================================
     # Generate Dashboard Notifications
     # ==========================================================
@@ -765,34 +787,30 @@ class NotificationService:
         # ------------------------------------------------------
         # Current Balance
         # ------------------------------------------------------
+        # DashboardService is the authoritative source of truth
+        # for lifetime cash-flow balance.
+        #
+        # This includes:
+        # - all active income
+        # - all active expenses
+        # - investment funding
+        # - goal contributions
+        #
+        # Investment valuation/revaluation remains non-cash and
+        # cannot enter the balance because it is not recorded as
+        # Income or Expense.
+        #
+        # Local import prevents the circular dependency:
+        # DashboardService -> NotificationService
+        # ------------------------------------------------------
 
-        total_income = (
-            db.session.query(
-                func.coalesce(
-                    func.sum(Income.amount),
-                    0
-                )
-            )
-            .filter(
-                Income.user_id == user_id
-            )
-            .scalar()
+        from app.services.dashboard_service import DashboardService
+
+        cash_flow = DashboardService._cash_flow_totals(
+            user_id=user_id,
         )
 
-        total_expense = (
-            db.session.query(
-                func.coalesce(
-                    func.sum(Expense.amount),
-                    0
-                )
-            )
-            .filter(
-                Expense.user_id == user_id
-            )
-            .scalar()
-        )
-
-        balance = total_income - total_expense
+        balance = cash_flow["savings"]
 
         if balance < 0:
 
@@ -913,7 +931,21 @@ class NotificationService:
 
         for goal in goals:
 
+            # A "behind schedule" alert is meaningful only when the goal is
+            # actually approaching its target date.  A goal with a target more
+            # than 30 days away is still in its normal planning/funding window
+            # and must not be treated as behind merely because its funding
+            # percentage is currently low.
+            stale_behind = Notification.query.filter(
+                Notification.user_id == user_id,
+                Notification.unique_key == f"GOAL_BEHIND_{goal.id}",
+                Notification.is_deleted == False,
+            ).all()
+
             if goal.progress_percentage >= 100:
+
+                for notification in stale_behind:
+                    notification.is_deleted = True
 
                 if goal.status != "Completed":
 
@@ -941,11 +973,18 @@ class NotificationService:
 
                     goal.status = "Completed"
 
-                    goal.completed_at = datetime.utcnow()
+                    goal.completed_at = utc_now()
 
                 continue
 
             days = goal.days_remaining
+
+            # Remove a previously-created behind-schedule notification if the
+            # goal is no longer within the 30-day warning window.  This also
+            # cleans up the old behaviour for existing users.
+            if not (goal.progress_percentage < 40 and 0 < days <= 30):
+                for notification in stale_behind:
+                    notification.is_deleted = True
 
             if 0 <= days <= 7:
 
@@ -972,7 +1011,7 @@ class NotificationService:
 
                 )
 
-            if goal.progress_percentage < 40 and days > 0:
+            if goal.progress_percentage < 40 and 0 < days <= 30:
 
                 NotificationService.create(
 
@@ -1000,18 +1039,59 @@ class NotificationService:
         # ------------------------------------------------------
         # Subscription + AI usage alerts
         # ------------------------------------------------------
+
         try:
             from app.subscriptions.service import SubscriptionService
             from app.services.ai_usage_service import AIUsageService
+
             sub = SubscriptionService.current(user_id)
+
             if sub and sub.is_trial and sub.trial_ends_at:
-                days_left = (sub.trial_ends_at.date() - date.today()).days
+                days_left = (
+                    sub.trial_ends_at.date() - today()
+                ).days
+
                 if 0 <= days_left <= 7:
-                    NotificationService.create(user_id=user_id, title="Trial ending soon", message=f"Your FOCOST free trial ends in {days_left} day(s). Choose a paid plan to keep paid AI access.", level="warning", notification_type="subscription", icon="bi-hourglass-split", action_url="/billing", unique_key=f"TRIAL_ENDING_{sub.id}_{days_left}", priority="high", commit=False)
+                    NotificationService.create(
+                        user_id=user_id,
+                        title="Trial ending soon",
+                        message=(
+                            "Your FOCOST free trial ends in "
+                            f"{days_left} day(s). Choose a paid plan "
+                            "to keep paid AI access."
+                        ),
+                        level="warning",
+                        notification_type="subscription",
+                        icon="bi-hourglass-split",
+                        action_url="/billing",
+                        unique_key=f"TRIAL_ENDING_{sub.id}_{days_left}",
+                        priority="high",
+                        commit=False,
+                    )
+
             usage = AIUsageService.monthly(user_id)
             limit = usage.get("token_limit")
+
             if limit and usage.get("total_tokens", 0) >= limit * 0.8:
-                NotificationService.create(user_id=user_id, title="AI usage nearing limit", message=f"You have used {usage['total_tokens']:,} of {limit:,} AI tokens this month.", level="warning", notification_type="ai_usage", icon="bi-cpu", action_url="/ai/", unique_key=f"AI_USAGE_80_{user_id}_{date.today().strftime('%Y-%m')}", priority="high", commit=False)
+                NotificationService.create(
+                    user_id=user_id,
+                    title="AI usage nearing limit",
+                    message=(
+                        f"You have used {usage['total_tokens']:,} "
+                        f"of {limit:,} AI tokens this month."
+                    ),
+                    level="warning",
+                    notification_type="ai_usage",
+                    icon="bi-cpu",
+                    action_url="/ai/",
+                    unique_key=(
+                        f"AI_USAGE_80_{user_id}_"
+                        f"{today().strftime('%Y-%m')}"
+                    ),
+                    priority="high",
+                    commit=False,
+                )
+
         except Exception:
             pass
 

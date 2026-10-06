@@ -1,3 +1,7 @@
+####################################################################################################
+# FILE: app/services/llm_service.py
+####################################################################################################
+
 import os
 import logging
 import time
@@ -17,11 +21,10 @@ class LLMService:
     Centralized LLM provider service.
 
     Provider strategy:
-    1. Use configured Groq keys only.
-    2. Rotate through configured Groq API keys.
-    3. Retry transient failures.
-    4. Skip permanent failures.
-    5. Protect providers from oversized requests.
+    1. Use configured Groq keys with rotation.
+    2. Retry transient failures.
+    3. Skip permanent failures.
+    4. Protect providers from oversized requests.
     """
 
     # Conservative character guard.
@@ -55,25 +58,14 @@ class LLMService:
 
     def _build_providers(self):
         providers = []
-
         groq_keys = self._get_keys("GROQ")
-
         if groq_keys:
-            providers.append(
-                {
-                    "name": "Groq",
-                    "base_url": os.getenv(
-                        "GROQ_BASE_URL",
-                        "https://api.groq.com/openai/v1",
-                    ),
-                    "model": os.getenv(
-                        "GROQ_MODEL_NAME",
-                        "openai/gpt-oss-120b",
-                    ),
-                    "keys": groq_keys,
-                }
-            )
-
+            providers.append({
+                "name": "Groq",
+                "base_url": os.getenv("GROQ_BASE_URL", "https://api.groq.com/openai/v1"),
+                "model": os.getenv("GROQ_MODEL_NAME", "openai/gpt-oss-120b"),
+                "keys": groq_keys,
+            })
         return providers
 
     # --------------------------------------------------------------
@@ -241,6 +233,7 @@ class LLMService:
         provider,
         api_key,
         messages,
+        max_tokens=None,
     ):
         valid, characters = (
             self._validate_request_size(
@@ -267,12 +260,13 @@ class LLMService:
             )
         )
 
-        max_tokens = int(
-            os.getenv(
-                "FOCOST_AI_MAX_TOKENS",
-                "250",
+        if max_tokens is None:
+            max_tokens = int(
+                os.getenv(
+                    "FOCOST_AI_MAX_TOKENS",
+                    "180",
+                )
             )
-        )
 
         kwargs = {
             "model": provider["model"],
@@ -307,6 +301,7 @@ class LLMService:
         user_message,
         system_prompt,
         history=None,
+        max_tokens=None,
     ):
         if history is None:
             history = []
@@ -377,6 +372,7 @@ class LLMService:
                             provider=provider,
                             api_key=api_key,
                             messages=messages,
+                            max_tokens=max_tokens,
                         )
 
                         content = ""

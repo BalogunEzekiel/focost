@@ -1,0 +1,122 @@
+{% extends "layouts/public.html" %}
+
+{% block title %}Support Centre | FOCOST{% endblock %}
+
+{% block content %}
+<style>
+.support-page {
+    background:
+        radial-gradient(circle at 10% 10%, rgba(37,99,235,.10), transparent 28%),
+        linear-gradient(180deg, #f8fbff 0%, #ffffff 60%, #f8fafc 100%);
+
+        margin-top: -15rem;
+        padding: 0 0 0px;
+}
+
+.support-card {
+    border: 1px solid #e7edf6;
+    border-radius: 28px;
+    box-shadow: 0 20px 60px rgba(15,23,42,.08);
+}
+.support-item {
+    border: 1px solid #e7edf6;
+    border-radius: 20px;
+    background: #fff;
+}
+</style>
+
+<div class="support-page py-5">
+    <div class="container py-lg-4" style="max-width:1040px;">
+        <div class="support-card bg-white p-4 p-md-5">
+            <div class="text-center mb-5">
+                <span class="badge bg-primary-subtle text-primary px-3 py-2">
+                    FOCOST Support Centre
+                </span>
+                <h1 class="display-6 fw-bold mt-3">How can we help?</h1>
+                <p class="lead text-muted mx-auto" style="max-width:720px;">
+                    Find the right channel for account, billing, product, data,
+                    security and general FOCOST questions.
+                </p>
+            </div>
+
+            <div class="row g-4">
+                <div class="col-md-6">
+                    <div class="support-item p-4 h-100">
+                        <i class="bi bi-envelope text-primary fs-2"></i>
+                        <h5 class="fw-bold mt-3">General support</h5>
+                        <p class="text-muted">
+                            For account access, verification, subscriptions,
+                            billing, data export/deletion and general product questions.
+                        </p>
+                        <a
+                            class="btn btn-primary"
+                            href="mailto:{{ config.FOCOST_SUPPORT_EMAIL }}?subject=FOCOST%20Support"
+                        >
+                            Email {{ config.FOCOST_SUPPORT_EMAIL }}
+                        </a>
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <div class="support-item p-4 h-100">
+                        <i class="bi bi-shield-check text-primary fs-2"></i>
+                        <h5 class="fw-bold mt-3">Security</h5>
+                        <p class="text-muted">
+                            Security vulnerabilities should be reported through
+                            the dedicated security contact, not general support.
+                        </p>
+                        <a
+                            class="btn btn-outline-primary"
+                            href="{{ url_for('showcase.security') }}"
+                        >
+                            Security & disclosure
+                        </a>
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <div class="support-item p-4 h-100">
+                        <i class="bi bi-chat-square-heart text-primary fs-2"></i>
+                        <h5 class="fw-bold mt-3">Product feedback</h5>
+                        <p class="text-muted">
+                            Share feature requests, bug reports, usability
+                            observations and general product feedback directly
+                            with the FOCOST team.
+                        </p>
+                        <a
+                            class="btn btn-outline-primary"
+                            href="{{ url_for('feedback.submit') }}"
+                        >
+                            Send feedback
+                        </a>
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <div class="support-item p-4 h-100">
+                        <i class="bi bi-question-circle text-primary fs-2"></i>
+                        <h5 class="fw-bold mt-3">Self-service</h5>
+                        <p class="text-muted">
+                            Before contacting support, review the FAQ, Pricing
+                            and published policies for answers about the platform
+                            and your responsibilities.
+                        </p>
+                        <div class="d-flex flex-wrap gap-2">
+                            <a class="btn btn-sm btn-light border" href="{{ url_for('showcase.faq') }}">FAQ</a>
+                            <a class="btn btn-sm btn-light border" href="{{ url_for('showcase.pricing') }}">Pricing</a>
+                            <a class="btn btn-sm btn-light border" href="{{ url_for('compliance.privacy') }}">Privacy</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="alert alert-light border mt-4 mb-0">
+                <strong>Please do not email secrets:</strong>
+                never send passwords, one-time verification codes, API keys,
+                payment-card numbers, CVV/CVC values or unnecessary sensitive
+                financial information to support.
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

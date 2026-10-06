@@ -1,3 +1,7 @@
+####################################################################################################
+# FILE: app/models/budget.py
+####################################################################################################
+
 from datetime import datetime
 
 from app.extensions import db
@@ -95,14 +99,30 @@ class Budget(BaseModel):
     
     @property
     def progress_color(self):
-        pct = self.percentage_used
+        """Progress colour shared by dashboard and budget page."""
+        return {
+            "Exceeded": "bg-danger",
+            "Critical": "bg-warning",
+            "Warning": "bg-info",
+            "Healthy": "bg-success",
+        }.get(self.status, "bg-secondary")
 
-        if pct >= 100:
-            return "bg-danger"      # Red
-        elif pct >= 90:
-            return "bg-warning"     # Yellow
-        elif pct >= 75:
-            return "bg-info"        # Blue
-        else:
-            return "bg-success"     # Green
+    @property
+    def badge_class(self):
+        """Badge colour shared by dashboard and budget page."""
+        return {
+            "Exceeded": "bg-danger",
+            "Critical": "bg-warning text-dark",
+            "Warning": "bg-info",
+            "Healthy": "bg-success",
+        }.get(self.status, "bg-secondary")
 
+    @property
+    def background_class(self):
+        """Light background tint matching the budget status theme."""
+        return {
+            "Exceeded": "bg-danger-subtle",
+            "Critical": "bg-warning-subtle",
+            "Warning": "bg-info-subtle",
+            "Healthy": "bg-success-subtle",
+        }.get(self.status, "bg-light")

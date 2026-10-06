@@ -96,10 +96,49 @@
 
     <!-- GOALS & INVESTMENT ACCOUNTING -->
     <div class="row g-3 mb-4">
-        <div class="col-6 col-lg-3"><div class="card shadow-sm rounded-4 h-100"><div class="card-body"><small class="text-muted fw-bold text-uppercase">Goal Contributions</small><div class="report-value text-danger mt-3">₦{{ "{:,.2f}".format(summary.goal_contributions) }}</div><small class="text-muted">Recorded as dated goal outflows</small></div></div></div>
+        <div class="col-6 col-lg-3"><div class="card shadow-sm rounded-4 h-100"><div class="card-body"><small class="text-muted fw-bold text-uppercase">Period Goal Contributions</small><div class="report-value text-danger mt-3">₦{{ "{:,.2f}".format(summary.goal_contributions) }}</div><small class="text-muted">Dated goal cash outflows in this report period</small></div></div></div>
         <div class="col-6 col-lg-3"><div class="card shadow-sm rounded-4 h-100"><div class="card-body"><small class="text-muted fw-bold text-uppercase">Investment Funding</small><div class="report-value text-danger mt-3">₦{{ "{:,.2f}".format(summary.investment_funding) }}</div><small class="text-muted">Asset acquisition cash outflow</small></div></div></div>
-        <div class="col-6 col-lg-3"><div class="card shadow-sm rounded-4 h-100"><div class="card-body"><small class="text-muted fw-bold text-uppercase">Investment Gain / Loss</small><div class="report-value {% if summary.investment_gain_loss >= 0 %}text-success{% else %}text-danger{% endif %} mt-3">₦{{ "{:,.2f}".format(summary.investment_gain_loss) }}</div><small class="text-muted">Current active portfolio vs cost basis</small></div></div></div>
+        <div class="col-6 col-lg-3"><div class="card shadow-sm rounded-4 h-100"><div class="card-body"><small class="text-muted fw-bold text-uppercase">Investment Current Value</small><div class="report-value text-primary mt-3">₦{{ "{:,.2f}".format(summary.investment_current_value) }}</div><small class="text-muted">Current value of active investments</small></div></div></div>
         <div class="col-6 col-lg-3"><div class="card shadow-sm rounded-4 h-100"><div class="card-body"><small class="text-muted fw-bold text-uppercase">Liquidation Proceeds</small><div class="report-value text-success mt-3">₦{{ "{:,.2f}".format(summary.liquidation_proceeds) }}</div><small class="text-muted">Capital returned from investments</small></div></div></div>
+    </div>
+
+    <!-- STATEMENT OF FINANCIAL POSITION -->
+    <div class="card shadow-sm rounded-4 mb-4 border-start border-4 border-primary">
+        <div class="card-header bg-white border-0 p-3 p-lg-4">
+            <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2">
+                <div>
+                    <h5 class="fw-bold mb-1"><i class="bi bi-bank2 text-primary me-2"></i>Statement of Financial Position</h5>
+                    <small class="text-muted">Current financial position based on FOCOST's authoritative cash, goal and investment records.</small>
+                </div>
+                <span class="badge rounded-pill text-bg-light border">Current Position</span>
+            </div>
+        </div>
+        <div class="card-body pt-0">
+            <div class="row g-3 align-items-stretch">
+                <div class="col-12 col-lg-7">
+                    <div class="table-responsive">
+                        <table class="table align-middle mb-0">
+                            <tbody>
+                                <tr><td>Total cash income</td><td class="text-end fw-semibold text-success">₦{{ "{:,.2f}".format(report.financial_position.cash_income) }}</td></tr>
+                                <tr><td>Less: total cash expenses</td><td class="text-end fw-semibold text-danger">− ₦{{ "{:,.2f}".format(report.financial_position.cash_expenses) }}</td></tr>
+                                <tr class="border-top"><td class="fw-bold">Available / Savings Balance</td><td class="text-end fw-bold">₦{{ "{:,.2f}".format(report.financial_position.available_balance) }}</td></tr>
+                                <tr><td>Add: cumulative goal contributions</td><td class="text-end fw-semibold text-primary">+ ₦{{ "{:,.2f}".format(report.financial_position.goal_contributions) }}</td></tr>
+                                <tr><td>Add: current investment value</td><td class="text-end fw-semibold text-primary">+ ₦{{ "{:,.2f}".format(report.financial_position.investment_current_value) }}</td></tr>
+                                <tr class="border-top border-2"><td class="fw-bold fs-5">Estimated Net Worth</td><td class="text-end fw-bold fs-5 text-primary">₦{{ "{:,.2f}".format(report.financial_position.net_worth) }}</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="col-12 col-lg-5">
+                    <div class="bg-light rounded-4 p-3 h-100 small">
+                        <div class="fw-semibold mb-2">Accounting context</div>
+                        <p class="text-muted mb-2">Available / savings balance is the user's spendable cash after recorded cash income and cash expenses.</p>
+                        <p class="text-muted mb-2">Goal contributions are designated savings already deducted from available cash, so they are added back once only when presenting net worth.</p>
+                        <p class="text-muted mb-0">Investment value represents the current carrying value of active investments. Non-cash valuation gains/losses do not change available cash until realized.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- PERFORMANCE -->
@@ -144,10 +183,7 @@
     <div class="card shadow-sm rounded-4">
         <div class="card-header bg-white border-0 p-3 p-lg-4"><div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2"><div><h5 class="fw-bold mb-1">Recent Transactions</h5><small class="text-muted">Latest records within the selected report scope.</small></div><a class="btn btn-sm btn-outline-primary" href="{{ url_for('reports.transactions', start_date=start_date, end_date=end_date, category=category) }}">View All <i class="bi bi-arrow-right ms-1"></i></a></div></div>
         <div class="table-responsive"><table class="table table-hover align-middle mb-0"><thead><tr><th>Date</th><th>Type</th><th>Category</th><th>Description</th><th class="text-end">Amount</th></tr></thead><tbody>
-        {% set ns = namespace(count=0) %}
-        {% for item in summary.income_records %}{% if ns.count < 5 %}<tr><td class="text-nowrap">{{ item.received_date.strftime('%d %b %Y') }}</td><td><span class="badge text-bg-success">Income</span></td><td>{{ item.category }}</td><td>{{ item.source }}</td><td class="text-end fw-semibold text-success">₦{{ "{:,.2f}".format(item.amount) }}</td></tr>{% set ns.count = ns.count + 1 %}{% endif %}{% endfor %}
-        {% for item in summary.expense_records %}{% if ns.count < 5 %}<tr><td class="text-nowrap">{{ item.expense_date.strftime('%d %b %Y') }}</td><td><span class="badge text-bg-danger">Expense</span></td><td>{{ item.category }}</td><td>{{ item.merchant }}</td><td class="text-end fw-semibold text-danger">₦{{ "{:,.2f}".format(item.amount) }}</td></tr>{% set ns.count = ns.count + 1 %}{% endif %}{% endfor %}
-        {% if ns.count == 0 %}<tr><td colspan="5" class="py-5"><div class="empty-state"><div><i class="bi bi-inbox display-5 text-muted"></i><p class="text-muted mb-0 mt-2">No transactions match the selected report filters.</p></div></div></td></tr>{% endif %}
+        {% for item in summary.recent_transactions[:5] %}<tr><td class="text-nowrap">{{ item.date.strftime('%d %b %Y') }}</td><td><span class="badge {% if item.type == 'Income' %}text-bg-success{% else %}text-bg-danger{% endif %}">{{ item.type }}</span></td><td>{{ item.category or 'Uncategorized' }}</td><td>{{ item.description or '—' }}</td><td class="text-end fw-semibold {% if item.type == 'Income' %}text-success{% else %}text-danger{% endif %}">₦{{ "{:,.2f}".format(item.amount) }}</td></tr>{% else %}<tr><td colspan="5" class="py-5"><div class="empty-state"><div><i class="bi bi-inbox display-5 text-muted"></i><p class="text-muted mb-0 mt-2">No transactions match the selected report filters.</p></div></div></td></tr>{% endfor %}
         </tbody></table></div>
     </div>
 </div>

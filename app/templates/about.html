@@ -1,0 +1,723 @@
+{% extends "layouts/public.html" %}
+
+{% block title %}About FOCOST | The Builder Behind the Platform{% endblock %}
+
+{% block content %}
+
+<style>
+.about-page {
+    background:
+        radial-gradient(circle at 85% 5%, rgba(37, 99, 235, .12), transparent 30%),
+        linear-gradient(180deg, #f8fbff 0%, #ffffff 45%, #f8fafc 100%);
+    margin-top: -15rem;
+}
+
+.about-hero {
+    padding: 0 0 24px;
+}
+
+.about-photo {
+    width: min(100%, 360px);
+    aspect-ratio: 1 / 1;
+    object-fit: cover;
+    object-position: center;
+    border-radius: 24px;
+    box-shadow: 0 18px 45px rgba(15, 23, 42, .15);
+}
+
+.about-card {
+    border: 1px solid #e8eef7;
+    border-radius: 20px;
+    background: rgba(255,255,255,.92);
+    box-shadow: 0 12px 32px rgba(15,23,42,.06);
+}
+
+.about-kicker {
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    font-size: .78rem;
+    font-weight: 700;
+    color: #2563eb;
+}
+
+.about-stat {
+    border: 1px solid #e8eef7;
+    border-radius: 16px;
+    background: #fff;
+}
+
+.about-quote {
+    border-left: 4px solid #2563eb;
+    background: #eff6ff;
+    border-radius: 0 16px 16px 0;
+}
+
+.learning-card {
+    height: 100%;
+    border: 1px solid #e7edf6;
+    border-radius: 18px;
+    background: #fff;
+    box-shadow: 0 8px 24px rgba(15,23,42,.045);
+    transition: transform .2s ease, box-shadow .2s ease;
+}
+
+.learning-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 28px rgba(15,23,42,.08);
+}
+
+.learning-icon {
+    width: 44px;
+    height: 44px;
+    flex: 0 0 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 12px;
+    background: #eff6ff;
+    color: #2563eb;
+}
+
+.learning-note {
+    border: 1px solid #dbeafe;
+    background: #f8fbff;
+    border-radius: 16px;
+}
+
+.about-page .py-5 {
+    padding-top: 2rem !important;
+    padding-bottom: 2rem !important;
+}
+
+.about-page .mt-5 {
+    margin-top: 2rem !important;
+}
+
+.about-page .mt-4 {
+    margin-top: 1.25rem !important;
+}
+
+.about-page .mt-3 {
+    margin-top: .9rem !important;
+}
+
+.about-page .g-5 {
+    --bs-gutter-y: 2rem;
+    --bs-gutter-x: 2rem;
+}
+
+.about-page .p-md-5 {
+    padding: 1.75rem !important;
+}
+
+@media (max-width: 991.98px) {
+    .about-hero {
+        padding: 16px 0 28px;
+    }
+
+    .about-photo {
+        width: min(100%, 300px);
+    }
+}
+
+@media (max-width: 575.98px) {
+    .about-hero {
+        padding: 12px 0 24px;
+    }
+
+    .about-page .py-5 {
+        padding-top: 1.5rem !important;
+        padding-bottom: 1.5rem !important;
+    }
+
+    .about-page .p-md-5 {
+        padding: 1.25rem !important;
+    }
+
+    .about-page .g-5 {
+        --bs-gutter-y: 1.5rem;
+        --bs-gutter-x: 1rem;
+    }
+
+    .about-photo {
+        width: min(100%, 260px);
+        border-radius: 20px;
+    }
+}
+</style>
+
+<div class="about-page">
+
+    <!-- HERO -->
+    <section class="about-hero">
+        <div class="container">
+            <div class="row align-items-center g-4">
+
+                <div class="col-lg-6 order-2 order-lg-1">
+                    <span class="about-kicker">About FOCOST</span>
+
+                    <h1 class="display-4 fw-bold mt-2">
+                        Built from a practical understanding of
+                        <span class="text-primary">money, data and technology.</span>
+                    </h1>
+
+                    <p class="lead text-muted mt-3">
+                        FOCOST is the work of <strong>Ezekiel Balogun</strong>,
+                        an accountant and technology practitioner combining
+                        financial-management experience with data analytics,
+                        software engineering and AI/ML to solve practical
+                        financial problems.
+                    </p>
+
+                    <div class="d-flex flex-wrap gap-2 mt-3">
+                        <a
+                            href="{{ url_for('showcase.platform') }}"
+                            class="btn btn-primary btn-lg px-4"
+                        >
+                            Explore FOCOST
+                        </a>
+
+                        <a
+                            href="{{ url_for('feedback.submit') }}"
+                            class="btn btn-outline-primary btn-lg px-4"
+                        >
+                            Share Feedback
+                        </a>
+                    </div>
+                </div>
+
+                <div class="col-lg-6 order-1 order-lg-2 text-center">
+                    <img
+                        src="{{ url_for('static', filename='images/ezekiel-balogun.png') }}"
+                        alt="Ezekiel Balogun, creator of FOCOST"
+                        class="about-photo"
+                        loading="eager"
+                    >
+                </div>
+
+            </div>
+        </div>
+    </section>
+
+    <!-- CORE PRINCIPLES -->
+    <section class="py-5 bg-white">
+        <div class="container">
+            <div class="row g-3">
+
+                <div class="col-md-4">
+                    <div class="about-stat p-3 h-100">
+                        <i class="bi bi-calculator text-primary fs-2"></i>
+
+                        <h3 class="h5 fw-bold mt-2">
+                            Finance first
+                        </h3>
+
+                        <p class="text-muted mb-0">
+                            A foundation in accounting and economics informs
+                            the financial logic behind the product.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="col-md-4">
+                    <div class="about-stat p-3 h-100">
+                        <i class="bi bi-bar-chart-line text-primary fs-2"></i>
+
+                        <h3 class="h5 fw-bold mt-2">
+                            Data driven
+                        </h3>
+
+                        <p class="text-muted mb-0">
+                            Analytics, SQL, Python, Power BI and machine-learning
+                            techniques are applied to turn records into useful insight.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="col-md-4">
+                    <div class="about-stat p-3 h-100">
+                        <i class="bi bi-cpu text-primary fs-2"></i>
+
+                        <h3 class="h5 fw-bold mt-2">
+                            Built with AI
+                        </h3>
+
+                        <p class="text-muted mb-0">
+                            FOCOST connects deterministic financial calculations
+                            with conversational AI so guidance can remain grounded
+                            in application data.
+                        </p>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </section>
+
+    <!-- BUILDER -->
+    <section class="py-5">
+        <div class="container">
+
+            <div class="row g-4 align-items-start">
+
+                <div class="col-lg-7">
+                    <span class="about-kicker">The builder</span>
+
+                    <h2 class="fw-bold mt-2">
+                        From accounting to financial AI
+                    </h2>
+
+                    <p class="text-muted mt-2">
+                        Ezekiel Balogun began his professional journey in accounting
+                        and financial management and later expanded into economics,
+                        data analytics, software development and artificial intelligence.
+                        That combination shapes the way FOCOST is engineered:
+                        financial rules should be explicit, data should be useful,
+                        and technology should ultimately improve decisions.
+                    </p>
+
+                    <p class="text-muted">
+                        His transition into data science, AI/ML and software engineering
+                        is driven by a practical interest in applying technology to
+                        finance, business, financial inclusion and productivity
+                        challenges in Nigeria and across Africa.
+                    </p>
+
+                    <p class="text-muted mb-0">
+                        FOCOST grew from that journey into an AI-powered financial
+                        operating system designed to bring transaction management,
+                        budgeting, goals, investments, reporting and financial
+                        intelligence into one coherent experience.
+                    </p>
+                </div>
+
+                <div class="col-lg-5">
+                    <div class="about-card p-4">
+
+                        <span class="about-kicker">
+                            Professional foundation
+                        </span>
+
+                        <ul class="list-unstyled mt-3 mb-0">
+
+                            <li class="d-flex gap-3 mb-3">
+                                <i class="bi bi-mortarboard text-primary fs-5"></i>
+
+                                <div>
+                                    <strong>BSc Economics</strong>
+                                    <div class="small text-muted">
+                                        University of Ibadan
+                                    </div>
+                                </div>
+                            </li>
+
+                            <li class="d-flex gap-3 mb-3">
+                                <i class="bi bi-journal-text text-primary fs-5"></i>
+
+                                <div>
+                                    <strong>ND Accountancy</strong>
+                                    <div class="small text-muted">
+                                        Lagos State Polytechnic
+                                    </div>
+                                </div>
+                            </li>
+
+                            <li class="d-flex gap-3">
+                                <i class="bi bi-code-slash text-primary fs-5"></i>
+
+                                <div>
+                                    <strong>Technology practice</strong>
+                                    <div class="small text-muted">
+                                        Data analytics, Python, SQL, BI,
+                                        software development and AI/ML
+                                    </div>
+                                </div>
+                            </li>
+
+                        </ul>
+                    </div>
+                </div>
+
+            </div>
+
+            <div class="about-quote p-3 mt-4">
+                <p class="h5 fw-semibold mb-1">
+                    “I make numbers speak and drive better decisions.”
+                </p>
+
+                <p class="text-muted mb-0">
+                    FOCOST is an expression of that principle: financial information
+                    should not merely be recorded; it should become understandable,
+                    actionable and useful.
+                </p>
+            </div>
+
+        </div>
+    </section>
+
+    <!-- 3MTT / PROFESSIONAL LEARNING -->
+    <section class="py-5 bg-white">
+        <div class="container">
+
+            <div class="row justify-content-center mb-4">
+                <div class="col-xl-9 text-center">
+                    <span class="about-kicker">
+                        Learning, innovation & national digital-skills journey
+                    </span>
+
+                    <h2 class="fw-bold mt-2">
+                        A practical learning journey through the 3MTT ecosystem
+                    </h2>
+
+                    <p class="text-muted mt-2 mb-0">
+                        Ezekiel Balogun is a proud product of
+                        <strong>3MTT</strong>, a Federal Government of
+                        Nigeria initiative under the
+                        <strong>Federal Ministry of Communications, Innovation
+                        and Digital Economy (FMCIDE)</strong>, led by
+                        <strong>Honourable Minister Dr. Bosun Tijani</strong>.
+                        His learning journey has extended across multiple
+                        industry and institutional partnerships, with an emphasis
+                        on practical skills, continuous development and building
+                        useful technology.
+                    </p>
+                </div>
+            </div>
+
+            <div class="row g-3">
+
+                <div class="col-md-6 col-xl-4">
+                    <div class="learning-card p-4">
+                        <div class="d-flex gap-3">
+                            <div class="learning-icon">
+                                <i class="bi bi-bar-chart-line fs-5"></i>
+                            </div>
+                            <div>
+                                <h3 class="h6 fw-bold mb-1">
+                                    Data Analysis & Visualization
+                                </h3>
+                                <p class="small text-muted mb-0">
+                                    3MTT Nigeria
+                                </p>
+                            </div>
+                        </div>
+                        <p class="small text-muted mt-3 mb-0">
+                            Practical development of analytical thinking,
+                            data preparation, visualization and insight generation.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="col-md-6 col-xl-4">
+                    <div class="learning-card p-4">
+                        <div class="d-flex gap-3">
+                            <div class="learning-icon">
+                                <i class="bi bi-person-workspace fs-5"></i>
+                            </div>
+                            <div>
+                                <h3 class="h6 fw-bold mb-1">
+                                    Professional Foundation + Virtual Assistant
+                                </h3>
+                                <p class="small text-muted mb-0">
+                                    3MTT × ALX
+                                </p>
+                            </div>
+                        </div>
+                        <p class="small text-muted mt-3 mb-0">
+                            Professional hands-on training in workplace readiness, communication,
+                            productivity, digital tools, client support and virtual assistance.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="col-md-6 col-xl-4">
+                    <div class="learning-card p-4">
+                        <div class="d-flex gap-3">
+                            <div class="learning-icon">
+                                <i class="bi bi-megaphone fs-5"></i>
+                            </div>
+                            <div>
+                                <h3 class="h6 fw-bold mb-1">
+                                    Digital Marketing
+                                </h3>
+                                <p class="small text-muted mb-0">
+                                    3MTT × Digital Ad Expert by Aleph
+                                </p>
+                            </div>
+                        </div>
+                        <p class="small text-muted mt-3 mb-0">
+                            Practical training in digital advertising, marketing strategy,
+                            audience engagement, campaign management and online growth.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="col-md-6 col-xl-4">
+                    <div class="learning-card p-4">
+                        <div class="d-flex gap-3">
+                            <div class="learning-icon">
+                                <i class="bi bi-robot fs-5"></i>
+                            </div>
+                            <div>
+                                <h3 class="h6 fw-bold mb-1">
+                                    Data Science AI/ML (DeepTech)
+                                </h3>
+                                <p class="small text-muted mb-0">
+                                    3MTT × DSN × supported by Google
+                                </p>
+                            </div>
+                        </div>
+                        <p class="small text-muted mt-3 mb-0">
+                            Applied learning in data science, artificial
+                            intelligence and machine-learning concepts.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="col-md-6 col-xl-4">
+                    <div class="learning-card p-4">
+                        <div class="d-flex gap-3">
+                            <div class="learning-icon">
+                                <i class="bi bi-microsoft fs-5"></i>
+                            </div>
+                            <div>
+                                <h3 class="h6 fw-bold mb-1">
+                                    Power Up (Power Platform)
+                                </h3>
+                                <p class="small text-muted mb-0">
+                                    3MTT × Microsoft
+                                </p>
+                            </div>
+                        </div>
+                        <p class="small text-muted mt-3 mb-0">
+                            Hands-on training in Power Platform, workflow automation,
+                            app development, data analytics, and AI-powered solutions.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="col-md-6 col-xl-4">
+                    <div class="learning-card p-4">
+                        <div class="d-flex gap-3">
+                            <div class="learning-icon">
+                                <i class="bi bi-building fs-5"></i>
+                            </div>
+                            <div>
+                                <h3 class="h6 fw-bold mb-1">
+                                    Software Development
+                                </h3>
+                                <p class="small text-muted mb-0">
+                                    The Incubator Hub · Digital SkillUp Africa
+                                </p>
+                            </div>
+                        </div>
+                        <p class="small text-muted mt-3 mb-0">
+                            Practical software-development incubation and
+                            product-building exposure.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="col-md-6 col-xl-4">
+                    <div class="learning-card p-4">
+                        <div class="d-flex gap-3">
+                            <div class="learning-icon">
+                                <i class="bi bi-stars fs-5"></i>
+                            </div>
+                            <div>
+                                <h3 class="h6 fw-bold mb-1">
+                                    Universal AI
+                                </h3>
+                                <p class="small text-muted mb-0">
+                                    3MTT × MIT Open Learning
+                                </p>
+                            </div>
+                        </div>
+                        <p class="small text-muted mt-3 mb-0">
+                            Broader understanding of artificial intelligence
+                            and its practical application across disciplines.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="col-md-6 col-xl-4">
+                    <div class="learning-card p-4">
+                        <div class="d-flex gap-3">
+                            <div class="learning-icon">
+                                <i class="bi bi-lightbulb fs-5"></i>
+                            </div>
+                            <div>
+                                <h3 class="h6 fw-bold mb-1">
+                                    GearUp Incubation (Bridge for Billions)
+                                </h3>
+                                <p class="small text-muted mb-0">
+                                    Conecta Africa × 8thGear Hub
+                                </p>
+                            </div>
+                        </div>
+                        <p class="small text-muted mt-3 mb-0">
+                            Hands-on entrepreneurship incubation focused on business development,
+                            innovation, market validation, mentoring and venture growth.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="col-md-6 col-xl-4">
+                    <div class="learning-card p-4">
+                        <div class="d-flex gap-3">
+                            <div class="learning-icon">
+                                <i class="bi bi-code-slash fs-5"></i>
+                            </div>
+                            <div>
+                                <h3 class="h6 fw-bold mb-1">
+                                    Software Development
+                                </h3>
+                                <p class="small text-muted mb-0">
+                                    3MTT × Airtel Africa (NextGen)
+                                </p>
+                            </div>
+                        </div>
+                        <p class="small text-muted mt-3 mb-0">
+                            Software-development learning focused on practical
+                            product building and digital problem solving.
+                        </p>
+                    </div>
+                </div>
+
+            </div>
+
+            <div class="learning-note p-4 mt-4">
+                <div class="d-flex align-items-start gap-3">
+                    <i class="bi bi-award-fill text-primary fs-4"></i>
+
+                    <div>
+                        <h3 class="h6 fw-bold mb-1">
+                            Graduated fellow & independent community advocate
+                        </h3>
+
+                        <p class="small text-muted mb-0">
+                            This journey represents completed and practical learning
+                            across the 3MTT ecosystem and its partner programmes.
+                            Ezekiel also describes himself as a
+                            <strong>self-appointed 3MTT community ambassador</strong>
+                            in the sense of independently advocating for practical
+                            digital-skills learning, innovation and technology
+                            adoption.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </section>
+
+    <!-- WHY FOCOST -->
+    <section class="py-5 bg-dark text-white">
+        <div class="container">
+
+            <div class="row g-4 align-items-center">
+
+                <div class="col-lg-7">
+                    <span class="text-info fw-semibold text-uppercase small">
+                        Why FOCOST exists
+                    </span>
+
+                    <h2 class="fw-bold mt-2">
+                        Measure. Understand. Predict. Act.
+                    </h2>
+
+                    <p class="text-white-50 mt-2 mb-0">
+                        FOCOST is being developed to make personal financial
+                        management more intelligent without sacrificing clarity,
+                        auditability or user control. The long-term vision is a
+                        practical financial intelligence layer that can serve
+                        individuals and, over time, broader financial-management
+                        use cases.
+                    </p>
+                </div>
+
+                <div class="col-lg-5">
+                    <div class="p-3 rounded-4 border border-secondary">
+
+                        <div class="d-flex align-items-start gap-3 mb-3">
+                            <i class="bi bi-stars text-info fs-4"></i>
+
+                            <div>
+                                <strong>Practical innovation</strong>
+                                <div class="small text-white-50">
+                                    Build useful technology around real problems.
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="d-flex align-items-start gap-3 mb-3">
+                            <i class="bi bi-shield-check text-info fs-4"></i>
+
+                            <div>
+                                <strong>Trust and accountability</strong>
+                                <div class="small text-white-50">
+                                    Financial information should be handled with care.
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="d-flex align-items-start gap-3">
+                            <i class="bi bi-people text-info fs-4"></i>
+
+                            <div>
+                                <strong>Inclusive impact</strong>
+                                <div class="small text-white-50">
+                                    Technology should be useful in the contexts
+                                    where people actually live and work.
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+    </section>
+
+    <!-- CTA -->
+    <section class="py-5">
+        <div class="container text-center">
+
+            <span class="about-kicker">
+                The journey continues
+            </span>
+
+            <h2 class="fw-bold mt-2">
+                Help shape what FOCOST becomes
+            </h2>
+
+            <p class="text-muted mx-auto mt-2" style="max-width:720px;">
+                FOCOST is being developed through continuous learning,
+                experimentation and feedback. Whether you are exploring the
+                product, considering a partnership or simply have an idea that
+                would make it better, your perspective matters.
+            </p>
+
+            <div class="d-flex justify-content-center flex-wrap gap-2 mt-3">
+                <a
+                    href="{{ url_for('feedback.submit') }}"
+                    class="btn btn-primary px-4"
+                >
+                    Share Feedback
+                </a>
+
+                <a
+                    href="{{ url_for('showcase.support') }}"
+                    class="btn btn-outline-secondary px-4"
+                >
+                    Visit Support
+                </a>
+            </div>
+
+        </div>
+    </section>
+
+</div>
+{% endblock %}

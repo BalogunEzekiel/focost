@@ -7,12 +7,14 @@ from flask import url_for
 from flask_login import login_required
 from flask_login import current_user
 
+from app.rbac.decorators import permission_required
 from app.forms.budget_form import BudgetForm
 from app.services.budget_service import BudgetService
 from app.models.budget import Budget
 from app.extensions import db
 from sqlalchemy import func
 from app.models.expense import Expense
+from app.services.category_service import CategoryService
 
 budget_bp = Blueprint(
     "budget",
@@ -21,12 +23,16 @@ budget_bp = Blueprint(
 )
 
 @budget_bp.route("/add", methods=["GET", "POST"])
-@login_required
+@permission_required("budgets.create")
 def add():
 
     form = BudgetForm()
+    form.category.choices = [(c.name, c.name) for c in CategoryService.budget_categories(current_user.id)]
 
     if form.validate_on_submit():
+        if not CategoryService.is_valid_for_user(current_user.id, 'expense', form.category.data):
+            flash('Please select an available expense category.', 'danger')
+            return render_template('budget/add.html', form=form), 400
 
         BudgetService.create_budget(
             form,
@@ -46,7 +52,7 @@ def add():
     )
 
 @budget_bp.route("/")
-@login_required
+@permission_required("budgets.view")
 def list_budgets():
 
     budgets = (
@@ -80,7 +86,7 @@ def list_budgets():
     )
 
 @budget_bp.route("/edit/<int:budget_id>", methods=["GET", "POST"])
-@login_required
+@permission_required("budgets.edit")
 def edit(budget_id):
 
     budget = Budget.query.filter_by(
@@ -89,8 +95,12 @@ def edit(budget_id):
     ).first_or_404()
 
     form = BudgetForm(obj=budget)
+    form.category.choices = [(c.name, c.name) for c in CategoryService.budget_categories(current_user.id)]
 
     if form.validate_on_submit():
+        if not CategoryService.is_valid_for_user(current_user.id, 'expense', form.category.data):
+            flash('Please select an available expense category.', 'danger')
+            return render_template('budget/edit.html', form=form, budget=budget), 400
 
         budget.category = form.category.data
         budget.amount = form.amount.data
@@ -116,7 +126,7 @@ def edit(budget_id):
     )
 
 @budget_bp.route("/progress/<int:budget_id>")
-@login_required
+@permission_required("budgets.view")
 def progress(budget_id):
 
     budget = Budget.query.filter_by(
@@ -153,7 +163,7 @@ def progress(budget_id):
     )
 
 @budget_bp.route("/delete/<int:budget_id>")
-@login_required
+@permission_required("budgets.delete")
 def delete(budget_id):
 
     budget = Budget.query.filter_by(

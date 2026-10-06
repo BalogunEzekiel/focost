@@ -1,0 +1,16 @@
+{% extends "layouts/public.html" %}
+{% block title %}Verify Email | FOCOST{% endblock %}
+{% block content %}
+<div class="container pb-5" style="max-width:650px;margin-top:-12rem;">
+<div class="card border-0 shadow-lg rounded-4"><div class="card-body p-4 p-md-5 text-center">
+<i class="bi bi-envelope-check display-4 text-success"></i>
+<h2 class="fw-bold mt-3">Verify your email</h2>
+<p class="text-muted">FOCOST requires email verification before your account can be activated. Check your inbox and spam folder.</p>
+<form method="POST" action="{{ url_for('auth.resend_verification') }}" class="mt-4">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+<input name="email" type="email" class="form-control form-control-lg mb-3" placeholder="Your email address" value="{{ email }}" required>
+<button class="btn btn-success btn-lg w-100">Resend verification email</button>
+</form>
+<p class="mt-4 mb-0"><a href="{{ url_for('auth.login') }}">Back to login</a></p>
+</div></div></div>
+{% endblock %}

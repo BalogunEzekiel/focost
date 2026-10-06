@@ -21,8 +21,13 @@ def test_llm_service_runtime_status(monkeypatch):
     assert status["coach_enabled"] is True
     assert status["provider_abstraction"] is True
 
-
 def test_llm_service_provider_is_configured(monkeypatch):
+
+    for index in range(1, 21):
+        monkeypatch.delenv(
+            f"GROQ_API_KEY_{index}",
+            raising=False,
+        )
 
     monkeypatch.setenv(
         "GROQ_API_KEY_1",
@@ -33,8 +38,8 @@ def test_llm_service_provider_is_configured(monkeypatch):
 
     service = LLMService()
 
-    client, model, provider = service._next_client()
-
-    assert client is not None
-    assert model
-    assert provider == "Groq"
+    assert service.providers
+    assert service.providers[0]["name"] == "Groq"
+    assert service.providers[0]["model"]
+    assert service.providers[0]["base_url"]
+    assert service.providers[0]["keys"] == ["test-groq-key"]

@@ -1,0 +1,152 @@
+{% extends "layouts/public.html" %}
+
+{% block title %}Send Feedback | FOCOST{% endblock %}
+
+{% block content %}
+
+<style>
+.feedback-page {
+    margin-top: -15rem;
+    padding-top: 1rem;
+    padding-bottom: 2rem;
+}
+.feedback-stars { display:flex; flex-direction:row-reverse; justify-content:flex-end; gap:.15rem; }
+.feedback-stars input { position:absolute; opacity:0; pointer-events:none; }
+.feedback-stars label { cursor:pointer; font-size:2rem; color:#cbd5e1; line-height:1; transition:.15s ease; }
+.feedback-stars label:hover, .feedback-stars label:hover ~ label,
+.feedback-stars input:checked ~ label { color:#f59e0b; transform:scale(1.04); }
+.feedback-stars input:focus-visible + label { outline:2px solid #2563eb; outline-offset:3px; border-radius:4px; }
+</style>
+
+<div class="container feedback-page">
+    <div class="row justify-content-center">
+        <div class="col-12 col-lg-9 col-xl-8">
+
+            <div class="text-center mb-5">
+                <span class="text-primary fw-semibold text-uppercase small">
+                    FOCOST Feedback
+                </span>
+                <h1 class="fw-bold mt-2 mb-3">Send feedback</h1>
+                <p class="text-muted lead mb-0">
+                    Help us improve FOCOST. Share your ideas, report an issue,
+                    or tell us about your experience.
+                </p>
+            </div>
+
+            <div class="card border-0 shadow-sm rounded-4">
+                <div class="card-body p-4 p-md-5">
+
+                    <form method="POST" novalidate>
+                        {{ form.hidden_tag() }}
+
+                        {% if form.errors %}
+                        <div class="alert alert-danger rounded-3" role="alert">
+                            <div class="fw-semibold mb-1">
+                                Please correct the highlighted fields.
+                            </div>
+                            {% for field_name, errors in form.errors.items() %}
+                                {% for error in errors %}
+                                    <div class="small">{{ error }}</div>
+                                {% endfor %}
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+
+                        <div class="row g-4">
+
+                            <div class="col-md-6">
+                                {{ form.submitted_name.label(class="form-label fw-semibold") }}
+                                {{ form.submitted_name(
+                                    class="form-control form-control-lg",
+                                    placeholder="Your name"
+                                ) }}
+                                {% for error in form.submitted_name.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {{ error }}
+                                    </div>
+                                {% endfor %}
+                            </div>
+
+                            <div class="col-md-6">
+                                {{ form.submitted_email.label(class="form-label fw-semibold") }}
+                                {{ form.submitted_email(
+                                    class="form-control form-control-lg",
+                                    placeholder="you@example.com"
+                                ) }}
+                                {% for error in form.submitted_email.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {{ error }}
+                                    </div>
+                                {% endfor %}
+                            </div>
+
+                            <div class="col-md-6">
+                                {{ form.category.label(class="form-label fw-semibold") }}
+                                {{ form.category(class="form-select form-select-lg") }}
+                                {% for error in form.category.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {{ error }}
+                                    </div>
+                                {% endfor %}
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">{{ form.rating.label.text }}</label>
+                                <div class="feedback-stars" role="radiogroup" aria-label="Rate your FOCOST experience from 1 to 5 stars">
+                                    {% for value in range(5, 0, -1) %}
+                                    <input type="radio" id="rating{{ value }}" name="rating" value="{{ value }}">
+                                    <label for="rating{{ value }}" title="{{ value }} star{{ '' if value == 1 else 's' }}">★</label>
+                                    {% endfor %}
+                                </div>
+                                {% for error in form.rating.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+                            </div>
+
+                            <div class="col-12">
+                                {{ form.subject.label(class="form-label fw-semibold") }}
+                                {{ form.subject(
+                                    class="form-control form-control-lg",
+                                    placeholder="Briefly describe your feedback"
+                                ) }}
+                                {% for error in form.subject.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {{ error }}
+                                    </div>
+                                {% endfor %}
+                            </div>
+
+                            <div class="col-12">
+                                {{ form.message.label(class="form-label fw-semibold") }}
+                                {{ form.message(
+                                    class="form-control",
+                                    rows="7",
+                                    placeholder="Tell us what you think, what happened, or what you would like us to improve."
+                                ) }}
+                                {% for error in form.message.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {{ error }}
+                                    </div>
+                                {% endfor %}
+                            </div>
+
+                            <div class="col-12">
+                                <div class="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-3 pt-2">
+                                    <div class="text-muted small">
+                                        <i class="bi bi-shield-check me-1"></i>
+                                        Your feedback helps us improve FOCOST.
+                                    </div>
+
+                                    {{ form.submit(
+                                        class="btn btn-primary btn-lg px-4"
+                                    ) }}
+                                </div>
+                            </div>
+
+                        </div>
+                    </form>
+
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,250 @@
+{% extends "layouts/dashboard.html" %}
+
+{% block title %}Analytics | FOCOST Administration{% endblock %}
+
+{% block content %}
+
+<div class="container-fluid py-3">
+
+
+<div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
+    <div>
+        <h2 class="fw-bold mb-1">FOCOST Analytics Center</h2>
+        <p class="text-muted mb-0">
+            Executive platform intelligence and operational performance.
+        </p>
+    </div>
+
+    <span class="badge text-bg-dark px-3 py-2">
+        Administrative analytics
+    </span>
+</div>
+
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-body">
+
+        <form method="get" class="row g-3 align-items-end">
+
+            <div class="col-md-4">
+                <label class="form-label fw-semibold">Period</label>
+
+                <select name="period" class="form-select">
+                    <option value="all"
+                        {% if analytics.filters.period == "all" %}selected{% endif %}>
+                        All time
+                    </option>
+
+                    <option value="30d"
+                        {% if analytics.filters.period == "30d" %}selected{% endif %}>
+                        Last 30 days
+                    </option>
+
+                    <option value="90d"
+                        {% if analytics.filters.period == "90d" %}selected{% endif %}>
+                        Last 90 days
+                    </option>
+
+                    <option value="ytd"
+                        {% if analytics.filters.period == "ytd" %}selected{% endif %}>
+                        Year to date
+                    </option>
+                </select>
+            </div>
+
+            <div class="col-md-4">
+                <label class="form-label fw-semibold">Plan</label>
+
+                <select name="plan" class="form-select">
+                    <option value="all"
+                        {% if analytics.filters.plan == "all" %}selected{% endif %}>
+                        All plans
+                    </option>
+
+                    {% for p in ['free_trial', 'basic', 'plus', 'pro'] %}
+                        <option value="{{ p }}"
+                            {% if analytics.filters.plan == p %}selected{% endif %}>
+                            {{ p|replace('_', ' ')|title }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="col-md-3">
+                <label class="form-label fw-semibold">User status</label>
+
+                <select name="status" class="form-select">
+                    <option value="all"
+                        {% if analytics.filters.status == "all" %}selected{% endif %}>
+                        All
+                    </option>
+
+                    <option value="active"
+                        {% if analytics.filters.status == "active" %}selected{% endif %}>
+                        Active
+                    </option>
+
+                    <option value="inactive"
+                        {% if analytics.filters.status == "inactive" %}selected{% endif %}>
+                        Inactive
+                    </option>
+                </select>
+            </div>
+
+            <div class="col-md-1">
+                <button class="btn btn-primary w-100" type="submit">
+                    <i class="bi bi-funnel"></i>
+                </button>
+            </div>
+
+        </form>
+
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+
+    {% for title, value, icon, currency in [
+        ("Total Users", analytics.users.total, "bi-people", false),
+        ("Active Users", analytics.users.active, "bi-person-check", false),
+        ("Inactive Users", analytics.users.inactive, "bi-person-x", false),
+        ("Income", analytics.finance.income, "bi-arrow-down-circle", true),
+        ("Expenses", analytics.finance.expenses, "bi-arrow-up-circle", true),
+        ("Savings", analytics.finance.savings, "bi-piggy-bank", true),
+        ("Budget Spent", analytics.budgets.spent, "bi-pie-chart", true),
+        ("Investment Value", analytics.investments.value, "bi-briefcase", true)
+    ] %}
+
+        <div class="col-6 col-md-4 col-xl-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+
+                    <div class="text-muted small">
+                        {{ title }}
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-end mt-2">
+
+                        <div class="h4 fw-bold mb-0">
+                            {% if currency %}
+                                ₦{{ "{:,.2f}".format(value) }}
+                            {% else %}
+                                {{ "{:,.0f}".format(value) }}
+                            {% endif %}
+                        </div>
+
+                        <i class="bi {{ icon }} fs-3 text-primary"></i>
+
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+    {% endfor %}
+
+</div>
+
+
+    <div class="col-xl-7">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+
+                <h5 class="fw-bold">Plan Distribution</h5>
+
+                <canvas id="planChart" height="120"></canvas>
+
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-5">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+
+                <h5 class="fw-bold">Operational Metrics</h5>
+
+                <div class="row g-3 mt-1">
+
+                    {% for label, val in [
+                        ("Budgets", analytics.budgets.count),
+                        ("Budget Remaining", analytics.budgets.remaining),
+                        ("Goals", analytics.goals.count),
+                        ("Goal Contributions", analytics.goals.contributions),
+                        ("Completed Goals", analytics.goals.completed),
+                        ("Investments", analytics.investments.count),
+                        ("Feedback", analytics.feedback.total)
+                    ] %}
+
+                        <div class="col-6">
+                            <div class="border rounded-3 p-3">
+
+                                <div class="small text-muted">
+                                    {{ label }}
+                                </div>
+
+                                <div class="fw-bold mt-1">
+                                    {{ val }}
+                                </div>
+
+                            </div>
+                        </div>
+
+                    {% endfor %}
+
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+</div>
+
+
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+    new Chart(
+        document.getElementById("planChart"),
+        {
+            type: "doughnut",
+
+            data: {
+                labels: [
+                    "Free Trial",
+                    "Basic",
+                    "Plus",
+                    "Pro"
+                ],
+
+                datasets: [
+                    {
+                        data: [
+                            {{ analytics.plans.free_trial | tojson | safe }},
+                            {{ analytics.plans.basic | tojson | safe }},
+                            {{ analytics.plans.plus | tojson | safe }},
+                            {{ analytics.plans.pro | tojson | safe }}
+                        ]
+                    }
+                ]
+            },
+
+            options: {
+                responsive: true,
+
+                plugins: {
+                    legend: {
+                        position: "bottom"
+                    }
+                }
+            }
+        }
+    );
+</script>
+
+{% endblock %}

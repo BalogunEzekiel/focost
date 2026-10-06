@@ -1,7 +1,7 @@
-from datetime import datetime
-
 from app.extensions import db
 from app.models.base import BaseModel
+from app.utils.timezone import as_utc, utc_now
+
 
 class Notification(BaseModel):
     """
@@ -157,7 +157,8 @@ class Notification(BaseModel):
         if not self.created_at:
             return ""
 
-        diff = datetime.utcnow() - self.created_at
+        created_at = as_utc(self.created_at)
+        diff = utc_now() - created_at
 
         seconds = int(diff.total_seconds())
 
@@ -194,7 +195,7 @@ class Notification(BaseModel):
         if not self.is_read:
 
             self.is_read = True
-            self.read_at = datetime.utcnow()
+            self.read_at = utc_now()
 
     # ---------------------------------------------------------
     # Soft Delete

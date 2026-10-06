@@ -1,3 +1,7 @@
+####################################################################################################
+# FILE: tests/models/test_budget.py
+####################################################################################################
+
 from datetime import date, timedelta
 
 from app.models.budget import Budget
@@ -96,3 +100,15 @@ def test_budget_status_exceeded(app):
         assert budget.status == "Exceeded"
         assert budget.risk == "Critical"
         assert budget.remaining == 0
+
+def test_budget_theme_matches_status(app):
+    from app.models.budget import Budget
+    with app.app_context():
+        budget = Budget(
+            user_id=1, category="Food", amount=100000, spent=0,
+            start_date=date.today(), end_date=date.today(), period="Monthly"
+        )
+        assert budget.status == "Healthy"
+        assert budget.progress_color == "bg-success"
+        assert budget.badge_class == "bg-success"
+        assert budget.background_class == "bg-success-subtle"

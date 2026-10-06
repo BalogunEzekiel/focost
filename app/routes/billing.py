@@ -12,12 +12,18 @@ billing_bp = Blueprint("billing", __name__, url_prefix="/billing")
 @billing_bp.get("/")
 @login_required
 def index():
+    if current_user.role_slug in {"admin", "super_admin"}:
+        from flask import abort
+        abort(403)
     return render_template("billing/index.html", plans=SubscriptionService.plans(), subscription=SubscriptionService.current(current_user.id), entitlements=SubscriptionService.entitlements(current_user.id))
 
 
 @billing_bp.get("/api")
 @login_required
 def api_status():
+    if current_user.role_slug in {"admin", "super_admin"}:
+        return jsonify({"success": False, "message": "Administrative accounts do not use FOCOST plans."}), 403
+
     sub = SubscriptionService.current(current_user.id)
     txs = PaymentTransaction.query.filter_by(user_id=current_user.id).order_by(PaymentTransaction.created_at.desc()).limit(20).all()
     return jsonify({
@@ -38,6 +44,9 @@ def api_status():
 @billing_bp.post("/initialize")
 @login_required
 def initialize():
+    if current_user.role_slug in {"admin", "super_admin"}:
+        return jsonify({"success": False, "message": "Administrative accounts do not use FOCOST plans."}), 403
+
     data = request.get_json(silent=True) or request.form
     slug = str(data.get("plan", "")).strip().lower()
     plan = next((p for p in SubscriptionService.plans() if p.slug == slug), None)
@@ -83,6 +92,9 @@ def callback():
 @billing_bp.post("/cancel")
 @login_required
 def cancel():
+    if current_user.role_slug in {"admin", "super_admin"}:
+        return jsonify({"success": False, "message": "Administrative accounts do not use FOCOST plans."}), 403
+
     try:
         sub = SubscriptionService.current(current_user.id)
         if sub and sub.provider_subscription_code:

@@ -38,9 +38,6 @@
         rel="stylesheet"
         href="{{ url_for('static', filename='css/style.css') }}?v=2">
 
-<!--        rel="stylesheet" -->
-<!--        href="{{ url_for('static', filename='css/style.css') }}"> -->
-
     <!-- AI Widget CSS -->
 
     <link
@@ -88,6 +85,15 @@
 
             {% endwith %}
 
+            {% if current_user.role_slug == "user" %}
+                {% for announcement in active_announcements if announcement.dashboard_banner %}
+                    <div class="alert alert-primary border-0 shadow-sm d-flex justify-content-between align-items-start gap-3">
+                        <div><strong>{{ announcement.title }}</strong><div>{{ announcement.message }}</div></div>
+                        {% if announcement.action_url %}<a class="btn btn-sm btn-primary" href="{{ announcement.action_url }}">Learn more</a>{% endif %}
+                    </div>
+                {% endfor %}
+            {% endif %}
+
             {% block content %}
             {% endblock %}
 
@@ -101,10 +107,8 @@
      GLOBAL FOCOST AI WIDGET
 ======================================================== -->
 
-{% if current_user.is_authenticated %}
-
+{% if current_user.is_authenticated and current_user.role_slug == "user" and has_permission("ai.chat") %}
     {% include "includes/ai_chat_widget.html" %}
-
 {% endif %}
 
 <!-- =======================================================
@@ -135,7 +139,9 @@
 
 <script src="{{ url_for('static', filename='js/notifications.js') }}"></script>
 
+{% if current_user.role_slug == "user" and has_permission("ai.chat") %}
 <script src="{{ url_for('static', filename='js/ai_chat.js') }}"></script>
+{% endif %}
 
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 

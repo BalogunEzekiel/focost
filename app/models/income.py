@@ -42,8 +42,22 @@ class Income(BaseModel):
         default=False
     )
 
-    # Distinguishes ordinary income from investment-generated cash inflows.
-    # Values: income, investment_gain, investment_liquidation.
+    # Distinguishes ordinary income from system-generated financial inflows.
+    #
+    # income:
+    #     User-created income and therefore editable/deletable.
+    #
+    # investment_liquidation:
+    #     Generated when an investment is liquidated.
+    #     Read-only from the Income page.
+    #
+    # goal_termination:
+    #     Generated when a goal is deleted/terminated and its
+    #     contributions are returned.
+    #     Read-only from the Income page.
+    #
+    # Investment valuation/revaluation is non-cash and must never
+    # create an Income record.
     transaction_class = db.Column(
         db.String(30),
         nullable=False,

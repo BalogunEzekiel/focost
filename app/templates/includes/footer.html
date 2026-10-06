@@ -1,62 +1,96 @@
-<footer class="bg-white border-top mt-auto">
-
-    <div class="container py-3 py-md-4">
-
-        <div class="row align-items-center text-center text-md-start">
-
-            <!-- Copyright -->
-
-            <div class="col-12 col-md-6 mb-2 mb-md-0">
-
+<footer class="bg-white border-top mt-auto" aria-label="FOCOST footer">
+    <div class="container py-5">
+        <div class="row g-4">
+            <div class="col-12 col-lg-5">
+                <a
+                    href="{{ url_for('dashboard.home') }}"
+                    class="d-inline-flex align-items-center gap-2 text-decoration-none mb-3"
+                >
+                    <img
+                        src="{{ url_for('static', filename='images/focost_logo.png') }}"
+                        alt="FOCOST"
+                        style="width:34px;height:34px;object-fit:contain;"
+                    >
+                    <strong class="text-dark fs-5">FOCOST</strong>
+                </a>
+                <p class="text-muted small mb-3" style="max-width:430px;">
+                    AI-Powered financial intelligence designed to help people
+                    understand their money, make better decisions and build
+                    stronger financial habits.
+                </p>
                 <small class="text-muted">
-
                     &copy; 2026 <strong>FOCOST AI Financial Coach</strong>.
                     All Rights Reserved.
-
                 </small>
-
             </div>
 
-            <!-- Footer Links -->
-
-            <div class="col-12 col-md-6">
-
-                <div class="d-flex justify-content-center justify-content-md-end flex-wrap gap-3">
-
-                    <a href="#"
-                       class="text-decoration-none text-muted small">
-
-                        Privacy Policy
-
-                    </a>
-
-                    <a href="#"
-                       class="text-decoration-none text-muted small">
-
-                        Terms
-
-                    </a>
-
-                    <a href="{{ url_for('showcase.security') }}"
-                        class="text-decoration-none text-muted small">
-
-                        Security
-
-                    </a>
-
-                    <a href="#"
-                       class="text-decoration-none text-muted small">
-
-                        Support
-
-                    </a>
-
-                </div>
-
+            <div class="col-6 col-md-3 col-lg-2">
+                <h6 class="fw-bold text-dark">Product</h6>
+                <ul class="list-unstyled small mb-0">
+                    <li class="mb-2">
+                        <a href="{{ url_for('showcase.platform') }}" class="text-decoration-none text-muted">Platform</a>
+                    </li>
+                    <li class="mb-2">
+                        <a href="{{ url_for('showcase.pricing') }}" class="text-decoration-none text-muted">Pricing</a>
+                    </li>
+                    <li class="mb-2">
+                        <a href="{{ url_for('showcase.faq') }}" class="text-decoration-none text-muted">FAQ</a>
+                    </li>
+                </ul>
             </div>
 
+            <div class="col-6 col-md-3 col-lg-2">
+                <h6 class="fw-bold text-dark">Company</h6>
+                <ul class="list-unstyled small mb-0">
+                    <li class="mb-2">
+                        <a href="{{ url_for('showcase.about') }}" class="text-decoration-none text-muted">About</a>
+                    </li>
+                    <li class="mb-2">
+                        <a href="{{ url_for('feedback.submit') }}" class="text-decoration-none text-muted">Feedback</a>
+                    </li>
+                </ul>
+            </div>
+
+            <div class="col-6 col-md-3 col-lg-2">
+                <h6 class="fw-bold text-dark">Support</h6>
+                <ul class="list-unstyled small mb-0">
+                    <li class="mb-2">
+                        <a href="{{ url_for('showcase.support') }}" class="text-decoration-none text-muted">Support Centre</a>
+                    </li>
+                    <li class="mb-2">
+                        <a href="{{ url_for('showcase.security') }}" class="text-decoration-none text-muted">Security</a>
+                    </li>
+                    <li class="mb-2">
+                        <a href="mailto:{{ config.FOCOST_SUPPORT_EMAIL }}" class="text-decoration-none text-muted">Contact Support</a>
+                    </li>
+                </ul>
+            </div>
+
+            <div class="col-6 col-md-3 col-lg-1">
+                <h6 class="fw-bold text-dark">Legal</h6>
+                <ul class="list-unstyled small mb-0">
+                    <li class="mb-2">
+                        <a href="{{ url_for('compliance.privacy') }}" class="text-decoration-none text-muted">Privacy</a>
+                    </li>
+                    <li class="mb-2">
+                        <a href="{{ url_for('compliance.terms') }}" class="text-decoration-none text-muted">Terms</a>
+                    </li>
+                    <li class="mb-2">
+                        <a href="{{ url_for('compliance.ai_disclosure') }}" class="text-decoration-none text-muted">AI</a>
+                    </li>
+                </ul>
+            </div>
         </div>
 
+        <div class="border-top mt-4 pt-3 d-flex flex-column flex-md-row justify-content-between gap-2">
+            <small class="text-muted">
+                Security reports:
+                <a href="mailto:{{ config.FOCOST_SECURITY_EMAIL }}">{{ config.FOCOST_SECURITY_EMAIL }}</a>
+            </small>
+            <small class="text-muted">
+                FOCOST is a financial-management and educational technology platform,
+                not a bank or investment adviser.
+            </small>
+        </div>
     </div>
-
 </footer>

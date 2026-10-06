@@ -152,6 +152,10 @@ def create():
 
             return redirect(request.url)
 
+        if (slug or "").strip().lower() == "super_admin":
+            flash("The Super Admin role can only be created by the developer seed.", "danger")
+            return redirect(request.url)
+
         role = AdminRoleService.create_role(
             name=name,
             slug=slug,
@@ -386,6 +390,12 @@ def permissions(role_id):
 
     role = Role.query.get_or_404(role_id)
 
+    if current_user.role_slug != "super_admin":
+        abort(403)
+
+    if role.slug == "super_admin" and current_user.role_slug != "super_admin":
+        abort(403)
+
     if request.method == "POST":
 
         RolePermission.query.filter_by(
@@ -520,6 +530,12 @@ def assign_users(role_id):
 
     role = Role.query.get_or_404(role_id)
 
+    if current_user.role_slug != "super_admin":
+        abort(403)
+
+    if role.slug == "super_admin":
+        abort(403)
+
     assigned_ids = {
         row.user_id
         for row in UserRole.query.filter_by(
@@ -618,6 +634,12 @@ def remove_user(role_id, user_id):
     ).first_or_404()
 
     user = db.session.get(User, user_id)
+
+    if user and user.role_slug == "super_admin":
+        abort(403)
+
+    if role.slug == "super_admin":
+        abort(403)
 
     db.session.delete(assignment)
     db.session.commit()

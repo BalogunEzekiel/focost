@@ -1,4 +1,9 @@
+####################################################################################################
+# FILE: app/services/dashboard_service.py
+####################################################################################################
+
 from datetime import date, datetime, timedelta
+
 from sqlalchemy import func, extract, or_
 import calendar
 from flask import request
@@ -12,14 +17,407 @@ from app.models.goal import Goal
 from app.models.goal_contribution import GoalContribution
 from app.models.investment_event import InvestmentEvent
 from app.services.notification_service import NotificationService
+from app.utils.timezone import now, today
 
 class DashboardService:
 
     @staticmethod
+    def ai_calculation_context(
+        user_id,
+        start=None,
+        end=None,
+    ):
+        """
+        Authoritative explanation layer for FOCOST AI.
+
+        This does not introduce new financial logic.
+
+        It exposes the existing DashboardService calculations,
+        definitions and relationships in a machine-readable form
+        so that FOCOST AI can explain exactly how dashboard figures
+        were produced.
+        """
+
+        if start is None:
+            start = date.today().replace(day=1)
+
+        if end is None:
+            end = date.today()
+
+        # ------------------------------------------------------
+        # Authoritative cash-flow totals
+        # ------------------------------------------------------
+
+        totals = DashboardService._cash_flow_totals(
+            user_id=user_id,
+            start_date=start,
+            end_date=end,
+        )
+
+        income = totals["income"]
+        expenses = totals["expenses"]
+        savings = totals["savings"]
+
+        savings_rate = (
+            (savings / income) * 100
+            if income
+            else 0
+        )
+
+        # ------------------------------------------------------
+        # Operating expenses
+        #
+        # Operating expenses are intentionally separate from
+        # total cash expenses.
+        #
+        # Total expenses include:
+        # - ordinary expenses
+        # - investment funding
+        # - goal contributions
+        #
+        # Operating expenses include only:
+        # - transaction_class = "expense"
+        # - legacy/null transaction_class
+        # ------------------------------------------------------
+
+        operating_expenses = float(
+            DashboardService
+            ._active_operating_expense_query(user_id)
+            .filter(
+                Expense.expense_date.between(
+                    start,
+                    end,
+                ),
+            )
+            .with_entities(
+                func.coalesce(
+                    func.sum(Expense.amount),
+                    0,
+                )
+            )
+            .scalar()
+            or 0
+        )
+
+        # ------------------------------------------------------
+        # Lifetime available balance
+        # ------------------------------------------------------
+
+        balance_context = (
+            DashboardService.ai_balance_context(user_id)
+        )
+
+        # ------------------------------------------------------
+        # Month-end forecast
+        # ------------------------------------------------------
+
+        month_end = (
+            DashboardService.month_end_forecast(user_id)
+        )
+
+        # ------------------------------------------------------
+        # Recent monthly history
+        # ------------------------------------------------------
+
+        monthly_history = (
+            DashboardService.monthly_series(
+                user_id,
+                months=12,
+            )
+        )
+
+        return {
+            "period": {
+                "start": start.isoformat(),
+                "end": end.isoformat(),
+            },
+
+            "facts": {
+                "income": round(income, 2),
+                "total_expenses": round(expenses, 2),
+                "operating_expenses": round(
+                    operating_expenses,
+                    2,
+                ),
+                "non_operating_expenses": round(
+                    expenses - operating_expenses,
+                    2,
+                ),
+                "savings": round(savings, 2),
+                "savings_rate_percent": round(
+                    savings_rate,
+                    2,
+                ),
+            },
+
+            "formulas": {
+                "monthly_savings": (
+                    "income - total_expenses"
+                ),
+                "savings_rate": (
+                    "(savings / income) * 100 "
+                    "when income > 0"
+                ),
+                "available_balance": (
+                    "cumulative monthly savings "
+                    "through the current date"
+                ),
+                "monthly_expense": (
+                    "sum of all active Expense.amount "
+                    "records in the current month"
+                ),
+            },
+
+            "accounting_rules": {
+                "investment_funding": (
+                    "expense"
+                ),
+                "goal_contribution": (
+                    "expense"
+                ),
+                "investment_liquidation": (
+                    "income"
+                ),
+                "investment_valuation": (
+                    "non-cash investment value adjustment; never an "
+                    "Income or Expense transaction"
+                ),
+                "valuation_reversal": (
+                    "original valuation transaction "
+                    "and linked accounting entry are "
+                    "permanently removed"
+                ),
+            },
+
+            "balance": balance_context,
+
+            "month_end_forecast": month_end,
+
+            "forecast_formula": {
+                "method": "current_month_run_rate",
+                "projected_income": (
+                    "current_month_income / elapsed_days "
+                    "* days_in_month"
+                ),
+                "projected_expenses": (
+                    "current_month_expenses / elapsed_days "
+                    "* days_in_month"
+                ),
+                "projected_savings": (
+                    "projected_income - projected_expenses"
+                ),
+                "guarantee": False,
+            },
+
+            "monthly_history": monthly_history,
+        }
+
+    # ==========================================================
+    # AUTHORITATIVE FINANCIAL QUERY SOURCES
+    # ==========================================================
+
+    @staticmethod
+    def _active_income_query(user_id):
+        """
+        Authoritative source for active cash income.
+
+        Only active Income records are included.
+
+        Investment valuation/revaluation is never represented in
+        Income and therefore cannot enter cash-flow calculations
+        through this query.
+        """
+        return Income.query.filter(
+            Income.user_id == user_id,
+            Income.is_active.is_(True),
+        )
+
+    @staticmethod
+    def _active_expense_query(user_id):
+        """
+        Authoritative source for all active cash expenses.
+
+        This includes:
+        - ordinary expenses
+        - investment funding
+        - goal contributions
+
+        Investment valuation/revaluation is not represented in
+        Expense and therefore cannot enter cash flow through this
+        query.
+        """
+        return Expense.query.filter(
+            Expense.user_id == user_id,
+            Expense.is_active.is_(True),
+        )
+
+    @staticmethod
+    def _active_operating_expense_query(user_id):
+        """
+        Authoritative source for operating expenses only.
+
+        Operating expense means:
+            transaction_class == 'expense'
+            OR transaction_class IS NULL
+
+        Investment funding and goal contributions intentionally
+        remain excluded from operating-expense analytics.
+
+        This must NOT be used for total cash-flow calculations.
+        """
+        return DashboardService._active_expense_query(
+            user_id
+        ).filter(
+            or_(
+                Expense.transaction_class == "expense",
+                Expense.transaction_class.is_(None),
+            )
+        )
+
+    @staticmethod
+    def _cash_flow_totals(
+        user_id,
+        exclude_expense_id=None,
+        as_of=None,
+        start_date=None,
+        end_date=None,
+    ):
+        """
+        Authoritative cash-flow calculation.
+
+        Cash income:
+            all active Income records.
+
+        Cash expenses:
+            all active Expense records.
+
+        Therefore:
+
+            savings = income - expenses
+
+        Investment funding and goal contributions are real cash
+        outflows and remain included.
+
+        Investment valuation/revaluation gains and losses are
+        non-cash and are never represented in Income or Expense,
+        so they cannot enter this calculation.
+
+        Optional date parameters allow callers to request either:
+            - a specific reporting period via start_date/end_date, or
+            - a historical cumulative balance via as_of.
+
+        This method is the single source of truth for cash-flow totals.
+        """
+
+        income_query = DashboardService._active_income_query(
+            user_id
+        )
+
+        expense_query = DashboardService._active_expense_query(
+            user_id
+        )
+
+        # ----------------------------------------------------------
+        # Reporting-period filters
+        # ----------------------------------------------------------
+
+        if start_date is not None:
+            income_query = income_query.filter(
+                Income.received_date >= start_date
+            )
+
+            expense_query = expense_query.filter(
+                Expense.expense_date >= start_date
+            )
+
+        if end_date is not None:
+            income_query = income_query.filter(
+                Income.received_date <= end_date
+            )
+
+            expense_query = expense_query.filter(
+                Expense.expense_date <= end_date
+            )
+
+        # ----------------------------------------------------------
+        # Historical "as of" cutoff
+        #
+        # This is cumulative up to the supplied date.
+        # ----------------------------------------------------------
+
+        if as_of is not None:
+            income_query = income_query.filter(
+                Income.received_date <= as_of
+            )
+
+            expense_query = expense_query.filter(
+                Expense.expense_date <= as_of
+            )
+
+        # ----------------------------------------------------------
+        # Optional expense exclusion
+        #
+        # Used when validating whether a new/edited expense can
+        # be afforded without counting that same expense twice.
+        # ----------------------------------------------------------
+
+        if exclude_expense_id is not None:
+            expense_query = expense_query.filter(
+                Expense.id != exclude_expense_id
+            )
+
+        # ----------------------------------------------------------
+        # Aggregate income
+        # ----------------------------------------------------------
+
+        income = float(
+            income_query.with_entities(
+                func.coalesce(
+                    func.sum(Income.amount),
+                    0,
+                )
+            ).scalar()
+            or 0
+        )
+
+        # ----------------------------------------------------------
+        # Aggregate expenses
+        # ----------------------------------------------------------
+
+        expenses = float(
+            expense_query.with_entities(
+                func.coalesce(
+                    func.sum(Expense.amount),
+                    0,
+                )
+            ).scalar()
+            or 0
+        )
+
+        # ----------------------------------------------------------
+        # Authoritative savings
+        # ----------------------------------------------------------
+
+        savings = income - expenses
+
+        return {
+            "income": round(income, 2),
+            "expenses": round(expenses, 2),
+            "savings": round(savings, 2),
+        }
+
+    @staticmethod
     def _operating_expense_filter(query):
-        """Restrict expense reporting to true expenses, excluding transfers to assets/goals."""
+        """
+        Restrict an Expense query to operating expenses.
+
+        This is intentionally different from total cash expenses.
+        """
         return query.filter(
-            or_(Expense.transaction_class == "expense", Expense.transaction_class.is_(None))
+            or_(
+                Expense.transaction_class == "expense",
+                Expense.transaction_class.is_(None),
+            )
         )
 
 
@@ -36,30 +434,148 @@ class DashboardService:
     """
 
     @staticmethod
-    def available_balance(user_id, exclude_expense_id=None, as_of=None):
-        """Authoritative available cash balance used by goal and investment funding."""
-        income_q = Income.query.filter(Income.user_id == user_id, Income.is_active == True)
-        expense_q = Expense.query.filter(Expense.user_id == user_id, Expense.is_active == True)
-        if as_of:
-            income_q = income_q.filter(Income.received_date <= as_of)
-            expense_q = expense_q.filter(Expense.expense_date <= as_of)
-        if exclude_expense_id is not None:
-            expense_q = expense_q.filter(Expense.id != exclude_expense_id)
+    def _monthly_savings_rows(
+        user_id,
+        start_date=None,
+        end_date=None,
+        exclude_expense_id=None,
+    ):
+        """
+        Authoritative monthly cash-savings ledger.
 
-        incomes = income_q.all()
-        expenses = expense_q.all()
-        # Valuation gains/losses are accounting events, not cash movements.
-        # They remain visible in income/expense reporting but do not increase
-        # or reduce spendable cash until an investment is actually liquidated.
-        valuation_income_ids = {
-            event.income_id for event in InvestmentEvent.query.filter(InvestmentEvent.user_id == user_id, InvestmentEvent.event_type == "valuation", InvestmentEvent.income_id.isnot(None)).all()
-        }
-        valuation_expense_ids = {
-            event.expense_id for event in InvestmentEvent.query.filter(InvestmentEvent.user_id == user_id, InvestmentEvent.event_type == "valuation", InvestmentEvent.expense_id.isnot(None)).all()
-        }
-        total_income = sum(float(x.amount or 0) for x in incomes if x.id not in valuation_income_ids)
-        total_outflows = sum(float(x.amount or 0) for x in expenses if x.id not in valuation_expense_ids)
-        return total_income - total_outflows
+        Every month's savings is:
+
+            all active income
+            - all active expenses
+
+        Investment funding and goal contributions remain expenses.
+
+        Investment valuation/revaluation is excluded because it is
+        not stored in Income or Expense.
+        """
+
+        if end_date is None:
+            end_date = today()
+
+        if start_date is None:
+            first_income = (
+                DashboardService._active_income_query(user_id)
+                .order_by(Income.received_date.asc())
+                .first()
+            )
+
+            first_expense = (
+                DashboardService._active_expense_query(user_id)
+                .order_by(Expense.expense_date.asc())
+                .first()
+            )
+
+            dates = [
+                value
+                for value in (
+                    getattr(
+                        first_income,
+                        "received_date",
+                        None,
+                    ),
+                    getattr(
+                        first_expense,
+                        "expense_date",
+                        None,
+                    ),
+                )
+                if value is not None
+            ]
+
+            start_date = (
+                min(dates)
+                if dates
+                else end_date
+            )
+
+        first_month = start_date.replace(day=1)
+        current_month = end_date.replace(day=1)
+
+        rows = []
+
+        cursor = first_month
+
+        while cursor <= current_month:
+            month_start = cursor
+            month_end = cursor.replace(
+                day=calendar.monthrange(
+                    cursor.year,
+                    cursor.month,
+                )[1]
+            )
+
+            period_end = min(
+                month_end,
+                end_date,
+            )
+
+            totals = DashboardService._cash_flow_totals(
+                user_id=user_id,
+                exclude_expense_id=exclude_expense_id,
+                start_date=month_start,
+                end_date=period_end,
+            )
+
+            rows.append(
+                {
+                    "month": month_start.isoformat(),
+                    "income": totals["income"],
+                    "expenses": totals["expenses"],
+                    "savings": totals["savings"],
+                }
+            )
+
+            if cursor.month == 12:
+                cursor = date(
+                    cursor.year + 1,
+                    1,
+                    1,
+                )
+            else:
+                cursor = date(
+                    cursor.year,
+                    cursor.month + 1,
+                    1,
+                )
+
+        return rows
+
+    @staticmethod
+    def available_balance(
+        user_id,
+        exclude_expense_id=None,
+        as_of=None,
+    ):
+        """
+        Authoritative cumulative available cash balance.
+
+        Defined as:
+
+            cumulative active income
+            - cumulative active cash expenses
+
+        Investment funding and goal contributions remain cash
+        expenses.
+
+        Investment valuation/revaluation remains completely outside
+        this calculation.
+
+        `as_of` allows callers to determine the balance available at
+        a historical transaction date.
+        """
+
+        totals = DashboardService._cash_flow_totals(
+            user_id=user_id,
+            exclude_expense_id=exclude_expense_id,
+            as_of=as_of,
+        )
+
+        return totals["savings"]
 
     @staticmethod
     def investment_summary(user_id):
@@ -73,6 +589,50 @@ class DashboardService:
             "current_value": value,
             "gain_loss": value - cost,
             "assets": assets,
+        }
+
+    @staticmethod
+    def financial_position_summary(user_id):
+        """
+        Authoritative current financial-position summary used by reporting.
+
+        The available balance is the spendable cash balance after recorded cash
+        inflows and outflows. Goal contributions and investment holdings are
+        separate stores of value that have already reduced available cash, so
+        they are added back once when deriving total net worth. Investment
+        valuation gains/losses remain non-cash until liquidation and therefore
+        affect the investment carrying value rather than available cash.
+        """
+        investment_summary = DashboardService.investment_summary(user_id)
+        goal_contributions = (
+            db.session.query(func.coalesce(func.sum(GoalContribution.amount), 0))
+            .filter(
+                GoalContribution.user_id == user_id,
+                GoalContribution.is_active == True,
+            )
+            .scalar()
+            or 0
+        )
+
+        cash_flow = DashboardService._cash_flow_totals(user_id)
+
+        cash_income = cash_flow["income"]
+        cash_expenses = cash_flow["expenses"]
+        available_balance = DashboardService.available_balance(user_id)
+        goal_contributions = float(goal_contributions)
+        investment_current_value = float(investment_summary["current_value"] or 0)
+        net_worth = available_balance + goal_contributions + investment_current_value
+
+        return {
+            "cash_income": float(cash_income),
+            "cash_expenses": float(cash_expenses),
+            "available_balance": float(available_balance),
+            "goal_contributions": goal_contributions,
+            "investment_current_value": investment_current_value,
+            "investment_cost_basis": float(investment_summary["cost_basis"] or 0),
+            "investment_gain_loss": float(investment_summary["gain_loss"] or 0),
+            "investment_count": investment_summary["count"],
+            "net_worth": float(net_worth),
         }
 
     # ==========================================================
@@ -242,7 +802,7 @@ class DashboardService:
             transaction_type=transaction_type,
             category=category,
             search=search,
-            page=request.args.get("page", 1, type=int),
+            page=1,
         )
 
         # -------------------------------------------------------
@@ -397,6 +957,7 @@ class DashboardService:
         # -------------------------------------------------------
 
         investment_summary = DashboardService.investment_summary(user_id)
+        financial_position = DashboardService.financial_position_summary(user_id)
 
         dashboard = {
 
@@ -424,6 +985,7 @@ class DashboardService:
             "summary": summary,
             "kpis": kpis,
             "investments": investment_summary,
+            "financial_position": financial_position,
             "financial_health": financial_health,
             "health": financial_health,
 
@@ -573,52 +1135,34 @@ class DashboardService:
 
     @staticmethod
     def monthly_income(user_id):
+        today_date = today()
 
-        today = date.today()
+        start = today_date.replace(day=1)
+        end = today_date
 
-        return float(
-            db.session.query(
-                func.coalesce(func.sum(Income.amount), 0)
-            )
-            .filter(
-                Income.user_id == user_id,
-                extract("year", Income.received_date) == today.year,
-                extract("month", Income.received_date) == today.month,
-            )
-            .scalar()
-            or 0
+        totals = DashboardService._cash_flow_totals(
+            user_id=user_id,
+            start_date=start,
+            end_date=end,
         )
+
+        return totals["income"]
 
 
     @staticmethod
     def monthly_expense(user_id):
+        today_date = today()
 
-        today = date.today()
+        start = today_date.replace(day=1)
+        end = today_date
 
-        return float(
-            db.session.query(
-                func.coalesce(func.sum(Expense.amount), 0)
-            )
-            .filter(
-                Expense.user_id == user_id,
-                Expense.expense_date.isnot(None),
-                extract("year", Expense.expense_date) == today.year,
-                extract("month", Expense.expense_date) == today.month,
-            )
-            .scalar()
-            or 0
+        totals = DashboardService._cash_flow_totals(
+            user_id=user_id,
+            start_date=start,
+            end_date=end,
         )
 
-    @staticmethod
-    def current_balance(user_id):
-        """
-        Returns the user's current balance.
-        """
-
-        return (
-            DashboardService.monthly_income(user_id)
-            - DashboardService.monthly_expense(user_id)
-        )
+        return totals["expenses"]
 
     @staticmethod
     def average_daily_spending(user_id):
@@ -662,98 +1206,145 @@ class DashboardService:
     # ==========================================================
 
     @staticmethod
-    def build_summary(user_id, period="month"):
+    def build_summary(
+        user_id,
+        period="month",
+    ):
 
-        start, end = DashboardService.get_period_dates(period)
-
-        monthly_income = (
-            db.session.query(
-                func.coalesce(func.sum(Income.amount), 0)
+        start, end = (
+            DashboardService.get_period_dates(
+                period
             )
-            .filter(
-                Income.user_id == user_id,
-                Income.received_date.between(start, end)
-            )
-            .scalar()
         )
 
-        monthly_expenses = (
-            db.session.query(func.coalesce(func.sum(Expense.amount), 0))
-            .filter(Expense.user_id == user_id, Expense.expense_date.between(start, end))
-            .scalar()
+        # ------------------------------------------------------
+        # Authoritative cash-flow calculation.
+        #
+        # Income and expenses are calculated only by
+        # DashboardService._cash_flow_totals().
+        # This keeps savings consistent across FOCOST.
+        # ------------------------------------------------------
+
+        totals = DashboardService._cash_flow_totals(
+            user_id=user_id,
+            start_date=start,
+            end_date=end,
         )
 
-        # Authoritative available cash includes all genuine cash inflows and
-        # outflows, including goal contributions and investment funding.
-        balance = DashboardService.available_balance(user_id)
+        monthly_income = totals["income"]
+        monthly_expenses = totals["expenses"]
+        savings = totals["savings"]
 
-        # Monthly savings
-        savings = monthly_income - monthly_expenses
+        savings_rate = (
+            (savings / monthly_income) * 100
+            if monthly_income
+            else 0
+        )
 
-        if monthly_income > 0:
+        # ------------------------------------------------------
+        # Lifetime balance comes from cumulative monthly savings.
+        # ------------------------------------------------------
 
-            savings_rate = round(
+        balance = DashboardService.available_balance(
+            user_id
+        )
 
-                (savings / monthly_income) * 100,
+        # ------------------------------------------------------
+        # Top spending category.
+        # ------------------------------------------------------
 
-                2
-
-            )
-
-        else:
-
-            savings_rate = 0
-
-        # Top Spending Category
         top_expense = (
             db.session.query(
                 Expense.category,
-                func.sum(Expense.amount).label("total")
+                func.sum(
+                    Expense.amount
+                ).label("total"),
             )
             .filter(
                 Expense.user_id == user_id,
-                or_(Expense.transaction_class == "expense", Expense.transaction_class.is_(None)),
-                Expense.expense_date.between(start, end)
+                Expense.is_active.is_(True),
+                Expense.expense_date.between(
+                    start,
+                    end,
+                ),
             )
-            .group_by(Expense.category)
-            .order_by(func.sum(Expense.amount).desc())
+            .group_by(
+                Expense.category
+            )
+            .order_by(
+                func.sum(
+                    Expense.amount
+                ).desc()
+            )
             .first()
         )
 
-        top_spending = top_expense.category if top_expense else "None"
-        top_spending_amount = float(top_expense.total) if top_expense else 0.0
+        top_spending = (
+            top_expense.category
+            if top_expense
+            else "None"
+        )
 
-        # Top Income Source
+        top_spending_amount = (
+            float(top_expense.total)
+            if top_expense
+            else 0.0
+        )
+
+        # ------------------------------------------------------
+        # Top income source.
+        # ------------------------------------------------------
+
         top_income = (
             db.session.query(
                 Income.source,
-                func.sum(Income.amount).label("total")
+                func.sum(
+                    Income.amount
+                ).label("total"),
             )
             .filter(
                 Income.user_id == user_id,
-                Income.received_date.between(start, end)
+                Income.is_active.is_(True),
+                Income.received_date.between(
+                    start,
+                    end,
+                ),
             )
-            .group_by(Income.source)
-            .order_by(func.sum(Income.amount).desc())
+            .group_by(
+                Income.source
+            )
+            .order_by(
+                func.sum(
+                    Income.amount
+                ).desc()
+            )
             .first()
         )
 
-        top_income_source = top_income.source if top_income else "None"
-        top_income_amount = float(top_income.total) if top_income else 0.0
+        top_income_source = (
+            top_income.source
+            if top_income
+            else "None"
+        )
+
+        top_income_amount = (
+            float(top_income.total)
+            if top_income
+            else 0.0
+        )
 
         return {
-            "balance": balance,
-            "income": monthly_income,
-            "expenses": monthly_expenses,
-            "savings": savings,
-            "savings_rate": savings_rate,
-
+            "balance": round(balance, 2),
+            "income": round(monthly_income, 2),
+            "expenses": round(monthly_expenses, 2),
+            "savings": round(savings, 2),
+            "savings_rate": round(savings_rate, 2),
+            "monthly_income": round(monthly_income, 2),
+            "monthly_expenses": round(monthly_expenses, 2),
             "top_spending": top_spending,
-            "top_spending_amount": top_spending_amount,
-
+            "top_spending_amount": round(top_spending_amount, 2),
             "top_income_source": top_income_source,
-            "top_income_amount": top_income_amount,
-
+            "top_income_amount": round(top_income_amount, 2),
         }
 
     # ==========================================================
@@ -1381,11 +1972,14 @@ class DashboardService:
 
         progress = []
 
-        today = date.today()
+        today_date = today()
 
         for goal in goals:
 
-            percentage = round(goal.progress_percentage, 2)
+            percentage = round(
+                goal.progress_percentage,
+                2,
+            )
 
             # --------------------------------------------------
             # Goal Status
@@ -1394,7 +1988,7 @@ class DashboardService:
             if percentage >= 100:
                 status = "Completed"
 
-            elif goal.target_date and goal.target_date < today:
+            elif goal.target_date and goal.target_date < today_date:
                 status = "Overdue"
 
             elif percentage >= 75:
@@ -1403,7 +1997,7 @@ class DashboardService:
             elif percentage >= 40:
                 status = "At Risk"
 
-            elif goal.target_date and goal.target_date > today:
+            elif goal.target_date and goal.target_date > today_date:
                 # A future target date is not behind schedule merely because
                 # the goal is below an arbitrary funding percentage.
                 status = "In Progress"
@@ -1441,7 +2035,9 @@ class DashboardService:
                 estimated_completion = "Completed"
 
             elif goal.target_date:
-                estimated_completion = goal.target_date.strftime("%d %b %Y")
+                estimated_completion = goal.target_date.strftime(
+                    "%d %b %Y"
+                )
 
             else:
                 estimated_completion = "Not Available"
@@ -1466,26 +2062,23 @@ class DashboardService:
                 funding_pace = "Slow"
 
             # --------------------------------------------------
-            # AI Recommendation
+            # Completion / Funding Calculation
             # --------------------------------------------------
+            # Calculate once and reuse throughout this method.
 
-            remaining_months = max(goal.days_remaining / 30, 1)
+            remaining_months = max(
+                goal.days_remaining / 30,
+                1,
+            )
 
             required_monthly = round(
                 goal.remaining_amount / remaining_months,
-                2
+                2,
             )
 
             # --------------------------------------------------
             # AI Recommendation
             # --------------------------------------------------
-
-            remaining_months = max(goal.days_remaining / 30, 1)
-
-            required_monthly = round(
-                goal.remaining_amount / remaining_months,
-                2
-            )
 
             if percentage >= 100:
 
@@ -1495,9 +2088,14 @@ class DashboardService:
                     f"Consider setting a new goal to continue building your wealth."
                 )
 
-            elif goal.target_date and goal.target_date < today:
+            elif (
+                goal.target_date
+                and goal.target_date < today_date
+            ):
 
-                days_overdue = (today - goal.target_date).days
+                days_overdue = (
+                    today_date - goal.target_date
+                ).days
 
                 recommendation = (
                     f"This goal is overdue by <strong>{days_overdue}</strong> "
@@ -1524,7 +2122,10 @@ class DashboardService:
                     f"<strong>{goal.title}</strong> by the target date."
                 )
 
-            elif goal.target_date and goal.target_date > today:
+            elif (
+                goal.target_date
+                and goal.target_date > today_date
+            ):
 
                 recommendation = (
                     f"Your <strong>{goal.title}</strong> goal is in progress. "
@@ -1565,18 +2166,18 @@ class DashboardService:
                 alert_class = "alert-secondary"
 
             # --------------------------------------------------
-            # Badge Color
+            # Badge / Style
             # --------------------------------------------------
 
             status_styles = {
                 "Completed": {
-                    "progress": "bg-success",
-                    "badge": "bg-success",
+                    "progress": goal.progress_color,
+                    "badge": goal.badge_class,
                     "alert": "alert-success",
                 },
                 "Overdue": {
-                    "progress": "bg-danger",
-                    "badge": "bg-danger",
+                    "progress": goal.progress_color,
+                    "badge": goal.badge_class,
                     "alert": "alert-danger",
                 },
                 "Behind": {
@@ -1585,26 +2186,38 @@ class DashboardService:
                     "alert": "alert-danger",
                 },
                 "At Risk": {
-                    "progress": "bg-warning",
-                    "badge": "bg-warning text-dark",
+                    "progress": goal.progress_color,
+                    "badge": goal.badge_class,
                     "alert": "alert-warning",
                 },
                 "On Track": {
-                    "progress": "bg-primary",
-                    "badge": "bg-primary",
+                    "progress": goal.progress_color,
+                    "badge": goal.badge_class,
                     "alert": "alert-primary",
+                },
+                "In Progress": {
+                    "progress": goal.progress_color,
+                    "badge": goal.badge_class,
+                    "alert": "alert-secondary",
                 },
             }
 
-            style = status_styles.get(status, {
-                "progress": "bg-secondary",
-                "badge": "bg-secondary",
-                "alert": "alert-secondary",
-            })
+            style = status_styles.get(
+                status,
+                {
+                    "progress": "bg-secondary",
+                    "badge": "bg-secondary",
+                    "alert": "alert-secondary",
+                },
+            )
 
             progress_color = style["progress"]
             badge_class = style["badge"]
             alert_class = style["alert"]
+
+            # --------------------------------------------------
+            # Final Progress Record
+            # --------------------------------------------------
 
             progress.append({
                 "id": goal.id,
@@ -1622,7 +2235,8 @@ class DashboardService:
                 "funding_pace": funding_pace,
                 "alert_class": alert_class,
                 "progress_color": progress_color,
-                "badge_class": badge_class
+                "badge_class": badge_class,
+                "background_class": goal.background_class,
             })
 
         return progress
@@ -1649,13 +2263,16 @@ class DashboardService:
     @staticmethod
     def build_budget_warning(user_id):
 
-        today = date.today()
+        today_date = today()
 
-        days_elapsed = max(today.day, 1)
+        days_elapsed = max(
+            today_date.day,
+            1,
+        )
 
         days_in_month = calendar.monthrange(
-            today.year,
-            today.month
+            today_date.year,
+            today_date.month,
         )[1]
 
         budgets = (
@@ -1669,28 +2286,36 @@ class DashboardService:
 
         for budget in budgets:
 
-            spent = (
-                db.session.query(
-                    func.coalesce(func.sum(Expense.amount), 0)
-                )
+            spent = float(
+                DashboardService
+                ._active_operating_expense_query(user_id)
                 .filter(
-                    Expense.user_id == user_id,
-                    or_(Expense.transaction_class == "expense", Expense.transaction_class.is_(None)),
                     Expense.category == budget.category,
-                    Expense.expense_date >= budget.start_date,
-                    Expense.expense_date <= budget.end_date
+                    Expense.expense_date.between(
+                        budget.start_date,
+                        budget.end_date,
+                    ),
+                )
+                .with_entities(
+                    func.coalesce(
+                        func.sum(Expense.amount),
+                        0,
+                    )
                 )
                 .scalar()
                 or 0
             )
 
-            budget.spent = float(spent)
+            budget.spent = spent
 
             projected = (
                 budget.spent / days_elapsed
             ) * days_in_month
 
-            pct = min(budget.percentage_used, 100)
+            pct = min(
+                budget.percentage_used,
+                100,
+            )
 
             if pct >= 100:
 
@@ -1726,13 +2351,18 @@ class DashboardService:
 
                 "category": budget.category,
 
-                "budget": float(budget.amount),
+                "budget": float(
+                    budget.amount
+                ),
 
                 "spent": budget.spent,
 
                 "remaining": budget.remaining,
 
-                "projected": round(projected, 2),
+                "projected": round(
+                    projected,
+                    2,
+                ),
 
                 "percentage": pct,
 
@@ -1742,13 +2372,17 @@ class DashboardService:
 
                 "recommendation": recommendation,
 
-                "progress_color": budget.progress_color
+                "progress_color": budget.progress_color,
+
+                "badge_class": budget.badge_class,
+
+                "background_class": budget.background_class,
 
             })
 
         warnings.sort(
             key=lambda x: x["percentage"],
-            reverse=True
+            reverse=True,
         )
 
         return warnings
@@ -1895,18 +2529,6 @@ class DashboardService:
             return "You should reduce your expenses."
         return "Immediate financial attention is recommended."
 
-    # =====================================================
-    # NOTIFICATIONS
-    # =====================================================
-
-    @staticmethod
-    def build_notifications(user_id):
-
-        return NotificationService.get_recent(
-            user_id=user_id,
-            limit=5
-        )
-
     # ==========================================================
     # DAILY BRIEF
     # ==========================================================
@@ -1914,49 +2536,36 @@ class DashboardService:
     @staticmethod
     def build_daily_brief(user_id):
 
-        today = date.today()
+        today_date = today()
 
-        today_income = (
-            db.session.query(
-                func.coalesce(func.sum(Income.amount), 0)
-            )
-            .filter(
-                Income.user_id == user_id,
-                Income.received_date == today
-            )
-            .scalar()
+        # ------------------------------------------------------
+        # Today's Authoritative Cash-Flow Totals
+        # ------------------------------------------------------
+
+        totals = DashboardService._cash_flow_totals(
+            user_id=user_id,
+            start_date=today_date,
+            end_date=today_date,
         )
 
-        today_expense = (
-            db.session.query(
-                func.coalesce(func.sum(Expense.amount), 0)
-            )
-            .filter(
-                Expense.user_id == user_id,
-                Expense.expense_date == today
-            )
-            .scalar()
-        )
-
-        today_income = float(today_income or 0)
-        today_expense = float(today_expense or 0)
-
-        today_balance = today_income - today_expense
+        income = totals["income"]
+        expenses = totals["expenses"]
+        savings = totals["savings"]
 
         return {
-            "date": datetime.today(),
-            "today_income": today_income,
-            "today_expense": today_expense,
-            "today_balance": today_balance,
+            "date": today_date,
+            "today_income": income,
+            "today_expense": expenses,
+            "today_balance": savings,
             "message": (
                 f"Today your financial position shows "
-                f"₦{today_income:,.2f} income, "
-                f"₦{today_expense:,.2f} expenses "
+                f"₦{income:,.2f} income, "
+                f"₦{expenses:,.2f} expenses "
                 f"and a remaining balance of "
-                f"₦{today_balance:,.2f}. "
+                f"₦{savings:,.2f}. "
                 f"Continue monitoring your budgets "
                 f"and contribute toward your savings goals."
-            )
+            ),
         }
 
     # ==========================================================
@@ -1967,21 +2576,26 @@ class DashboardService:
     def expense_breakdown(user_id):
         """
         Doughnut Chart
-        Current Month Expense Breakdown
+        Current Month Operating Expense Breakdown.
         """
 
-        today = date.today()
+        today_date = today()
+
+        start = today_date.replace(day=1)
+        end = today_date
 
         rows = (
-            db.session.query(
-                Expense.category,
-                func.sum(Expense.amount)
-            )
+            DashboardService
+            ._active_operating_expense_query(user_id)
             .filter(
-                Expense.user_id == user_id,
-                or_(Expense.transaction_class == "expense", Expense.transaction_class.is_(None)),
-                extract("year", Expense.expense_date) == today.year,
-                extract("month", Expense.expense_date) == today.month,
+                Expense.expense_date.between(
+                    start,
+                    end,
+                )
+            )
+            .with_entities(
+                Expense.category,
+                func.sum(Expense.amount),
             )
             .group_by(
                 Expense.category
@@ -1993,8 +2607,14 @@ class DashboardService:
         )
 
         return {
-            "labels": [row[0] for row in rows],
-            "values": [float(row[1]) for row in rows],
+            "labels": [
+                row[0]
+                for row in rows
+            ],
+            "values": [
+                float(row[1] or 0)
+                for row in rows
+            ],
         }
 
     # ==========================================================
@@ -2004,44 +2624,29 @@ class DashboardService:
     @staticmethod
     def income_vs_expense(user_id):
         """
-        Current Month Income vs Expense
+        Current Month Total Cash Flow: Income vs Expenses.
         """
 
-        today = date.today()
+        today_date = today()
 
-        income = (
-            db.session.query(
-                func.coalesce(func.sum(Income.amount), 0)
-            )
-            .filter(
-                Income.user_id == user_id,
-                extract("year", Income.received_date) == today.year,
-                extract("month", Income.received_date) == today.month,
-            )
-            .scalar()
-            or 0
-        )
+        start = today_date.replace(day=1)
+        end = today_date
 
-        expense = (
-            db.session.query(
-                func.coalesce(func.sum(Expense.amount), 0)
-            )
-            .filter(
-                Expense.user_id == user_id,
-                or_(Expense.transaction_class == "expense", Expense.transaction_class.is_(None)),
-                extract("year", Expense.expense_date) == today.year,
-                extract("month", Expense.expense_date) == today.month,
-            )
-            .scalar()
-            or 0
+        totals = DashboardService._cash_flow_totals(
+            user_id=user_id,
+            start_date=start,
+            end_date=end,
         )
 
         return {
             "labels": ["Income", "Expenses"],
             "values": [
-                float(income),
-                float(expense),
+                totals["income"],
+                totals["expenses"],
             ],
+            "income": totals["income"],
+            "expenses": totals["expenses"],
+            "savings": totals["savings"],
         }
 
     # ==========================================================
@@ -2051,63 +2656,119 @@ class DashboardService:
     @staticmethod
     def cashflow_chart(user_id):
         """
-        Monthly Cash Flow Trend (Current Year)
+        Monthly Cash Flow Trend (Current Year).
+
+        Includes all active cash expenses:
+            - ordinary expenses
+            - investment funding
+            - goal contributions
+
+        Investment valuation/revaluation is excluded because it
+        does not enter the Income or Expense tables.
         """
 
-        today = date.today()
+        today_date = today()
 
         months = [
             "Jan", "Feb", "Mar", "Apr",
             "May", "Jun", "Jul", "Aug",
-            "Sep", "Oct", "Nov", "Dec"
+            "Sep", "Oct", "Nov", "Dec",
         ]
 
         income = [0.0] * 12
         expense = [0.0] * 12
 
+        year_start = date(
+            today_date.year,
+            1,
+            1,
+        )
+
+        year_end = date(
+            today_date.year,
+            12,
+            31,
+        )
+
         # ---------------------------------------------------------
-        # Income by Month (Current Year)
+        # Active Income by Month (Current Year)
         # ---------------------------------------------------------
+
+        income_query = (
+            DashboardService
+            ._active_income_query(user_id)
+            .filter(
+                Income.received_date.between(
+                    year_start,
+                    year_end,
+                )
+            )
+        )
 
         income_rows = (
-            db.session.query(
-                extract("month", Income.received_date),
-                func.sum(Income.amount)
-            )
-            .filter(
-                Income.user_id == user_id,
-                extract("year", Income.received_date) == today.year,
+            income_query
+            .with_entities(
+                extract(
+                    "month",
+                    Income.received_date,
+                ),
+                func.sum(Income.amount),
             )
             .group_by(
-                extract("month", Income.received_date)
+                extract(
+                    "month",
+                    Income.received_date,
+                )
             )
             .all()
         )
 
         # ---------------------------------------------------------
-        # Expenses by Month (Current Year)
+        # Active Cash Expenses by Month (Current Year)
         # ---------------------------------------------------------
+
+        expense_query = (
+            DashboardService
+            ._active_expense_query(user_id)
+            .filter(
+                Expense.expense_date.between(
+                    year_start,
+                    year_end,
+                )
+            )
+        )
 
         expense_rows = (
-            db.session.query(
-                extract("month", Expense.expense_date),
-                func.sum(Expense.amount)
-            )
-            .filter(
-                Expense.user_id == user_id,
-                extract("year", Expense.expense_date) == today.year,
+            expense_query
+            .with_entities(
+                extract(
+                    "month",
+                    Expense.expense_date,
+                ),
+                func.sum(Expense.amount),
             )
             .group_by(
-                extract("month", Expense.expense_date)
+                extract(
+                    "month",
+                    Expense.expense_date,
+                )
             )
             .all()
         )
 
+        # ---------------------------------------------------------
+        # Populate Monthly Series
+        # ---------------------------------------------------------
+
         for month, amount in income_rows:
-            income[int(month) - 1] = float(amount)
+            income[int(month) - 1] = float(
+                amount or 0
+            )
 
         for month, amount in expense_rows:
-            expense[int(month) - 1] = float(amount)
+            expense[int(month) - 1] = float(
+                amount or 0
+            )
 
         return {
             "labels": months,
@@ -2169,30 +2830,27 @@ class DashboardService:
         page=1,
     ):
         """
-        Returns dashboard transactions.
+        Returns active dashboard transactions.
 
         Supports:
-
-        - Today
-        - Week
-        - Month
-        - Year
-        - Lifetime
-        - Custom Date
+            - Today
+            - Week
+            - Month
+            - Year
+            - Lifetime
+            - Custom Date
 
         Optional filters:
-
-        - Type
-        - Category
-        - Search
+            - Type
+            - Category
+            - Search
 
         Pagination:
-
-        - page
-        - limit
+            - page
+            - limit
         """
 
-        today = date.today()
+        today_date = today()
 
         # ------------------------------------------------------
         # Normalize inputs
@@ -2228,19 +2886,19 @@ class DashboardService:
         except (TypeError, ValueError):
             limit = 10
 
-
         # ------------------------------------------------------
         # Base Queries
         # ------------------------------------------------------
 
-        income_query = Income.query.filter(
-            Income.user_id == user_id
+        income_query = (
+            DashboardService
+            ._active_income_query(user_id)
         )
 
-        expense_query = Expense.query.filter(
-            Expense.user_id == user_id
+        expense_query = (
+            DashboardService
+            ._active_expense_query(user_id)
         )
-
 
         # ------------------------------------------------------
         # DATE FILTER
@@ -2249,18 +2907,17 @@ class DashboardService:
         if period == "today":
 
             income_query = income_query.filter(
-                Income.received_date == today
+                Income.received_date == today_date
             )
 
             expense_query = expense_query.filter(
-                Expense.expense_date == today
+                Expense.expense_date == today_date
             )
-
 
         elif period == "week":
 
-            start = today - timedelta(
-                days=today.weekday()
+            start = today_date - timedelta(
+                days=today_date.weekday()
             )
 
             income_query = income_query.filter(
@@ -2271,74 +2928,66 @@ class DashboardService:
                 Expense.expense_date >= start
             )
 
-
         elif period == "month":
 
-            income_query = income_query.filter(
-                extract(
-                    "year",
-                    Income.received_date
-                ) == today.year,
+            start = today_date.replace(day=1)
 
-                extract(
-                    "month",
-                    Income.received_date
-                ) == today.month,
+            income_query = income_query.filter(
+                Income.received_date.between(
+                    start,
+                    today_date,
+                )
             )
 
             expense_query = expense_query.filter(
-                extract(
-                    "year",
-                    Expense.expense_date
-                ) == today.year,
-
-                extract(
-                    "month",
-                    Expense.expense_date
-                ) == today.month,
+                Expense.expense_date.between(
+                    start,
+                    today_date,
+                )
             )
-
 
         elif period == "year":
 
+            start = date(
+                today_date.year,
+                1,
+                1,
+            )
+
             income_query = income_query.filter(
-                extract(
-                    "year",
-                    Income.received_date
-                ) == today.year
+                Income.received_date.between(
+                    start,
+                    today_date,
+                )
             )
 
             expense_query = expense_query.filter(
-                extract(
-                    "year",
-                    Expense.expense_date
-                ) == today.year
+                Expense.expense_date.between(
+                    start,
+                    today_date,
+                )
             )
-
 
         elif period == "custom" and start_date and end_date:
 
             income_query = income_query.filter(
                 Income.received_date.between(
                     start_date,
-                    end_date
+                    end_date,
                 )
             )
 
             expense_query = expense_query.filter(
                 Expense.expense_date.between(
                     start_date,
-                    end_date
+                    end_date,
                 )
             )
-
 
         elif period == "lifetime":
 
             # Intentionally no date filter.
-
             pass
-
 
         # ------------------------------------------------------
         # CATEGORY FILTER
@@ -2354,7 +3003,6 @@ class DashboardService:
                 Expense.category == category
             )
 
-
         # ------------------------------------------------------
         # SEARCH FILTER
         # ------------------------------------------------------
@@ -2364,50 +3012,38 @@ class DashboardService:
             search_pattern = f"%{search}%"
 
             income_query = income_query.filter(
-
                 db.or_(
-
                     Income.source.ilike(
                         search_pattern
                     ),
-
                     Income.category.ilike(
                         search_pattern
                     ),
-
-                    Income.note.ilike(
+                    Income.notes.ilike(
                         search_pattern
-                    )
-
+                    ),
                 )
             )
 
             expense_query = expense_query.filter(
-
                 db.or_(
-
                     Expense.merchant.ilike(
                         search_pattern
                     ),
-
                     Expense.category.ilike(
                         search_pattern
                     ),
-
-                    Expense.note.ilike(
+                    Expense.notes.ilike(
                         search_pattern
-                    )
-
+                    ),
                 )
             )
-
 
         # ------------------------------------------------------
         # BUILD TRANSACTIONS
         # ------------------------------------------------------
 
         transactions = []
-
 
         # ------------------------------------------------------
         # INCOME
@@ -2416,7 +3052,7 @@ class DashboardService:
         if transaction_type in (
             None,
             "",
-            "Income"
+            "Income",
         ):
 
             for item in income_query.all():
@@ -2426,14 +3062,22 @@ class DashboardService:
                     "type": "Income",
                     "title": item.source,
                     "category": item.category,
-                    "amount": float(item.amount or 0),
+                    "amount": float(
+                        item.amount or 0
+                    ),
                     "date": item.received_date,
                     "note": getattr(
                         item,
                         "notes",
-                        None
+                        None,
                     ),
-                    "flagged": False
+                    "flagged": bool(
+                        getattr(
+                            item,
+                            "flagged",
+                            False,
+                        )
+                    ),
                 })
 
         # ------------------------------------------------------
@@ -2443,16 +3087,10 @@ class DashboardService:
         if transaction_type in (
             None,
             "",
-            "Expense"
+            "Expense",
         ):
 
             for item in expense_query.all():
-
-                flagged = getattr(
-                    item,
-                    "flagged",
-                    False
-                )
 
                 transactions.append({
                     "id": item.id,
@@ -2461,14 +3099,22 @@ class DashboardService:
                     "type": "Expense",
                     "title": item.merchant,
                     "category": item.category,
-                    "amount": float(item.amount or 0),
+                    "amount": float(
+                        item.amount or 0
+                    ),
                     "date": item.expense_date,
                     "note": getattr(
                         item,
                         "notes",
-                        None
+                        None,
                     ),
-                    "flagged": False
+                    "flagged": bool(
+                        getattr(
+                            item,
+                            "flagged",
+                            False,
+                        )
+                    ),
                 })
 
         # ------------------------------------------------------
@@ -2476,14 +3122,11 @@ class DashboardService:
         # ------------------------------------------------------
 
         transactions.sort(
-
             key=lambda x: (
                 x["date"],
-                x["id"]
+                x["id"],
             ),
-
-            reverse=True
-
+            reverse=True,
         )
 
         # ------------------------------------------------------
@@ -2492,96 +3135,63 @@ class DashboardService:
 
         total = len(transactions)
 
-
         # ------------------------------------------------------
         # CATEGORIES
         # ------------------------------------------------------
 
         categories = sorted({
-
             x["category"]
-
             for x in transactions
-
             if x["category"]
-
         })
-
 
         # ------------------------------------------------------
         # PAGINATION
         # ------------------------------------------------------
 
         pages = (
-            (total + limit - 1)
-            // limit
+            (total + limit - 1) // limit
             if total
             else 1
         )
 
-
-        # Prevent invalid page numbers
-
         if page > pages:
             page = pages
 
-
         start = (
-            (page - 1)
-            * limit
+            (page - 1) * limit
         )
 
         end = start + limit
 
-
         paginated_transactions = transactions[
             start:end
         ]
-
 
         # ------------------------------------------------------
         # RETURN
         # ------------------------------------------------------
 
         return {
-
-            "items":
-                paginated_transactions,
-
-            "total":
-                total,
-
-            "categories":
-                categories,
-
-            "period":
-                period,
-
-            "limit":
-                limit,
-
-            "page":
-                page,
-
-            "pages":
-                pages,
-
-            "has_prev":
-                page > 1,
-
-            "has_next":
-                page < pages,
-
-            "prev_num":
+            "items": paginated_transactions,
+            "total": total,
+            "categories": categories,
+            "period": period,
+            "limit": limit,
+            "page": page,
+            "pages": pages,
+            "has_prev": page > 1,
+            "has_next": page < pages,
+            "prev_num": (
                 page - 1
                 if page > 1
-                else None,
-
-            "next_num":
+                else None
+            ),
+            "next_num": (
                 page + 1
                 if page < pages
-                else None,
-
+                else None
+            ),
         }
 
     # ==========================================================
@@ -2591,54 +3201,98 @@ class DashboardService:
     @staticmethod
     def spending_trend(user_id):
 
-        today = date.today()
+        today_date = today()
 
-        this_month = (
-            db.session.query(
-                func.coalesce(func.sum(Expense.amount), 0)
-            )
-            .filter(
-                Expense.user_id == user_id,
-                or_(Expense.transaction_class == "expense", Expense.transaction_class.is_(None)),
-                extract("year", Expense.expense_date) == today.year,
-                extract("month", Expense.expense_date) == today.month
-            )
-            .scalar()
+        query = (
+            DashboardService
+            ._active_operating_expense_query(user_id)
         )
 
-        previous_month = today.month - 1
-        previous_year = today.year
+        # ------------------------------------------------------
+        # Current Month
+        # ------------------------------------------------------
+
+        current_month_start = today_date.replace(day=1)
+
+        this_month = float(
+            query
+            .filter(
+                Expense.expense_date.between(
+                    current_month_start,
+                    today_date,
+                )
+            )
+            .with_entities(
+                func.coalesce(
+                    func.sum(Expense.amount),
+                    0,
+                )
+            )
+            .scalar()
+            or 0
+        )
+
+        # ------------------------------------------------------
+        # Previous Month
+        # ------------------------------------------------------
+
+        previous_month = today_date.month - 1
+        previous_year = today_date.year
 
         if previous_month == 0:
             previous_month = 12
             previous_year -= 1
 
-        last_month = (
-            db.session.query(
-                func.coalesce(func.sum(Expense.amount), 0)
-            )
-            .filter(
-                Expense.user_id == user_id,
-                or_(Expense.transaction_class == "expense", Expense.transaction_class.is_(None)),
-                extract("year", Expense.expense_date) == previous_year,
-                extract("month", Expense.expense_date) == previous_month
-            )
-            .scalar()
+        previous_month_start = date(
+            previous_year,
+            previous_month,
+            1,
         )
 
-        this_month = float(this_month or 0)
-        last_month = float(last_month or 0)
+        previous_month_end = date(
+            previous_year,
+            previous_month,
+            calendar.monthrange(
+                previous_year,
+                previous_month,
+            )[1],
+        )
+
+        last_month = float(
+            query
+            .filter(
+                Expense.expense_date.between(
+                    previous_month_start,
+                    previous_month_end,
+                )
+            )
+            .with_entities(
+                func.coalesce(
+                    func.sum(Expense.amount),
+                    0,
+                )
+            )
+            .scalar()
+            or 0
+        )
+
+        # ------------------------------------------------------
+        # Trend
+        # ------------------------------------------------------
 
         if last_month == 0:
 
             return {
                 "trend": "No previous data",
-                "change": 0
+                "change": 0,
             }
 
         pct = round(
-            ((this_month - last_month) / last_month) * 100,
-            1
+            (
+                (this_month - last_month)
+                / last_month
+            ) * 100,
+            1,
         )
 
         if pct > 0:
@@ -2652,7 +3306,7 @@ class DashboardService:
 
         return {
             "trend": trend,
-            "change": abs(pct)
+            "change": abs(pct),
         }
 
     # ==========================================================
@@ -2662,34 +3316,44 @@ class DashboardService:
     @staticmethod
     def month_end_forecast(user_id):
 
-        today = date.today()
+        today_date = today()
 
         days_in_month = calendar.monthrange(
-            today.year,
-            today.month
+            today_date.year,
+            today_date.month,
         )[1]
 
-        days_elapsed = max(today.day, 1)
+        days_elapsed = max(today_date.day, 1)
+
+        month_start = today_date.replace(day=1)
 
         # ------------------------------------------------------
         # Current Month Totals
         # ------------------------------------------------------
 
-        monthly_expenses = DashboardService.monthly_expenses(user_id)
+        monthly_expenses = DashboardService.monthly_expense(
+            user_id
+        )
 
         # ------------------------------------------------------
         # Variable (Non-Salary) Income
         # ------------------------------------------------------
 
-        variable_income = (
-            db.session.query(
-                func.coalesce(func.sum(Income.amount), 0)
-            )
+        variable_income = float(
+            DashboardService
+            ._active_income_query(user_id)
             .filter(
-                Income.user_id == user_id,
-                extract("year", Income.received_date) == today.year,
-                extract("month", Income.received_date) == today.month,
-                Income.category != "Salary"
+                Income.received_date.between(
+                    month_start,
+                    today_date,
+                ),
+                Income.category != "Salary",
+            )
+            .with_entities(
+                func.coalesce(
+                    func.sum(Income.amount),
+                    0,
+                )
             )
             .scalar()
             or 0
@@ -2707,15 +3371,21 @@ class DashboardService:
         # Salary Received This Month
         # ------------------------------------------------------
 
-        salary_income = (
-            db.session.query(
-                func.coalesce(func.sum(Income.amount), 0)
-            )
+        salary_income = float(
+            DashboardService
+            ._active_income_query(user_id)
             .filter(
-                Income.user_id == user_id,
-                extract("year", Income.received_date) == today.year,
-                extract("month", Income.received_date) == today.month,
-                Income.category == "Salary"
+                Income.received_date.between(
+                    month_start,
+                    today_date,
+                ),
+                Income.category == "Salary",
+            )
+            .with_entities(
+                func.coalesce(
+                    func.sum(Income.amount),
+                    0,
+                )
             )
             .scalar()
             or 0
@@ -2727,41 +3397,67 @@ class DashboardService:
 
         if salary_income == 0:
 
-            previous_month = today.month - 1
-            previous_year = today.year
+            previous_month = today_date.month - 1
+            previous_year = today_date.year
 
             if previous_month == 0:
                 previous_month = 12
                 previous_year -= 1
 
-            # Last month's salary
-            estimated_salary = (
-                db.session.query(
-                    func.coalesce(func.sum(Income.amount), 0)
-                )
+            previous_month_start = date(
+                previous_year,
+                previous_month,
+                1,
+            )
+
+            previous_month_end = date(
+                previous_year,
+                previous_month,
+                calendar.monthrange(
+                    previous_year,
+                    previous_month,
+                )[1],
+            )
+
+            # --------------------------------------------------
+            # Previous Month Salary
+            # --------------------------------------------------
+
+            estimated_salary = float(
+                DashboardService
+                ._active_income_query(user_id)
                 .filter(
-                    Income.user_id == user_id,
-                    extract("year", Income.received_date) == previous_year,
-                    extract("month", Income.received_date) == previous_month,
-                    Income.category == "Salary"
+                    Income.received_date.between(
+                        previous_month_start,
+                        previous_month_end,
+                    ),
+                    Income.category == "Salary",
+                )
+                .with_entities(
+                    func.coalesce(
+                        func.sum(Income.amount),
+                        0,
+                    )
                 )
                 .scalar()
                 or 0
             )
 
-            # If last month has no salary,
-            # use the most recent salary only if
-            # it was received within the last 3 months.
+            # --------------------------------------------------
+            # Latest Salary Fallback
+            # --------------------------------------------------
+
             if estimated_salary == 0:
 
                 latest_salary = (
-                    Income.query
+                    DashboardService
+                    ._active_income_query(user_id)
                     .filter(
-                        Income.user_id == user_id,
-                        Income.category == "Salary"
+                        Income.category == "Salary",
                     )
                     .order_by(
-                        Income.received_date.desc()
+                        Income.received_date.desc(),
+                        Income.id.desc(),
                     )
                     .first()
                 )
@@ -2769,8 +3465,14 @@ class DashboardService:
                 if latest_salary:
 
                     months_since = (
-                        (today.year - latest_salary.received_date.year) * 12
-                        + (today.month - latest_salary.received_date.month)
+                        (
+                            today_date.year
+                            - latest_salary.received_date.year
+                        ) * 12
+                        + (
+                            today_date.month
+                            - latest_salary.received_date.month
+                        )
                     )
 
                     if months_since <= 3:
@@ -2785,8 +3487,8 @@ class DashboardService:
         # ------------------------------------------------------
 
         projected_income = (
-            salary_income +
-            projected_variable_income
+            salary_income
+            + projected_variable_income
         )
 
         # ------------------------------------------------------
@@ -2806,8 +3508,8 @@ class DashboardService:
         # ------------------------------------------------------
 
         projected_savings = (
-            projected_income -
-            projected_expenses
+            projected_income
+            - projected_expenses
         )
 
         # ------------------------------------------------------
@@ -2821,7 +3523,10 @@ class DashboardService:
                 "you are projected to overspend before the end of the month."
             )
 
-        elif projected_income > 0 and projected_savings < (projected_income * 0.20):
+        elif (
+            projected_income > 0
+            and projected_savings < (projected_income * 0.20)
+        ):
 
             forecast_status = (
                 "⚠️ Based on your current finances, you may save less than "
@@ -2841,10 +3546,19 @@ class DashboardService:
         # ------------------------------------------------------
 
         return {
-            "projected_income": round(projected_income, 2),
-            "projected_expenses": round(projected_expenses, 2),
-            "projected_savings": round(projected_savings, 2),
-            "forecast_status": forecast_status
+            "projected_income": round(
+                projected_income,
+                2,
+            ),
+            "projected_expenses": round(
+                projected_expenses,
+                2,
+            ),
+            "projected_savings": round(
+                projected_savings,
+                2,
+            ),
+            "forecast_status": forecast_status,
         }
 
     # ==========================================================
@@ -2876,10 +3590,21 @@ class DashboardService:
         """
         Return compact, intent-scoped, database-derived financial context.
 
+        IMPORTANT:
+            Every AI financial context includes `calculation_context`.
+
+            `calculation_context` contains the authoritative calculations,
+            rules, formulas, classifications, and explanatory metadata used
+            by DashboardService.
+
+        The LLM must explain the supplied calculations rather than inventing
+        or independently recalculating financial figures.
+
         Financial data is fetched on demand according to the detected AI
-        intent. The entire financial database must never be dumped into
-        an ordinary AI prompt.
+        intent. The entire financial database must never be dumped into an
+        ordinary AI prompt.
         """
+
         if start is None:
             start = date.today().replace(day=1)
 
@@ -2891,28 +3616,78 @@ class DashboardService:
 
         limit = max(int(transaction_limit or 20), 0)
 
-        # ------------------------------------------------------
-        # Simple point-in-time / period queries
-        # ------------------------------------------------------
+        # ----------------------------------------------------------
+        # AUTHORITATIVE CALCULATION CONTEXT
+        # ----------------------------------------------------------
+        #
+        # This is deliberately generated once and attached to every
+        # financial AI context.
+        #
+        # It allows FOCOST AI to explain:
+        #   - where a figure came from
+        #   - which records were included
+        #   - which records were excluded
+        #   - formulas used
+        #   - transaction classifications
+        #   - period rules
+        #   - balance/savings logic
+        #   - forecast logic
+        #   - dashboard calculation rules
+        #
+        calculation_context = (
+            DashboardService.ai_calculation_context(
+                user_id=user_id,
+                start=start,
+                end=end,
+            )
+        )
+
+        def attach_calculation_context(context):
+            """
+            Attach authoritative calculation metadata to every AI context.
+
+            This helper also guarantees that a malformed/None context does not
+            break the AI response pipeline.
+            """
+            if not isinstance(context, dict):
+                context = {}
+
+            context["calculation_context"] = calculation_context
+
+            return context
+
+        # ==========================================================
+        # SIMPLE POINT-IN-TIME / PERIOD QUERIES
+        # ==========================================================
+
         if intent == "balance":
-            return DashboardService.ai_balance_context(user_id)
+            context = DashboardService.ai_balance_context(
+                user_id
+            )
+
+            return attach_calculation_context(context)
 
         if intent == "savings":
-            return DashboardService.ai_savings_context(
+            context = DashboardService.ai_savings_context(
                 user_id=user_id,
                 start=start,
                 end=end,
             )
+
+            return attach_calculation_context(context)
 
         if intent == "income":
-            return DashboardService.ai_income_context(
+            context = DashboardService.ai_income_context(
                 user_id=user_id,
                 start=start,
                 end=end,
+                limit=limit,
             )
 
+            return attach_calculation_context(context)
+
         if intent == "expenses":
-            return DashboardService.ai_expense_context(
+            context = DashboardService.ai_expense_context(
                 user_id=user_id,
                 start=start,
                 end=end,
@@ -2920,8 +3695,10 @@ class DashboardService:
                 limit=limit,
             )
 
+            return attach_calculation_context(context)
+
         if intent == "transactions":
-            return DashboardService.ai_transaction_context(
+            context = DashboardService.ai_transaction_context(
                 user_id=user_id,
                 start=start,
                 end=end,
@@ -2930,125 +3707,208 @@ class DashboardService:
                 expense_only=False,
             )
 
-        # ------------------------------------------------------
-        # Financial planning / structured records
-        # ------------------------------------------------------
+            return attach_calculation_context(context)
+
+        # ==========================================================
+        # FINANCIAL PLANNING / STRUCTURED RECORDS
+        # ==========================================================
+
         if intent == "goals":
-            return DashboardService.ai_goals_context(user_id)
+            context = DashboardService.ai_goals_context(
+                user_id
+            )
+
+            return attach_calculation_context(context)
 
         if intent == "budgets":
-            return DashboardService.ai_budgets_context(
+            context = DashboardService.ai_budgets_context(
                 user_id=user_id,
                 start=start,
                 end=end,
             )
+
+            return attach_calculation_context(context)
 
         if intent == "investments":
-            return DashboardService.ai_investments_context(user_id)
+            context = DashboardService.ai_investments_context(
+                user_id
+            )
 
-        # ------------------------------------------------------
-        # Summary
-        # ------------------------------------------------------
+            return attach_calculation_context(context)
+
+        # ==========================================================
+        # SUMMARY
+        # ==========================================================
+
         if intent == "summary":
-            return DashboardService.ai_summary_context(
+            context = DashboardService.ai_summary_context(
                 user_id=user_id,
                 start=start,
                 end=end,
             )
 
-        # ------------------------------------------------------
-        # Comparison
-        # ------------------------------------------------------
+            return attach_calculation_context(context)
+
+        # ==========================================================
+        # COMPARISON
+        # ==========================================================
+
         if intent == "comparison":
-            return DashboardService.ai_comparison_context(
+            context = DashboardService.ai_comparison_context(
                 user_id=user_id,
                 message=message,
             )
 
-        # ------------------------------------------------------
-        # Forecasting
-        # ------------------------------------------------------
-        if intent == "forecast":
-            user_context = DashboardService._ai_user_context(user_id)
+            return attach_calculation_context(context)
 
-            return {
+        # ==========================================================
+        # FORECASTING
+        # ==========================================================
+
+        if intent == "forecast":
+
+            user_context = DashboardService._ai_user_context(
+                user_id
+            )
+
+            context = {
                 "user": user_context,
-                "currency": user_context.get("currency", "NGN"),
+
+                "currency": user_context.get(
+                    "currency",
+                    "NGN",
+                ),
+
                 "requested_period": {
                     "start": start.isoformat(),
                     "end": end.isoformat(),
                 },
+
+                # Historical basis used by forecasting logic.
                 "monthly_history": DashboardService.monthly_series(
                     user_id,
                     months=12,
                 ),
-                "advanced_forecast": DashboardService.advanced_forecast(
-                    user_id,
-                    months_ahead=3,
+
+                # Multi-month forecast.
+                "advanced_forecast": (
+                    DashboardService.advanced_forecast(
+                        user_id,
+                        months_ahead=3,
+                    )
                 ),
-                "month_end_forecast": DashboardService.month_end_forecast(
-                    user_id,
+
+                # Current-month projection.
+                "month_end_forecast": (
+                    DashboardService.month_end_forecast(
+                        user_id,
+                    )
                 ),
-                "category_forecasts": DashboardService.category_forecasts(
-                    user_id,
-                    months=3,
+
+                # Category-level forecast.
+                "category_forecasts": (
+                    DashboardService.category_forecasts(
+                        user_id,
+                        months=3,
+                    )
                 ),
             }
 
-        # ------------------------------------------------------
-        # Financial health
-        # ------------------------------------------------------
+            return attach_calculation_context(context)
+
+        # ==========================================================
+        # FINANCIAL HEALTH
+        # ==========================================================
+
         if intent == "health":
-            return {
-                "user": DashboardService._ai_user_context(user_id),
-                "financial_health": DashboardService.build_financial_health(
+
+            context = {
+                "user": DashboardService._ai_user_context(
                     user_id
                 ),
-                "period_summary": DashboardService.ai_summary_context(
-                    user_id=user_id,
-                    start=start,
-                    end=end,
+
+                "financial_health": (
+                    DashboardService.build_financial_health(
+                        user_id
+                    )
+                ),
+
+                "period_summary": (
+                    DashboardService.ai_summary_context(
+                        user_id=user_id,
+                        start=start,
+                        end=end,
+                    )
                 ),
             }
 
-        # ------------------------------------------------------
-        # Data-grounded financial advice
-        # ------------------------------------------------------
+            return attach_calculation_context(context)
+
+        # ==========================================================
+        # DATA-GROUNDED FINANCIAL ADVICE
+        # ==========================================================
+
         if intent == "advice":
-            return {
-                "user": DashboardService._ai_user_context(user_id),
+
+            context = {
+                "user": DashboardService._ai_user_context(
+                    user_id
+                ),
+
                 "requested_period": {
                     "start": start.isoformat(),
                     "end": end.isoformat(),
                 },
-                "summary": DashboardService.ai_summary_context(
-                    user_id=user_id,
-                    start=start,
-                    end=end,
+
+                "summary": (
+                    DashboardService.ai_summary_context(
+                        user_id=user_id,
+                        start=start,
+                        end=end,
+                    )
                 ),
-                "budgets": DashboardService.ai_budgets_context(
-                    user_id=user_id,
-                    start=start,
-                    end=end,
+
+                "budgets": (
+                    DashboardService.ai_budgets_context(
+                        user_id=user_id,
+                        start=start,
+                        end=end,
+                    )
                 ),
-                "goals": DashboardService.ai_goals_context(user_id),
-                "financial_health": DashboardService.build_financial_health(
-                    user_id
+
+                "goals": (
+                    DashboardService.ai_goals_context(
+                        user_id
+                    )
                 ),
-                "monthly_trends": DashboardService.monthly_series(
-                    user_id,
-                    months=6,
+
+                "financial_health": (
+                    DashboardService.build_financial_health(
+                        user_id
+                    )
+                ),
+
+                "monthly_trends": (
+                    DashboardService.monthly_series(
+                        user_id,
+                        months=6,
+                    )
                 ),
             }
 
-        # ------------------------------------------------------
-        # Safe fallback
-        # ------------------------------------------------------
-        return DashboardService.ai_summary_context(
+            return attach_calculation_context(context)
+
+        # ==========================================================
+        # SAFE FALLBACK
+        # ==========================================================
+
+        context = DashboardService.ai_summary_context(
             user_id=user_id,
             start=start,
             end=end,
         )
+
+        return attach_calculation_context(context)
 
     # ==========================================================
     # AI TARGETED CONTEXT
@@ -3075,85 +3935,24 @@ class DashboardService:
     @staticmethod
     def ai_balance_context(user_id):
         """
-        Compact authoritative cash-position context.
+        Compact authoritative financial-position context.
+
+        All cash-flow values come from DashboardService._cash_flow_totals().
+        Investment valuation/revaluation remains non-cash and is excluded.
         """
 
-        total_income = float(
-            db.session.query(
-                func.coalesce(
-                    func.sum(Income.amount),
-                    0,
-                )
-            )
-            .filter(
-                Income.user_id == user_id
-            )
-            .scalar()
-            or 0
-        )
-
-        total_cash_outflows = float(
-            db.session.query(
-                func.coalesce(
-                    func.sum(Expense.amount),
-                    0,
-                )
-            )
-            .filter(
-                Expense.user_id == user_id
-            )
-            .scalar()
-            or 0
-        )
-
-        operating_expenses = float(
-            db.session.query(
-                func.coalesce(
-                    func.sum(Expense.amount),
-                    0,
-                )
-            )
-            .filter(
-                Expense.user_id == user_id,
-                or_(
-                    Expense.transaction_class == "expense",
-                    Expense.transaction_class.is_(None),
-                ),
-            )
-            .scalar()
-            or 0
-        )
-
-        investments = max(
-            total_cash_outflows -
-            operating_expenses,
-            0,
+        totals = DashboardService._cash_flow_totals(
+            user_id=user_id,
         )
 
         return {
             "user": DashboardService._ai_user_context(
                 user_id
             ),
-            "all_time_income": round(
-                total_income,
-                2,
-            ),
-            "all_time_cash_outflows": round(
-                total_cash_outflows,
-                2,
-            ),
-            "all_time_operating_expenses": round(
-                operating_expenses,
-                2,
-            ),
-            "all_time_investment_and_transfer_outflows": round(
-                investments,
-                2,
-            ),
-            "current_cash_balance": round(
-                DashboardService.available_balance(user_id),
-                2,
-            ),
+            "income": totals["income"],
+            "expenses": totals["expenses"],
+            "savings": totals["savings"],
+            "available_balance": totals["savings"],
         }
 
     @staticmethod
@@ -3162,47 +3961,33 @@ class DashboardService:
         start,
         end,
     ):
-        income = float(
-            db.session.query(
-                func.coalesce(
-                    func.sum(Income.amount),
-                    0,
-                )
-            )
-            .filter(
-                Income.user_id == user_id,
-                Income.received_date.between(
-                    start,
-                    end,
-                ),
-            )
-            .scalar()
-            or 0
+        """
+        AI savings context using the authoritative cash-flow source.
+
+        Period savings is always:
+
+            period income - period expenses
+
+        The actual calculation is delegated to
+        DashboardService._cash_flow_totals().
+
+        Investment funding and goal contributions remain cash expenses.
+
+        Investment liquidation proceeds remain cash income.
+
+        Investment valuation/revaluation gains and losses are non-cash
+        investment-value changes and are never included in Income or Expense.
+        """
+
+        totals = DashboardService._cash_flow_totals(
+            user_id=user_id,
+            start_date=start,
+            end_date=end,
         )
 
-        expenses = float(
-            db.session.query(
-                func.coalesce(
-                    func.sum(Expense.amount),
-                    0,
-                )
-            )
-            .filter(
-                Expense.user_id == user_id,
-                or_(
-                    Expense.transaction_class == "expense",
-                    Expense.transaction_class.is_(None),
-                ),
-                Expense.expense_date.between(
-                    start,
-                    end,
-                ),
-            )
-            .scalar()
-            or 0
-        )
-
-        savings = income - expenses
+        income = totals["income"]
+        expenses = totals["expenses"]
+        savings = totals["savings"]
 
         savings_rate = (
             (savings / income) * 100
@@ -3218,18 +4003,9 @@ class DashboardService:
                 "start": start.isoformat(),
                 "end": end.isoformat(),
             },
-            "income": round(
-                income,
-                2,
-            ),
-            "operating_expenses": round(
-                expenses,
-                2,
-            ),
-            "savings": round(
-                savings,
-                2,
-            ),
+            "income": income,
+            "expenses": expenses,
+            "savings": savings,
             "savings_rate_percent": round(
                 savings_rate,
                 2,
@@ -3241,11 +4017,32 @@ class DashboardService:
         user_id,
         start,
         end,
+        limit=20,
     ):
+        """
+        Authoritative AI income context.
+
+        Provides:
+            - total income across ALL matching records
+            - category breakdown across ALL matching records
+            - transaction-class breakdown across ALL matching records
+            - detailed income records up to `limit`
+
+        IMPORTANT:
+        The detailed record limit must never hide the existence of income
+        components needed to reconcile the authoritative total.
+        """
+
+        from sqlalchemy import func
+
+        # ------------------------------------------------------
+        # Authoritative active-income query
+        # ------------------------------------------------------
+
         rows = (
-            Income.query
+            DashboardService
+            ._active_income_query(user_id)
             .filter(
-                Income.user_id == user_id,
                 Income.received_date.between(
                     start,
                     end,
@@ -3258,39 +4055,219 @@ class DashboardService:
             .all()
         )
 
+        # ------------------------------------------------------
+        # Base income query
+        # ------------------------------------------------------
+
+        base_query = Income.query.filter(
+            Income.user_id == user_id,
+            Income.is_active == True,
+            Income.received_date.between(
+                start,
+                end,
+            ),
+        )
+
+        # ------------------------------------------------------
+        # AUTHORITATIVE TOTAL
+        # ------------------------------------------------------
+
+        total = float(
+            base_query.with_entities(
+                func.coalesce(
+                    func.sum(Income.amount),
+                    0,
+                )
+            ).scalar()
+            or 0
+        )
+
+        # ------------------------------------------------------
+        # TOTAL RECORD COUNT
+        # ------------------------------------------------------
+
+        record_count = int(
+            base_query.with_entities(
+                func.count(Income.id)
+            ).scalar()
+            or 0
+        )
+
+        # ------------------------------------------------------
+        # CATEGORY BREAKDOWN
+        #
+        # This is calculated across ALL income records,
+        # not just the limited detailed records.
+        # ------------------------------------------------------
+
+        category_rows = (
+            base_query.with_entities(
+                Income.category,
+                func.coalesce(
+                    func.sum(Income.amount),
+                    0,
+                ).label("total"),
+                func.count(Income.id).label("count"),
+            )
+            .group_by(Income.category)
+            .order_by(
+                func.sum(Income.amount).desc()
+            )
+            .all()
+        )
+
+        category_breakdown = [
+            {
+                "category": category or "Uncategorized",
+                "amount": round(float(amount or 0), 2),
+                "count": int(count or 0),
+                "percentage_of_total": round(
+                    (
+                        float(amount or 0) / total * 100
+                        if total
+                        else 0
+                    ),
+                    2,
+                ),
+            }
+            for category, amount, count in category_rows
+        ]
+
+        # ------------------------------------------------------
+        # TRANSACTION CLASS BREAKDOWN
+        # ------------------------------------------------------
+
+        class_rows = (
+            base_query.with_entities(
+                Income.transaction_class,
+                func.coalesce(
+                    func.sum(Income.amount),
+                    0,
+                ).label("total"),
+                func.count(Income.id).label("count"),
+            )
+            .group_by(Income.transaction_class)
+            .order_by(
+                func.sum(Income.amount).desc()
+            )
+            .all()
+        )
+
+        transaction_class_breakdown = [
+            {
+                "transaction_class": (
+                    transaction_class or "income"
+                ),
+                "amount": round(float(amount or 0), 2),
+                "count": int(count or 0),
+                "percentage_of_total": round(
+                    (
+                        float(amount or 0) / total * 100
+                        if total
+                        else 0
+                    ),
+                    2,
+                ),
+            }
+            for transaction_class, amount, count
+            in class_rows
+        ]
+
+        # ------------------------------------------------------
+        # DETAILED RECORDS
+        #
+        # This can still be limited for token efficiency.
+        # The authoritative breakdown above is NOT limited.
+        # ------------------------------------------------------
+
+        rows = (
+            base_query
+            .order_by(
+                Income.received_date.asc(),
+                Income.id.asc(),
+            )
+            .limit(max(int(limit or 20), 1))
+            .all()
+        )
+
         records = [
             {
                 "id": row.id,
                 "date": row.received_date.isoformat(),
                 "source": row.source,
                 "category": row.category,
-                "amount": float(
-                    row.amount or 0
-                ),
+                "amount": float(row.amount or 0),
                 "notes": row.notes,
-                "recurring": bool(
-                    row.recurring
+                "recurring": bool(row.recurring),
+                "transaction_class": (
+                    getattr(
+                        row,
+                        "transaction_class",
+                        "income",
+                    )
+                    or "income"
                 ),
             }
             for row in rows
         ]
 
+        # ------------------------------------------------------
+        # RETURN
+        # ------------------------------------------------------
+
         return {
             "user": DashboardService._ai_user_context(
                 user_id
             ),
+
             "period": {
                 "start": start.isoformat(),
                 "end": end.isoformat(),
             },
-            "total": round(
-                sum(
-                    item["amount"]
-                    for item in records
-                ),
-                2,
+
+            # Authoritative total across ALL records.
+            "total": round(total, 2),
+
+            "record_count": record_count,
+
+            # Number actually supplied as individual records.
+            "record_count_returned": len(records),
+
+            "records_truncated": (
+                len(records) < record_count
             ),
+
+            # ALL matching income, regardless of detailed-record limit.
+            "category_breakdown": category_breakdown,
+
+            "transaction_class_breakdown": (
+                transaction_class_breakdown
+            ),
+
+            # Detailed records.
             "records": records,
+
+            # Explicit reconciliation helper.
+            "calculation": {
+                "formula": (
+                    "total_income = sum(all active Income.amount "
+                    "records in the requested period)"
+                ),
+                "result": round(total, 2),
+            },
+
+            # Explicit accounting rules.
+            "accounting_rules": {
+                "investment_liquidation": (
+                    "Investment liquidation proceeds are recorded "
+                    "as income."
+                ),
+                "goal_termination": (
+                    "When a goal is terminated, all contributed "
+                    "amounts are returned as a new Income transaction "
+                    "with transaction_class='goal_termination'."
+                ),
+            },
         }
 
     @staticmethod
@@ -3299,16 +4276,362 @@ class DashboardService:
         start,
         end,
         message="",
-        limit=20,
+        limit=30,
     ):
-        return DashboardService.ai_transaction_context(
-            user_id=user_id,
-            start=start,
-            end=end,
-            message=message,
-            limit=limit,
-            expense_only=True,
+        """
+        Authoritative AI expense context.
+
+        IMPORTANT:
+        This uses the same expense definition as the dashboard's
+        monthly_expense() and _monthly_savings_rows():
+
+            total expenses = all legitimate Expense records
+
+        Therefore this includes:
+            - ordinary expenses
+            - investment funding/cost
+            - goal contributions
+            - other legitimate cash-outflows
+
+        The AI receives both:
+            1. the authoritative total
+            2. operating-expense-only total
+            3. category breakdown
+            4. transaction-class breakdown
+            5. merchant breakdown
+            6. individual records
+
+        This prevents the AI from saying that expenses do not exist merely
+        because the expenses are investment-related.
+        """
+
+        from sqlalchemy import func
+
+        base_query = Expense.query.filter(
+            Expense.user_id == user_id,
+            Expense.is_active == True,
+            Expense.expense_date.between(start, end),
         )
+
+        # ------------------------------------------------------
+        # Optional category / merchant filtering
+        # ------------------------------------------------------
+
+        text = (message or "").lower().strip()
+
+        categories = [
+            row[0]
+            for row in (
+                db.session.query(Expense.category)
+                .filter(
+                    Expense.user_id == user_id,
+                    Expense.category.isnot(None),
+                )
+                .distinct()
+                .all()
+            )
+            if row[0]
+        ]
+
+        category_match = None
+
+        for category in categories:
+            category_text = str(category).lower().strip()
+
+            if category_text and category_text in text:
+                category_match = category
+                break
+
+        if category_match:
+            base_query = base_query.filter(
+                Expense.category == category_match
+            )
+
+        merchants = [
+            row[0]
+            for row in (
+                db.session.query(Expense.merchant)
+                .filter(
+                    Expense.user_id == user_id,
+                    Expense.merchant.isnot(None),
+                )
+                .distinct()
+                .all()
+            )
+            if row[0]
+        ]
+
+        merchant_match = None
+
+        for merchant in merchants:
+            merchant_text = str(merchant).lower().strip()
+
+            if merchant_text and merchant_text in text:
+                merchant_match = merchant
+                break
+
+        if merchant_match:
+            base_query = base_query.filter(
+                Expense.merchant == merchant_match
+            )
+
+        # ------------------------------------------------------
+        # Authoritative total
+        # ------------------------------------------------------
+
+        total = float(
+            base_query.with_entities(
+                func.coalesce(
+                    func.sum(Expense.amount),
+                    0,
+                )
+            ).scalar()
+            or 0
+        )
+
+        # ------------------------------------------------------
+        # Category breakdown
+        # ------------------------------------------------------
+
+        category_rows = (
+            base_query.with_entities(
+                Expense.category,
+                func.coalesce(
+                    func.sum(Expense.amount),
+                    0,
+                ).label("total"),
+                func.count(Expense.id).label("count"),
+            )
+            .group_by(Expense.category)
+            .order_by(
+                func.sum(Expense.amount).desc()
+            )
+            .all()
+        )
+
+        category_breakdown = [
+            {
+                "category": category or "Uncategorized",
+                "amount": round(float(amount or 0), 2),
+                "count": int(count or 0),
+                "percentage_of_total": round(
+                    (
+                        float(amount or 0) / total * 100
+                        if total
+                        else 0
+                    ),
+                    2,
+                ),
+            }
+            for category, amount, count in category_rows
+        ]
+
+        # ------------------------------------------------------
+        # Transaction-class breakdown
+        # ------------------------------------------------------
+
+        class_rows = (
+            base_query.with_entities(
+                Expense.transaction_class,
+                func.coalesce(
+                    func.sum(Expense.amount),
+                    0,
+                ).label("total"),
+                func.count(Expense.id).label("count"),
+            )
+            .group_by(Expense.transaction_class)
+            .order_by(
+                func.sum(Expense.amount).desc()
+            )
+            .all()
+        )
+
+        transaction_class_breakdown = [
+            {
+                "transaction_class": (
+                    transaction_class or "expense"
+                ),
+                "amount": round(float(amount or 0), 2),
+                "count": int(count or 0),
+                "percentage_of_total": round(
+                    (
+                        float(amount or 0) / total * 100
+                        if total
+                        else 0
+                    ),
+                    2,
+                ),
+            }
+            for transaction_class, amount, count
+            in class_rows
+        ]
+
+        # ------------------------------------------------------
+        # Operating-expense total
+        # ------------------------------------------------------
+
+        operating_total = float(
+            base_query.filter(
+                or_(
+                    Expense.transaction_class == "expense",
+                    Expense.transaction_class.is_(None),
+                )
+            )
+            .with_entities(
+                func.coalesce(
+                    func.sum(Expense.amount),
+                    0,
+                )
+            )
+            .scalar()
+            or 0
+        )
+
+        # ------------------------------------------------------
+        # Merchant breakdown
+        # ------------------------------------------------------
+
+        merchant_rows = (
+            base_query.with_entities(
+                Expense.merchant,
+                func.coalesce(
+                    func.sum(Expense.amount),
+                    0,
+                ).label("total"),
+                func.count(Expense.id).label("count"),
+            )
+            .group_by(Expense.merchant)
+            .order_by(
+                func.sum(Expense.amount).desc()
+            )
+            .all()
+        )
+
+        merchant_breakdown = [
+            {
+                "merchant": merchant or "Unknown",
+                "amount": round(float(amount or 0), 2),
+                "count": int(count or 0),
+            }
+            for merchant, amount, count in merchant_rows
+        ]
+
+        # ------------------------------------------------------
+        # Detailed records
+        # ------------------------------------------------------
+
+        rows = (
+            base_query
+            .order_by(
+                Expense.expense_date.desc(),
+                Expense.id.desc(),
+            )
+            .limit(max(int(limit or 30), 1))
+            .all()
+        )
+
+        records = [
+            {
+                "id": row.id,
+                "date": row.expense_date.isoformat(),
+                "merchant": row.merchant,
+                "category": row.category,
+                "description": row.description,
+                "amount": float(row.amount or 0),
+                "payment_method": row.payment_method,
+                "notes": row.notes,
+                "recurring": bool(row.recurring),
+                "transaction_class": (
+                    getattr(
+                        row,
+                        "transaction_class",
+                        "expense",
+                    )
+                    or "expense"
+                ),
+            }
+            for row in rows
+        ]
+
+        # ------------------------------------------------------
+        # Authoritative calculation explanation
+        # ------------------------------------------------------
+
+        return {
+            "user": DashboardService._ai_user_context(user_id),
+
+            "period": {
+                "start": start.isoformat(),
+                "end": end.isoformat(),
+            },
+
+            "definition": {
+                "total_expenses": (
+                    "Sum of all active Expense records in the "
+                    "requested period."
+                ),
+                "operating_expenses": (
+                    "Expenses whose transaction_class is "
+                    "'expense' or NULL."
+                ),
+                "investment_costs": (
+                    "Investment funding is recorded as an expense "
+                    "and therefore reduces savings."
+                ),
+                "investment_valuation": (
+                    "Investment valuation gains/losses are non-cash "
+                    "investment-value changes and are never recorded "
+                    "as expenses."
+                ),
+                "goal_contributions": (
+                    "Goal contributions are treated as expenses "
+                    "by the dashboard accounting model."
+                ),
+            },
+
+            "calculation": {
+                "formula": "total_expenses = sum(all active Expense.amount)",
+                "result": round(total, 2),
+            },
+
+            "total_matching_amount": round(total, 2),
+
+            "operating_expenses": round(
+                operating_total,
+                2,
+            ),
+
+            "non_operating_expenses": round(
+                total - operating_total,
+                2,
+            ),
+
+            "category_breakdown": category_breakdown,
+
+            "transaction_class_breakdown": (
+                transaction_class_breakdown
+            ),
+
+            "merchant_breakdown": merchant_breakdown,
+
+            "filters": {
+                "category": category_match,
+                "merchant": merchant_match,
+            },
+
+            "record_count": (
+                int(
+                    base_query.with_entities(
+                        func.count(Expense.id)
+                    ).scalar()
+                    or 0
+                )
+            ),
+
+            "record_count_returned": len(records),
+
+            "records": records,
+        }
 
     @staticmethod
     def ai_transaction_context(
@@ -3321,12 +4644,19 @@ class DashboardService:
     ):
         from sqlalchemy import or_
 
-        query = Expense.query.filter(
-            Expense.user_id == user_id,
-            Expense.expense_date.between(
-                start,
-                end,
-            ),
+        # ------------------------------------------------------
+        # Authoritative active-expense query
+        # ------------------------------------------------------
+
+        query = (
+            DashboardService
+            ._active_expense_query(user_id)
+            .filter(
+                Expense.expense_date.between(
+                    start,
+                    end,
+                ),
+            )
         )
 
         text = (message or "").lower().strip()
@@ -3343,6 +4673,7 @@ class DashboardService:
                 )
                 .filter(
                     Expense.user_id == user_id,
+                    Expense.is_active.is_(True),
                     Expense.category.isnot(None),
                 )
                 .distinct()
@@ -3382,6 +4713,7 @@ class DashboardService:
                 )
                 .filter(
                     Expense.user_id == user_id,
+                    Expense.is_active.is_(True),
                     Expense.merchant.isnot(None),
                 )
                 .distinct()
@@ -3421,6 +4753,10 @@ class DashboardService:
                 )
             )
 
+        # ------------------------------------------------------
+        # Detailed transaction records
+        # ------------------------------------------------------
+
         rows = (
             query
             .order_by(
@@ -3457,6 +4793,10 @@ class DashboardService:
             }
             for row in rows
         ]
+
+        # ------------------------------------------------------
+        # Authoritative total for the same filtered query
+        # ------------------------------------------------------
 
         total_query = query.with_entities(
             func.coalesce(
@@ -3736,47 +5076,30 @@ class DashboardService:
         start,
         end,
     ):
-        income = float(
-            db.session.query(
-                func.coalesce(
-                    func.sum(Income.amount),
-                    0,
-                )
-            )
-            .filter(
-                Income.user_id == user_id,
-                Income.received_date.between(
-                    start,
-                    end,
-                ),
-            )
-            .scalar()
-            or 0
+        totals = DashboardService._cash_flow_totals(
+            user_id=user_id,
+            start_date=start,
+            end_date=end,
         )
 
-        expenses = float(
-            db.session.query(
-                func.coalesce(
-                    func.sum(Expense.amount),
-                    0,
-                )
-            )
+        operating_expenses = float(
+            DashboardService
+            ._active_operating_expense_query(user_id)
             .filter(
-                Expense.user_id == user_id,
-                or_(
-                    Expense.transaction_class == "expense",
-                    Expense.transaction_class.is_(None),
-                ),
                 Expense.expense_date.between(
                     start,
                     end,
                 ),
             )
+            .with_entities(
+                func.coalesce(
+                    func.sum(Expense.amount),
+                    0,
+                )
+            )
             .scalar()
             or 0
         )
-
-        savings = income - expenses
 
         return {
             "user": DashboardService._ai_user_context(
@@ -3786,22 +5109,17 @@ class DashboardService:
                 "start": start.isoformat(),
                 "end": end.isoformat(),
             },
-            "income": round(
-                income,
-                2,
-            ),
+            "income": totals["income"],
+            "expenses": totals["expenses"],
             "operating_expenses": round(
-                expenses,
+                operating_expenses,
                 2,
             ),
-            "savings": round(
-                savings,
-                2,
-            ),
+            "savings": totals["savings"],
             "savings_rate_percent": round(
                 (
-                    savings / income * 100
-                    if income
+                    totals["savings"] / totals["income"] * 100
+                    if totals["income"]
                     else 0
                 ),
                 2,
@@ -3830,18 +5148,30 @@ class DashboardService:
         )
 
         month_map = {
-            "january": 1, "jan": 1,
-            "february": 2, "feb": 2,
-            "march": 3, "mar": 3,
-            "april": 4, "apr": 4,
+            "january": 1,
+            "jan": 1,
+            "february": 2,
+            "feb": 2,
+            "march": 3,
+            "mar": 3,
+            "april": 4,
+            "apr": 4,
             "may": 5,
-            "june": 6, "jun": 6,
-            "july": 7, "jul": 7,
-            "august": 8, "aug": 8,
-            "september": 9, "sep": 9, "sept": 9,
-            "october": 10, "oct": 10,
-            "november": 11, "nov": 11,
-            "december": 12, "dec": 12,
+            "june": 6,
+            "jun": 6,
+            "july": 7,
+            "jul": 7,
+            "august": 8,
+            "aug": 8,
+            "september": 9,
+            "sep": 9,
+            "sept": 9,
+            "october": 10,
+            "oct": 10,
+            "november": 11,
+            "nov": 11,
+            "december": 12,
+            "dec": 12,
         }
 
         today = date.today()
@@ -3894,63 +5224,29 @@ class DashboardService:
                 )[1],
             )
 
-            income = float(
-                db.session.query(
-                    func.coalesce(
-                        func.sum(
-                            Income.amount
-                        ),
-                        0,
-                    )
-                )
-                .filter(
-                    Income.user_id == user_id,
-                    Income.received_date.between(
-                        start,
-                        end,
-                    ),
-                )
-                .scalar()
-                or 0
-            )
+            # --------------------------------------------------
+            # Authoritative cash-flow totals for this period.
+            # --------------------------------------------------
 
-            expenses = float(
-                db.session.query(
-                    func.coalesce(
-                        func.sum(
-                            Expense.amount
-                        ),
-                        0,
-                    )
-                )
-                .filter(
-                    Expense.user_id == user_id,
-                    or_(
-                        Expense.transaction_class == "expense",
-                        Expense.transaction_class.is_(None),
-                    ),
-                    Expense.expense_date.between(
-                        start,
-                        end,
-                    ),
-                )
-                .scalar()
-                or 0
+            totals = DashboardService._cash_flow_totals(
+                user_id=user_id,
+                start_date=start,
+                end_date=end,
             )
 
             rows.append(
                 {
                     "month": start.isoformat(),
                     "income": round(
-                        income,
+                        totals["income"],
                         2,
                     ),
                     "expenses": round(
-                        expenses,
+                        totals["expenses"],
                         2,
                     ),
                     "savings": round(
-                        income - expenses,
+                        totals["savings"],
                         2,
                     ),
                 }
@@ -3965,24 +5261,148 @@ class DashboardService:
         }
 
     @staticmethod
-    def monthly_series(user_id, months=12):
-        """Actual monthly income, operating expense, cash outflow and net cash series."""
-        if months is None:
-            first_income = Income.query.filter_by(user_id=user_id).order_by(Income.received_date.asc()).first()
-            first_expense = Expense.query.filter_by(user_id=user_id).order_by(Expense.expense_date.asc()).first()
-            first_date = min([d for d in [getattr(first_income, "received_date", None), getattr(first_expense, "expense_date", None)] if d], default=date.today())
-            months = max(1, (date.today().year - first_date.year) * 12 + date.today().month - first_date.month + 1)
+    def monthly_series(
+        user_id,
+        months=12,
+    ):
+        """
+        Authoritative monthly cash-flow series.
+
+        Monthly savings is always:
+
+            income - all active cash expenses
+
+        All cash expense classifications are included:
+            - ordinary expenses
+            - investment funding
+            - goal contributions
+
+        Investment valuation/revaluation is excluded because it is
+        non-cash and never enters the Income or Expense tables.
+        """
+
         today = date.today()
+
+        if months is None:
+
+            first_income = (
+                Income.query
+                .filter(
+                    Income.user_id == user_id,
+                    Income.is_active.is_(True),
+                )
+                .order_by(
+                    Income.received_date.asc()
+                )
+                .first()
+            )
+
+            first_expense = (
+                Expense.query
+                .filter(
+                    Expense.user_id == user_id,
+                    Expense.is_active.is_(True),
+                )
+                .order_by(
+                    Expense.expense_date.asc()
+                )
+                .first()
+            )
+
+            first_dates = [
+                d
+                for d in [
+                    getattr(
+                        first_income,
+                        "received_date",
+                        None,
+                    ),
+                    getattr(
+                        first_expense,
+                        "expense_date",
+                        None,
+                    ),
+                ]
+                if d
+            ]
+
+            if not first_dates:
+                months = 1
+
+            else:
+
+                first_date = min(
+                    first_dates
+                )
+
+                months = max(
+                    1,
+                    (
+                        (
+                            today.year
+                            - first_date.year
+                        )
+                        * 12
+                    )
+                    + today.month
+                    - first_date.month
+                    + 1,
+                )
+
         rows = []
-        for offset in range(months - 1, -1, -1):
-            year = today.year; month = today.month - offset
+
+        for offset in range(
+            months - 1,
+            -1,
+            -1,
+        ):
+
+            year = today.year
+
+            month = (
+                today.month
+                - offset
+            )
+
             while month <= 0:
-                month += 12; year -= 1
-            start = date(year, month, 1); end = date(year, month, calendar.monthrange(year, month)[1])
-            income = float(db.session.query(func.coalesce(func.sum(Income.amount), 0)).filter(Income.user_id == user_id, Income.received_date.between(start, end)).scalar() or 0)
-            operating = float(db.session.query(func.coalesce(func.sum(Expense.amount), 0)).filter(Expense.user_id == user_id, or_(Expense.transaction_class == "expense", Expense.transaction_class.is_(None)), Expense.expense_date.between(start, end)).scalar() or 0)
-            cash_outflows = float(db.session.query(func.coalesce(func.sum(Expense.amount), 0)).filter(Expense.user_id == user_id, Expense.expense_date.between(start, end)).scalar() or 0)
-            rows.append({"month": start.isoformat(), "income": round(income, 2), "expenses": round(operating, 2), "cash_outflows": round(cash_outflows, 2), "investments": round(cash_outflows - operating, 2), "net": round(income - cash_outflows, 2), "operating_net": round(income - operating, 2)})
+                month += 12
+                year -= 1
+
+            start = date(
+                year,
+                month,
+                1,
+            )
+
+            end = date(
+                year,
+                month,
+                calendar.monthrange(
+                    year,
+                    month,
+                )[1],
+            )
+
+            # --------------------------------------------------
+            # Authoritative cash-flow calculation for the month.
+            # --------------------------------------------------
+
+            totals = DashboardService._cash_flow_totals(
+                user_id=user_id,
+                start_date=start,
+                end_date=end,
+            )
+
+            rows.append(
+                {
+                    "month": start.isoformat(),
+                    "income": totals["income"],
+                    "expenses": totals["expenses"],
+                    "savings": totals["savings"],
+                    "net": totals["savings"],
+                }
+            )
+
         return rows
 
     # ==========================================================
@@ -4021,15 +5441,98 @@ class DashboardService:
     @staticmethod
     def anomaly_analysis(user_id):
         from statistics import mean, pstdev
-        start = date.today() - __import__('datetime').timedelta(days=90)
-        rows = Expense.query.filter(Expense.user_id == user_id, Expense.expense_date >= start).all()
-        values = [float(x.amount or 0) for x in rows]
+
+        current_date = today()
+
+        query = (
+            DashboardService
+            ._active_expense_query(user_id)
+            .filter(
+                Expense.expense_date >= (
+                    current_date
+                    - timedelta(days=90)
+                )
+            )
+        )
+
+        rows = query.all()
+
+        values = [
+            float(
+                x.amount or 0
+            )
+            for x in rows
+        ]
+
         if len(values) < 5:
-            return {"available": False, "reason": "At least five recent expenses are needed for anomaly analysis.", "anomalies": []}
-        avg = mean(values); sd = pstdev(values)
-        threshold = avg + (2 * sd)
-        anomalies = [{"date": x.expense_date.isoformat(), "merchant": x.merchant, "category": x.category, "amount": float(x.amount), "z_score": round((float(x.amount)-avg)/sd, 2) if sd else 0} for x in rows if sd and float(x.amount) > threshold]
-        return {"available": True, "mean": round(avg, 2), "standard_deviation": round(sd, 2), "threshold": round(threshold, 2), "anomalies": sorted(anomalies, key=lambda x: x["amount"], reverse=True)}
+            return {
+                "available": False,
+                "reason": (
+                    "At least five recent expenses "
+                    "are needed for anomaly analysis."
+                ),
+                "anomalies": [],
+            }
+
+        avg = mean(values)
+        sd = pstdev(values)
+
+        threshold = (
+            avg
+            + (2 * sd)
+        )
+
+        anomalies = [
+            {
+                "date": x.expense_date.isoformat(),
+                "merchant": x.merchant,
+                "category": x.category,
+                "amount": float(
+                    x.amount
+                ),
+                "z_score": round(
+                    (
+                        (
+                            float(x.amount)
+                            - avg
+                        )
+                        / sd
+                    ),
+                    2,
+                )
+                if sd
+                else 0,
+            }
+            for x in rows
+            if (
+                sd
+                and float(x.amount)
+                > threshold
+            )
+        ]
+
+        return {
+            "available": True,
+            "mean": round(
+                avg,
+                2,
+            ),
+            "standard_deviation": round(
+                sd,
+                2,
+            ),
+            "threshold": round(
+                threshold,
+                2,
+            ),
+            "anomalies": sorted(
+                anomalies,
+                key=lambda x: x[
+                    "amount"
+                ],
+                reverse=True,
+            ),
+        }
 
     @staticmethod
     def scenario(user_id, income_change_pct=0, expense_change_pct=0):
@@ -4039,43 +5542,209 @@ class DashboardService:
         adjusted_expenses = expenses * (1 + float(expense_change_pct) / 100)
         return {"baseline_income": round(income, 2), "baseline_expenses": round(expenses, 2), "adjusted_income": round(adjusted_income, 2), "adjusted_expenses": round(adjusted_expenses, 2), "baseline_net": round(income-expenses, 2), "scenario_net": round(adjusted_income-adjusted_expenses, 2)}
 
-    @staticmethod
-    def month_end_forecast(user_id):
-        """Conservative month-end run-rate forecast; no fabricated salary/category assumptions."""
-        today = date.today()
-        days_in_month = calendar.monthrange(today.year, today.month)[1]
-        elapsed = max(today.day, 1)
-        income = DashboardService.monthly_income(user_id)
-        expenses = DashboardService.monthly_expense(user_id)
-        projected_income = (income / elapsed) * days_in_month
-        projected_expenses = (expenses / elapsed) * days_in_month
-        projected_savings = projected_income - projected_expenses
-        if income == 0 and expenses == 0:
-            status = "Insufficient current-month activity for a reliable run-rate forecast."
-        elif projected_savings < 0:
-            status = "Forecast indicates a potential month-end cash-flow deficit if the current run rate continues."
-        else:
-            status = "Forecast indicates positive month-end cash flow if the current run rate continues."
-        confidence = round(min(90, 35 + (elapsed / days_in_month) * 55), 1)
-        return {"projected_income": round(projected_income, 2), "projected_expenses": round(projected_expenses, 2), "projected_savings": round(projected_savings, 2), "forecast_status": status, "confidence": confidence, "method": "current_month_run_rate", "is_guaranteed": False}
+        # @staticmethod
+        # def month_end_forecast(user_id):
+        #     """Conservative month-end run-rate forecast; no fabricated salary/category assumptions."""
+        #     today = date.today()
+        #     days_in_month = calendar.monthrange(today.year, today.month)[1]
+        #     elapsed = max(today.day, 1)
+        #     income = DashboardService.monthly_income(user_id)
+        #     expenses = DashboardService.monthly_expense(user_id)
+        #     projected_income = (income / elapsed) * days_in_month
+        #     projected_expenses = (expenses / elapsed) * days_in_month
+        #     projected_savings = projected_income - projected_expenses
+        #
+        #     if income == 0 and expenses == 0:
+        #         status = "Insufficient current-month activity for a reliable run-rate forecast."
+        #     elif projected_savings < 0:
+        #         status = "Forecast indicates a potential month-end cash-flow deficit if the current run rate continues."
+        #     else:
+        #         status = "Forecast indicates positive month-end cash flow if the current run rate continues."
+        #
+        #     confidence = round(
+        #         min(90, 35 + (elapsed / days_in_month) * 55),
+        #         1,
+        #     )
+        #
+        #     return {
+        #         "projected_income": round(
+        #             projected_income,
+        #             2,
+        #         ),
+        #         "projected_expenses": round(
+        #             projected_expenses,
+        #             2,
+        #         ),
+        #         "projected_savings": round(
+        #             projected_savings,
+        #             2,
+        #         ),
+        #
+        #         "current_income": round(
+        #             income,
+        #             2,
+        #         ),
+        #         "current_expenses": round(
+        #             expenses,
+        #             2,
+        #         ),
+        #
+        #         "days_elapsed": elapsed,
+        #         "days_in_month": days_in_month,
+        #         "days_remaining": max(
+        #             days_in_month - today.day,
+        #             0,
+        #         ),
+        #
+        #         "daily_income_run_rate": round(
+        #             income / elapsed,
+        #             2,
+        #         ),
+        #
+        #         "daily_expense_run_rate": round(
+        #             expenses / elapsed,
+        #             2,
+        #         ),
+        #
+        #         "daily_savings_run_rate": round(
+        #             (income - expenses) / elapsed,
+        #             2,
+        #         ),
+        #
+        #         "calculation": {
+        #             "projected_income": (
+        #                 "current_income / days_elapsed "
+        #                 "* days_in_month"
+        #             ),
+        #             "projected_expenses": (
+        #                 "current_expenses / days_elapsed "
+        #                 "* days_in_month"
+        #             ),
+        #             "projected_savings": (
+        #                 "projected_income - projected_expenses"
+        #             ),
+        #         },
+        #
+        #         "forecast_status": status,
+        #         "confidence": confidence,
+        #         "method": "current_month_run_rate",
+        #         "is_guaranteed": False,
+        #     }
 
     @staticmethod
-    def category_forecasts(user_id, months=3):
-        """Project category spending using actual historical category totals."""
+    def category_forecasts(
+        user_id,
+        months=3,
+    ):
+        """
+        Forecast operating spending by category.
+
+        Category forecasting is intentionally restricted to active
+        operating expenses only.
+
+        It is a category-spending forecast, not a total cash-outflow
+        forecast. Therefore, investment funding, goal contributions,
+        and other non-operating cash expenses are excluded.
+        """
+
         today = date.today()
+
         categories = {}
-        for offset in range(11, -1, -1):
-            year = today.year; month = today.month - offset
+
+        for offset in range(
+            11,
+            -1,
+            -1,
+        ):
+            year = today.year
+            month = today.month - offset
+
             while month <= 0:
-                month += 12; year -= 1
-            start = date(year, month, 1); end = date(year, month, calendar.monthrange(year, month)[1])
-            rows = db.session.query(Expense.category, func.sum(Expense.amount)).filter(Expense.user_id == user_id, or_(Expense.transaction_class == "expense", Expense.transaction_class.is_(None)), Expense.expense_date.between(start, end)).group_by(Expense.category).all()
+                month += 12
+                year -= 1
+
+            start = date(
+                year,
+                month,
+                1,
+            )
+
+            end = date(
+                year,
+                month,
+                calendar.monthrange(
+                    year,
+                    month,
+                )[1],
+            )
+
+            rows = (
+                db.session.query(
+                    Expense.category,
+                    func.sum(
+                        Expense.amount
+                    ),
+                )
+                .filter(
+                    Expense.user_id == user_id,
+                    Expense.is_active.is_(True),
+                    or_(
+                        Expense.transaction_class == "expense",
+                        Expense.transaction_class.is_(None),
+                    ),
+                    Expense.expense_date.between(
+                        start,
+                        end,
+                    ),
+                )
+                .group_by(
+                    Expense.category
+                )
+                .all()
+            )
+
             for cat, amount in rows:
-                categories.setdefault(cat, []).append(float(amount or 0))
+                categories.setdefault(
+                    cat,
+                    [],
+                ).append(
+                    float(amount or 0)
+                )
+
         result = []
+
         for cat, values in categories.items():
-            if len(values) < 3: continue
+            if len(values) < 3:
+                continue
+
             recent = values[-3:]
-            baseline = sum(recent) / len(recent)
-            result.append({"category": cat, "average_recent": round(baseline, 2), "projected_monthly": round(baseline, 2), "history_points": len(values)})
-        return sorted(result, key=lambda x: x["projected_monthly"], reverse=True)
+
+            baseline = (
+                sum(recent)
+                / len(recent)
+            )
+
+            result.append(
+                {
+                    "category": cat,
+                    "average_recent": round(
+                        baseline,
+                        2,
+                    ),
+                    "projected_monthly": round(
+                        baseline,
+                        2,
+                    ),
+                    "history_points": len(
+                        values
+                    ),
+                }
+            )
+
+        return sorted(
+            result,
+            key=lambda x: x[
+                "projected_monthly"
+            ],
+            reverse=True,
+        )

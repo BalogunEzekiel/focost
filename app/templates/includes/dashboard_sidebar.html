@@ -15,16 +15,21 @@
 
         <div class="text-center mb-4">
 
-            <h4 class="fw-bold mb-0">
+            <a
+                href="{{ url_for('dashboard.dashboard') }}"
+                class="d-inline-flex align-items-center justify-content-center"
+                aria-label="FOCOST Dashboard"
+            >
 
-                <i class="bi bi-cpu-fill me-2"></i>
+                <img
+                    src="{{ url_for('static', filename='images/focost_logo.png') }}"
+                    alt="FOCOST"
+                    class="focost-sidebar-logo"
+                >
 
-                FOCOST
-
-            </h4>
+            </a>
 
         </div>
-
 
         <!-- ==================================================
              MOBILE SEARCH
@@ -82,7 +87,11 @@
                   or has_permission("audit.view")
                   or has_permission("subscriptions.view")
                   or has_permission("ai.view")
-                  or has_permission("settings.view") %}
+                  or has_permission("settings.view")
+                  or has_permission("documents.view")
+                  or has_permission("feedback.view")
+                  or has_permission("analytics.view")
+                  or has_permission("communications.view") %}
 
 
                 <!-- Admin Dashboard -->
@@ -246,6 +255,56 @@
                 {% endif %}
 
 
+                <!-- Document Archive -->
+
+                {% if has_permission("documents.view") %}
+
+                    <a href="{{ url_for('admin_documents.index') }}"
+                       class="nav-link {% if request.endpoint in ['admin_documents.index', 'admin_documents.download'] %}active{% else %}text-white{% endif %}">
+                        <i class="bi bi-folder2-open me-2"></i>
+                        Archive
+                    </a>
+
+                {% endif %}
+
+
+                <!-- Analytics Center -->
+                {% if has_permission("analytics.view") %}
+                    <a href="{{ url_for('admin_analytics.index') }}" class="nav-link {% if request.endpoint == 'admin_analytics.index' %}active{% else %}text-white{% endif %}">
+                        <i class="bi bi-bar-chart-fill me-2"></i> Analytics
+                    </a>
+                {% endif %}
+
+                <!-- Communications Center -->
+                {% if has_permission("communications.view") %}
+                    <a href="{{ url_for('admin_communications.index') }}" class="nav-link {% if request.endpoint and request.endpoint.startswith('admin_communications.') %}active{% else %}text-white{% endif %}">
+                        <i class="bi bi-megaphone-fill me-2"></i> Communications
+                    </a>
+                {% endif %}
+
+                <!-- Feedback Management -->
+
+                {% if has_permission("feedback.view") %}
+
+                    <a
+                        href="{{ url_for('admin.feedback') }}"
+                        class="nav-link
+                        {% if request.endpoint in ['admin.feedback', 'admin.feedback_detail'] %}
+                            active
+                        {% else %}
+                            text-white
+                        {% endif %}"
+                    >
+
+                        <i class="bi bi-chat-square-heart me-2"></i>
+
+                        Feedback
+
+                    </a>
+
+                {% endif %}
+
+
                 <!-- System Settings -->
 
                 {% if has_permission("settings.view") %}
@@ -285,6 +344,8 @@
                     or has_permission("subscriptions.view")
                     or has_permission("ai.view")
                     or has_permission("settings.view")
+                    or has_permission("analytics.view")
+                    or has_permission("communications.view")
                 )
                 and (
                     has_permission("dashboard.view")
@@ -415,13 +476,19 @@
                 {% endif %}
 
 
+                {% if can_customize_categories and has_permission("categories.view") %}
+                    <a href="{{ url_for('categories.index') }}" class="nav-link {% if request.endpoint and request.endpoint.startswith('categories.') %}active{% else %}text-white{% endif %}">
+                        <i class="bi bi-tags me-2"></i> Categories
+                    </a>
+                {% endif %}
+
                 <!-- Plan & Billing -->
                 <a href="{{ url_for('billing.index') }}" class="nav-link {% if request.endpoint and request.endpoint.startswith('billing.') %}active{% else %}text-white{% endif %}">
                     <i class="bi bi-credit-card-2-front me-2"></i> Plan & Billing
                 </a>
 
                 <!-- Assets -->
-                {% if has_permission("dashboard.view") %}
+                {% if has_permission("investments.view") %}
                     <a href="{{ url_for('assets.index') }}" class="nav-link {% if request.endpoint and request.endpoint.startswith('assets.') %}active{% else %}text-white{% endif %}">
                         <i class="bi bi-briefcase me-2"></i> Investments
                     </a>

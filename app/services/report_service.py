@@ -550,6 +550,18 @@ class ReportService:
     # ==========================================================
     # FILTER HELPERS
     # ==========================================================
+    @staticmethod
+    def _date(value):
+        """
+        Backward-compatible date helper.
+
+        Preserves datetime values unchanged and delegates
+        normalization of other supported values.
+        """
+        if isinstance(value, datetime):
+            return value
+
+        return ReportService._normalize_date(value)
 
     @staticmethod
     def _normalize_date(value):
@@ -570,7 +582,7 @@ class ReportService:
             value,
             datetime
         ):
-            return value.date()
+            return value
 
         if isinstance(
             value,

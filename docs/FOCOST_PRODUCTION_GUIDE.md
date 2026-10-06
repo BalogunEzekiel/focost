@@ -98,7 +98,7 @@ Keep `APP_ENCRYPTION_KEY` stable; changing it makes encrypted provider tokens un
 
 ### AI
 
-Configure the Groq and/or Cerebras variables shown in `.env.example`. Empty provider keys are permitted; the application starts and reports AI as unavailable until a provider is configured.
+Configure the Groq variables shown in `.env.example`. Empty provider keys are permitted; the application starts and reports AI as unavailable until a provider is configured.
 
 ### Paystack
 
@@ -315,7 +315,7 @@ git ls-files .env
 Also inspect for secrets:
 
 ```bash
-git grep -n -E 'sk_live|sk_test|pk_live|pk_test|GROQ_API_KEY|CEREBRAS_API_KEY|PAYSTACK_SECRET_KEY' -- ':!docs/*'
+git grep -n -E 'sk_live|sk_test|pk_live|pk_test|GROQ_API_KEY|PAYSTACK_SECRET_KEY' -- ':!docs/*'
 ```
 
 Do not paste real secrets into source files.

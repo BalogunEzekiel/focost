@@ -1,50 +1,173 @@
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
+# ==========================================================
+# FOCOST - Git Ignore
+# ==========================================================
 
-# Virtual environments
-venv/
+# ----------------------------------------------------------
+# Environment / Secrets
+# ----------------------------------------------------------
+
+.env
+.env.*
+!.env.example
+
+# ----------------------------------------------------------
+# Python virtual environments
+# ----------------------------------------------------------
+
 .venv/
+venv/
 env/
 ENV/
 
-# Environment variables
-.env
-.env.*
+# ----------------------------------------------------------
+# Python cache / compiled files
+# ----------------------------------------------------------
 
-# PythonAnywhere / local
-.python-version
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+*.pyd
 
-# IDE
-.vscode/
-.idea/
+# ----------------------------------------------------------
+# Testing / coverage
+# ----------------------------------------------------------
 
-# OS
-.DS_Store
-Thumbs.db
-
-# Python caches
 .pytest_cache/
-.mypy_cache/
-.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+coverage.xml
+*.cover
+pytestdebug.log
 
-# Build
-build/
-dist/
-*.egg-info/
+# ----------------------------------------------------------
+# Flask / application runtime
+# ----------------------------------------------------------
 
-# Local databases
+instance/
+*.log
+logs/
+
+# ----------------------------------------------------------
+# SQLite databases
+# ----------------------------------------------------------
+
 *.db
 *.sqlite
 *.sqlite3
+*.sqlite-journal
 
-# Flask instance / local runtime data
-instance/
+# ----------------------------------------------------------
+# Temporary / backup files
+# ----------------------------------------------------------
 
-# Logs
-*.log
+*.tmp
+*.temp
+*.bak
+*.backup
+*.old
+*~
+*.swp
+*.swo
 
-# Temporary files
+# ----------------------------------------------------------
+# OS files
+# ----------------------------------------------------------
+
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# ----------------------------------------------------------
+# Windows / IDE
+# ----------------------------------------------------------
+
+.vscode/
+.idea/
+*.code-workspace
+
+# ----------------------------------------------------------
+# Jupyter
+# ----------------------------------------------------------
+
+.ipynb_checkpoints/
+
+# ----------------------------------------------------------
+# Build / distribution
+# ----------------------------------------------------------
+
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# ----------------------------------------------------------
+# Node / frontend generated dependencies
+# ----------------------------------------------------------
+
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ----------------------------------------------------------
+# Android generated/build files
+# ----------------------------------------------------------
+
+android/.gradle/
+android/build/
+android/app/build/
+android/.idea/
+android/local.properties
+android/.cxx/
+android/captures/
+android/.externalNativeBuild/
+
+# ----------------------------------------------------------
+# Android generated signing/secrets
+# ----------------------------------------------------------
+
+*.jks
+*.keystore
+
+# ----------------------------------------------------------
+# Generated media / exports
+# ----------------------------------------------------------
+
+uploads/
+media/
+exports/
+generated/
 tmp/
 temp/
+
+# ----------------------------------------------------------
+# Local development artifacts
+# ----------------------------------------------------------
+
+*.pid
+*.seed
+*.pid.lock
+
+# ----------------------------------------------------------
+# Python packaging
+# ----------------------------------------------------------
+
+pip-wheel-metadata/
+.pyre/
+.pytype/
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.ruff_cache/
+
+# ----------------------------------------------------------
+# Local environment / tooling
+# ----------------------------------------------------------
+
+.python-version
+.python-version

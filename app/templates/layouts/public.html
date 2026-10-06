@@ -32,12 +32,19 @@
     <link
         href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap"
         rel="stylesheet">
-
+    
     <!-- App CSS -->
 
     <link
         rel="stylesheet"
         href="{{ url_for('static', filename='css/style.css') }}">
+
+    <!-- FOCOST Brand Logo -->
+
+    <link
+        rel="preload"
+        as="image"
+        href="{{ url_for('static', filename='images/focost_logo.png') }}">
 
     {% block styles %}{% endblock %}
 
@@ -98,6 +105,8 @@
     <!-- Footer -->
 
     {% include "includes/footer.html" %}
+
+    {% include "legal/cookie_banner.html" %}
 
     <!-- Bootstrap -->
 

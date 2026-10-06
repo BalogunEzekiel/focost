@@ -1,0 +1,5 @@
+Contact: mailto:focostsupport@gmail.com
+Expires: 2027-10-02T00:00:00Z
+Preferred-Languages: en
+Policy: https://focost.pythonanywhere.com/showcase/security
+Canonical: https://focost.pythonanywhere.com/.well-known/security.txt

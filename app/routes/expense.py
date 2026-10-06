@@ -12,12 +12,14 @@ from flask_login import (
     current_user,
 )
 
+from app.rbac.decorators import permission_required
 from sqlalchemy import or_
 
 from app.extensions import db
 from app.forms.expense_forms import ExpenseForm
 from app.models.expense import Expense
 from app.models.asset import Asset
+from app.services.category_service import CategoryService
 from app.audit.service import AuditService
 
 
@@ -33,7 +35,7 @@ expense_bp = Blueprint(
 # ==========================================================
 
 @expense_bp.route("/")
-@login_required
+@permission_required("expenses.view")
 def list_expense():
 
     # ======================================================
@@ -229,13 +231,17 @@ def list_expense():
     "/add",
     methods=["GET", "POST"]
 )
-@login_required
+@permission_required("expenses.create")
 def add_expense():
 
     form = ExpenseForm()
+    form.category.choices = [(c.name, c.name) for c in CategoryService.list_for_user(current_user.id, 'expense')]
 
 
     if form.validate_on_submit():
+        if not CategoryService.is_valid_for_user(current_user.id, 'expense', form.category.data):
+            flash('Please select a valid expense category.', 'danger')
+            return render_template('expense/add.html', form=form), 400
 
         from app.subscriptions.service import SubscriptionService
         allowed, limit_message = SubscriptionService.can_add_transaction(current_user.id)
@@ -299,7 +305,7 @@ def add_expense():
     "/edit/<int:expense_id>",
     methods=["GET", "POST"]
 )
-@login_required
+@permission_required("expenses.edit")
 def edit_expense(expense_id):
 
     expense = Expense.query.filter_by(
@@ -314,12 +320,14 @@ def edit_expense(expense_id):
         )
         return redirect(url_for("expense.list_expense"))
 
-    form = ExpenseForm(
-        obj=expense
-    )
+    form = ExpenseForm(obj=expense)
+    form.category.choices = [(c.name, c.name) for c in CategoryService.list_for_user(current_user.id, 'expense')]
 
 
     if form.validate_on_submit():
+        if not CategoryService.is_valid_for_user(current_user.id, 'expense', form.category.data):
+            flash('Please select a valid expense category.', 'danger')
+            return render_template('expense/edit.html', form=form, expense=expense), 400
 
         expense.category = (
             form.category.data
@@ -394,7 +402,7 @@ def edit_expense(expense_id):
     "/delete/<int:expense_id>",
     methods=["POST"]
 )
-@login_required
+@permission_required("expenses.delete")
 def delete_expense(expense_id):
 
     expense = Expense.query.filter_by(

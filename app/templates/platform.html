@@ -1,104 +1,961 @@
-
 {% extends "layouts/public.html" %}
 
-{% block title %}FOCOST Platform — AI Financial Intelligence{% endblock %}
+{% block title %}
+Platform | FOCOST
+{% endblock %}
+
 {% block content %}
+
 <style>
-.platform-hero{
-    margin-top:-260px;
-    background:radial-gradient(circle at 80% 20%,rgba(13,110,253,.16),transparent 34%),linear-gradient(180deg,#f8fbff 0%,#fff 100%);
-}
-.platform-card{border:1px solid #e9eef5;border-radius:22px;box-shadow:0 12px 35px rgba(15,23,42,.06);height:100%;transition:.25s ease}
-.platform-card:hover{transform:translateY(-4px);box-shadow:0 18px 45px rgba(15,23,42,.10)}
-.platform-icon{width:52px;height:52px;border-radius:16px;display:grid;place-items:center;background:#eaf2ff;color:#0d6efd;font-size:1.35rem}
-.metric-strip{background:#0b1324;color:#fff;border-radius:24px}
+    .platform-page {
+        --focost-primary: #0d6efd;
+        --focost-dark: #101828;
+        --focost-muted: #667085;
+        --focost-soft: #f8fafc;
+        --focost-border: #e4e7ec;
+    }
+
+    .platform-hero {
+        position: relative;
+        overflow: hidden;
+        padding: 3rem 0 5rem;
+        background:
+            radial-gradient(circle at 85% 15%, rgba(13, 110, 253, .12), transparent 28%),
+            radial-gradient(circle at 10% 85%, rgba(13, 110, 253, .07), transparent 25%),
+            #ffffff;
+        margin-top: -15rem;
+    }
+
+    .about-hero {
+        padding: 0 0 24px;
+    }
+
+    .platform-hero::before {
+        content: "";
+        position: absolute;
+        width: 360px;
+        height: 360px;
+        right: -180px;
+        top: -180px;
+        border: 1px solid rgba(13, 110, 253, .10);
+        border-radius: 50%;
+    }
+
+    .platform-eyebrow {
+        display: inline-flex;
+        align-items: center;
+        gap: .5rem;
+        padding: .5rem .85rem;
+        border: 1px solid rgba(13, 110, 253, .15);
+        border-radius: 999px;
+        background: rgba(13, 110, 253, .06);
+        color: var(--focost-primary);
+        font-size: .82rem;
+        font-weight: 700;
+        letter-spacing: .02em;
+    }
+
+    .platform-hero h1 {
+        max-width: 850px;
+        color: var(--focost-dark);
+        font-size: clamp(2.25rem, 5vw, 4.35rem);
+        line-height: 1.08;
+        letter-spacing: -.045em;
+    }
+
+    .platform-hero .lead {
+        max-width: 760px;
+        color: var(--focost-muted);
+        font-size: clamp(1.05rem, 2vw, 1.25rem);
+        line-height: 1.75;
+    }
+
+    .platform-hero-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: .75rem;
+    }
+
+    .platform-hero-actions .btn {
+        border-radius: .85rem;
+        padding: .8rem 1.25rem;
+        font-weight: 600;
+    }
+
+    .platform-stat-strip {
+        margin-top: -2.25rem;
+        position: relative;
+        z-index: 2;
+    }
+
+    .platform-stat-card {
+        height: 100%;
+        padding: 1.35rem;
+        border: 1px solid var(--focost-border);
+        border-radius: 1.1rem;
+        background: #fff;
+        box-shadow: 0 12px 35px rgba(16, 24, 40, .07);
+    }
+
+    .platform-stat-card .icon {
+        width: 44px;
+        height: 44px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: .85rem;
+        background: rgba(13, 110, 253, .08);
+        color: var(--focost-primary);
+        font-size: 1.25rem;
+    }
+
+    .platform-section {
+        padding: 5.5rem 0;
+    }
+
+    .platform-section-soft {
+        background: var(--focost-soft);
+    }
+
+    .platform-section-heading {
+        max-width: 760px;
+        margin: 0 auto 3rem;
+        text-align: center;
+    }
+
+    .platform-section-heading .eyebrow {
+        color: var(--focost-primary);
+        font-size: .8rem;
+        font-weight: 800;
+        letter-spacing: .08em;
+        text-transform: uppercase;
+    }
+
+    .platform-section-heading h2 {
+        margin-top: .65rem;
+        color: var(--focost-dark);
+        font-size: clamp(1.9rem, 4vw, 3rem);
+        letter-spacing: -.035em;
+    }
+
+    .platform-section-heading p {
+        margin-top: 1rem;
+        color: var(--focost-muted);
+        line-height: 1.75;
+    }
+
+    .platform-feature-card {
+        height: 100%;
+        padding: 1.75rem;
+        border: 1px solid var(--focost-border);
+        border-radius: 1.2rem;
+        background: #fff;
+        transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease;
+    }
+
+    .platform-feature-card:hover {
+        transform: translateY(-4px);
+        border-color: rgba(13, 110, 253, .25);
+        box-shadow: 0 18px 45px rgba(16, 24, 40, .09);
+    }
+
+    .platform-feature-icon {
+        width: 52px;
+        height: 52px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 1.1rem;
+        border-radius: 1rem;
+        background: rgba(13, 110, 253, .08);
+        color: var(--focost-primary);
+        font-size: 1.35rem;
+    }
+
+    .platform-feature-card h3 {
+        color: var(--focost-dark);
+        font-size: 1.12rem;
+        font-weight: 700;
+    }
+
+    .platform-feature-card p {
+        margin-bottom: 0;
+        color: var(--focost-muted);
+        line-height: 1.7;
+    }
+
+    .platform-flow {
+        position: relative;
+    }
+
+    .platform-flow-card {
+        height: 100%;
+        padding: 1.6rem;
+        border: 1px solid var(--focost-border);
+        border-radius: 1.1rem;
+        background: #fff;
+    }
+
+    .platform-flow-number {
+        width: 40px;
+        height: 40px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 1rem;
+        border-radius: 50%;
+        background: var(--focost-primary);
+        color: #fff;
+        font-weight: 800;
+    }
+
+    .platform-flow-card h3 {
+        color: var(--focost-dark);
+        font-size: 1.05rem;
+        font-weight: 700;
+    }
+
+    .platform-flow-card p {
+        color: var(--focost-muted);
+        line-height: 1.7;
+        margin-bottom: 0;
+    }
+
+    .platform-ai-panel {
+        overflow: hidden;
+        border-radius: 1.5rem;
+        border: 1px solid var(--focost-border);
+        background: #fff;
+        box-shadow: 0 20px 60px rgba(16, 24, 40, .08);
+    }
+
+    .platform-ai-panel-header {
+        display: flex;
+        align-items: center;
+        gap: .75rem;
+        padding: 1rem 1.25rem;
+        border-bottom: 1px solid var(--focost-border);
+        background: #fbfcfe;
+    }
+
+    .platform-ai-avatar {
+        width: 42px;
+        height: 42px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        background: var(--focost-primary);
+        color: #fff;
+    }
+
+    .platform-chat-bubble {
+        max-width: 88%;
+        padding: 1rem 1.1rem;
+        border-radius: 1rem 1rem 1rem .25rem;
+        background: #f2f4f7;
+        color: #344054;
+        line-height: 1.65;
+    }
+
+    .platform-data-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+
+    .platform-data-list li {
+        display: flex;
+        gap: .75rem;
+        padding: .85rem 0;
+        border-bottom: 1px solid var(--focost-border);
+        color: #475467;
+    }
+
+    .platform-data-list li:last-child {
+        border-bottom: 0;
+    }
+
+    .platform-data-list i {
+        flex: 0 0 auto;
+        color: var(--focost-primary);
+        margin-top: .15rem;
+    }
+
+    .platform-trust-card {
+        height: 100%;
+        padding: 1.6rem;
+        border: 1px solid var(--focost-border);
+        border-radius: 1.15rem;
+        background: #fff;
+    }
+
+    .platform-trust-card h3 {
+        color: var(--focost-dark);
+        font-size: 1.05rem;
+        font-weight: 700;
+    }
+
+    .platform-trust-card p {
+        color: var(--focost-muted);
+        line-height: 1.7;
+        margin-bottom: 0;
+    }
+
+    .platform-cta {
+        padding: 5rem 0;
+        background:
+            linear-gradient(135deg, rgba(13, 110, 253, .98), rgba(8, 77, 178, .98));
+        color: #fff;
+    }
+
+    .platform-cta h2 {
+        max-width: 760px;
+        margin: 0 auto;
+        font-size: clamp(2rem, 4vw, 3rem);
+        letter-spacing: -.035em;
+    }
+
+    .platform-cta p {
+        max-width: 680px;
+        margin: 1rem auto 0;
+        color: rgba(255, 255, 255, .86);
+        line-height: 1.75;
+    }
+
+    .platform-cta .btn {
+        border-radius: .85rem;
+        padding: .8rem 1.3rem;
+        font-weight: 700;
+    }
+
+    @media (max-width: 767.98px) {
+        .platform-hero {
+            padding: 2rem 0 4rem;
+        }
+
+        .platform-stat-strip {
+            margin-top: 0;
+            padding-top: 1rem;
+        }
+
+        .platform-section {
+            padding: 4rem 0;
+        }
+
+        .platform-hero-actions {
+            flex-direction: column;
+        }
+
+        .platform-hero-actions .btn {
+            width: 100%;
+        }
+    }
 </style>
 
-<section class="platform-hero pt-2 pb-5">
-  <div class="container pt-1 pb-lg-5">
-    <div class="row align-items-center g-5">
-      <div class="col-lg-7">
-        <span class="badge bg-primary-subtle text-primary px-3 py-2 rounded-pill">FOCOST Financial Intelligence Platform</span>
-        <h1 class="display-4 fw-bold mt-3">Turn financial records into <span class="text-primary">decisions.</span></h1>
-        <p class="lead text-muted mt-3">
-          FOCOST combines transaction management, budgeting, goals, reporting, forecasting,
-          notifications and conversational AI into one financial operating system.
-        </p>
-        <div class="d-flex flex-wrap gap-2 mt-4">
-          <a href="{{ url_for('auth.register') }}" class="btn btn-primary btn-lg px-4"><i class="bi bi-rocket-takeoff me-2"></i>Start Building Wealth</a>
-          <a href="#capabilities" class="btn btn-outline-dark btn-lg px-4">Explore capabilities</a>
-        </div>
-      </div>
-      <div class="col-lg-5">
-        <div class="metric-strip p-4 p-lg-5">
-          <small class="text-white-50 text-uppercase fw-bold">Product thesis</small>
-          <h3 class="fw-bold mt-2">Measure → Understand → Predict → Act</h3>
-          <p class="text-white-50 mb-0">The platform is designed around the complete financial decision loop, not just bookkeeping.</p>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
+<div class="platform-page">
 
-<section id="capabilities" class="py-5">
-  <div class="container">
-    <div class="text-center mb-5">
-      <span class="text-primary fw-semibold">CORE PLATFORM</span>
-      <h2 class="fw-bold mt-2">Built as a financial intelligence system</h2>
-      <p class="text-muted">A foundation for consumers, professionals, partners and future financial products.</p>
-    </div>
-    <div class="row g-4">
-      {% set features = [
-        ("bi-chat-dots","Conversational AI Coach","Ask natural-language questions about income, spending, budgets and financial behaviour."),
-        ("bi-bar-chart-line","Decision Intelligence","Dashboards, trends, category analysis, financial health and actionable recommendations."),
-        ("bi-wallet2","Transaction Control","Income and expense records with deterministic date ordering, search and pagination."),
-        ("bi-bullseye","Goals & Budgets","Translate intentions into measurable targets, contribution plans and budget risk signals."),
-        ("bi-file-earmark-bar-graph","Professional Reporting","Filterable reports with PDF and Excel exports suitable for management review."),
-        ("bi-shield-check","Security & Governance","RBAC, audit trails, session hardening, data portability and production health checks.")
-      ] %}
-      {% for icon,title,desc in features %}
-      <div class="col-md-6 col-xl-4">
-        <div class="platform-card p-4">
-          <div class="platform-icon"><i class="bi {{ icon }}"></i></div>
-          <h5 class="fw-bold mt-4">{{ title }}</h5>
-          <p class="text-muted mb-0">{{ desc }}</p>
-        </div>
-      </div>
-      {% endfor %}
-    </div>
-  </div>
-</section>
+    <!-- Hero -->
+    <section class="platform-hero">
+        <div class="container">
+            <div class="row justify-content-center text-center">
+                <div class="col-xl-10">
 
-<section class="py-5 bg-light">
-  <div class="container">
-    <div class="row g-4 align-items-center">
-      <div class="col-lg-6">
-        <span class="text-primary fw-semibold">ENGINEERING STANDARD</span>
-        <h2 class="fw-bold mt-2">Designed for the next stage of scale</h2>
-        <p class="text-muted">FOCOST is being evolved beyond a CRUD finance application into an auditable, AI-assisted financial decision platform.</p>
-      </div>
-      <div class="col-lg-6">
-        <div class="row g-3">
-          {% for item in ["Provider-agnostic AI layer","Role-based access control","Audit-ready financial events","Portable user data","Production health/readiness checks","Responsive web experience"] %}
-          <div class="col-sm-6"><div class="bg-white rounded-4 p-3 border"><i class="bi bi-check-circle-fill text-success me-2"></i>{{ item }}</div></div>
-          {% endfor %}
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
+                    <div class="platform-eyebrow">
+                        <i class="bi bi-grid-1x2-fill"></i>
+                        The FOCOST Financial Management Platform
+                    </div>
 
-<section class="py-5">
-  <div class="container text-center">
-    <h2 class="fw-bold">Partner with the builder</h2>
-    <p class="text-muted mx-auto" style="max-width:720px">
-      FOCOST is positioned for strategic investment, technical partnership, enterprise pilots,
-      sponsorship and employment opportunities around financial AI, analytics and software engineering.
-    </p>
-    <div class="d-flex justify-content-center flex-wrap gap-2">
-      <a href="{{ url_for('auth.register') }}" class="btn btn-primary px-4">Experience FOCOST</a>
-      <a href="/" class="btn btn-outline-secondary px-4">Back to home</a>
-    </div>
-  </div>
-</section>
+                    <h1 class="fw-bold mt-4 mb-4 mx-auto">
+                        One intelligent platform for
+                        <span class="text-primary">better financial decisions.</span>
+                    </h1>
+
+                    <p class="lead mx-auto mb-4">
+                        FOCOST brings your financial records, budgets, goals,
+                        investments, reports and AI-powered financial guidance
+                        together in one structured environment—so you can
+                        understand where your money is going and make more
+                        informed decisions about where it should go next.
+                    </p>
+
+                    <div class="platform-hero-actions justify-content-center">
+                        <a
+                            href="{{ url_for('auth.register') }}"
+                            class="btn btn-primary">
+                            <i class="bi bi-rocket-takeoff-fill me-2"></i>
+                            Get Started Free
+                        </a>
+
+                        <a
+                            href="{{ url_for('showcase.pricing') }}"
+                            class="btn btn-outline-primary">
+                            <i class="bi bi-tags-fill me-2"></i>
+                            View Plans
+                        </a>
+
+                        <a
+                            href="{{ url_for('showcase.faq') }}"
+                            class="btn btn-outline-secondary">
+                            <i class="bi bi-question-circle me-2"></i>
+                            Explore FAQs
+                        </a>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Platform highlights -->
+    <section class="platform-stat-strip">
+        <div class="container">
+            <div class="row g-3">
+
+                <div class="col-12 col-md-4">
+                    <div class="platform-stat-card">
+                        <div class="icon mb-3">
+                            <i class="bi bi-bar-chart-line-fill"></i>
+                        </div>
+                        <h3 class="h6 fw-bold mb-2">Financial clarity</h3>
+                        <p class="small text-muted mb-0">
+                            Turn transaction records into meaningful financial
+                            summaries, trends and decision-ready insights.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="col-12 col-md-4">
+                    <div class="platform-stat-card">
+                        <div class="icon mb-3">
+                            <i class="bi bi-bullseye"></i>
+                        </div>
+                        <h3 class="h6 fw-bold mb-2">Goal-oriented planning</h3>
+                        <p class="small text-muted mb-0">
+                            Connect your everyday cash flow with budgets,
+                            savings goals and longer-term financial priorities.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="col-12 col-md-4">
+                    <div class="platform-stat-card">
+                        <div class="icon mb-3">
+                            <i class="bi bi-stars"></i>
+                        </div>
+                        <h3 class="h6 fw-bold mb-2">AI-assisted decisions</h3>
+                        <p class="small text-muted mb-0">
+                            Ask questions conversationally and receive guidance
+                            grounded in the financial context available to FOCOST.
+                        </p>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </section>
+
+    <!-- Core capabilities -->
+    <section class="platform-section">
+        <div class="container">
+
+            <div class="platform-section-heading">
+                <div class="eyebrow">Core capabilities</div>
+                <h2>Everything you need to understand and manage your money</h2>
+                <p>
+                    FOCOST is designed around the complete personal-finance
+                    journey rather than a single transaction or reporting task.
+                </p>
+            </div>
+
+            <div class="row g-4">
+
+                <div class="col-12 col-md-6 col-lg-4">
+                    <article class="platform-feature-card">
+                        <div class="platform-feature-icon">
+                            <i class="bi bi-arrow-down-circle-fill"></i>
+                        </div>
+                        <h3>Income management</h3>
+                        <p>
+                            Record and organize income sources so your financial
+                            position is based on a clear and traceable cash-flow
+                            history.
+                        </p>
+                    </article>
+                </div>
+
+                <div class="col-12 col-md-6 col-lg-4">
+                    <article class="platform-feature-card">
+                        <div class="platform-feature-icon">
+                            <i class="bi bi-arrow-up-circle-fill"></i>
+                        </div>
+                        <h3>Expense management</h3>
+                        <p>
+                            Capture spending by category and period to identify
+                            patterns, control outflows and understand where your
+                            money is actually going.
+                        </p>
+                    </article>
+                </div>
+
+                <div class="col-12 col-md-6 col-lg-4">
+                    <article class="platform-feature-card">
+                        <div class="platform-feature-icon">
+                            <i class="bi bi-wallet2"></i>
+                        </div>
+                        <h3>Budgets</h3>
+                        <p>
+                            Set spending limits, monitor utilization and identify
+                            budget pressure before it becomes a larger financial
+                            problem.
+                        </p>
+                    </article>
+                </div>
+
+                <div class="col-12 col-md-6 col-lg-4">
+                    <article class="platform-feature-card">
+                        <div class="platform-feature-icon">
+                            <i class="bi bi-flag-fill"></i>
+                        </div>
+                        <h3>Financial goals</h3>
+                        <p>
+                            Define financial targets, track contributions and
+                            measure progress against the outcomes that matter
+                            most to you.
+                        </p>
+                    </article>
+                </div>
+
+                <div class="col-12 col-md-6 col-lg-4">
+                    <article class="platform-feature-card">
+                        <div class="platform-feature-icon">
+                            <i class="bi bi-graph-up-arrow"></i>
+                        </div>
+                        <h3>Investment tracking</h3>
+                        <p>
+                            Track investment funding, value and investment events
+                            while keeping non-cash valuation movements separate
+                            from operating cash-flow calculations.
+                        </p>
+                    </article>
+                </div>
+
+                <div class="col-12 col-md-6 col-lg-4">
+                    <article class="platform-feature-card">
+                        <div class="platform-feature-icon">
+                            <i class="bi bi-file-earmark-bar-graph-fill"></i>
+                        </div>
+                        <h3>Reports & analytics</h3>
+                        <p>
+                            Review financial summaries, category breakdowns,
+                            trends and financial-position information for better
+                            planning and review.
+                        </p>
+                    </article>
+                </div>
+
+            </div>
+        </div>
+    </section>
+
+    <!-- How it works -->
+    <section class="platform-section platform-section-soft">
+        <div class="container">
+
+            <div class="platform-section-heading">
+                <div class="eyebrow">How FOCOST works</div>
+                <h2>From financial records to actionable insight</h2>
+                <p>
+                    FOCOST is structured to keep the underlying financial data
+                    and application calculations at the centre of the experience.
+                </p>
+            </div>
+
+            <div class="row g-4 platform-flow">
+
+                <div class="col-12 col-md-6 col-lg-3">
+                    <article class="platform-flow-card">
+                        <div class="platform-flow-number">1</div>
+                        <h3>Record</h3>
+                        <p>
+                            Capture income, expenses, budgets, goals and
+                            investment activity in an organized financial ledger.
+                        </p>
+                    </article>
+                </div>
+
+                <div class="col-12 col-md-6 col-lg-3">
+                    <article class="platform-flow-card">
+                        <div class="platform-flow-number">2</div>
+                        <h3>Organize</h3>
+                        <p>
+                            Structure transactions and financial activities by
+                            category, date, purpose and financial context.
+                        </p>
+                    </article>
+                </div>
+
+                <div class="col-12 col-md-6 col-lg-3">
+                    <article class="platform-flow-card">
+                        <div class="platform-flow-number">3</div>
+                        <h3>Understand</h3>
+                        <p>
+                            Use dashboards, reports and analytics to understand
+                            financial performance and emerging patterns.
+                        </p>
+                    </article>
+                </div>
+
+                <div class="col-12 col-md-6 col-lg-3">
+                    <article class="platform-flow-card">
+                        <div class="platform-flow-number">4</div>
+                        <h3>Act</h3>
+                        <p>
+                            Use the resulting insights and AI-assisted guidance
+                            to make more deliberate financial decisions.
+                        </p>
+                    </article>
+                </div>
+
+            </div>
+        </div>
+    </section>
+
+    <!-- AI -->
+    <section class="platform-section">
+        <div class="container">
+
+            <div class="row align-items-center g-5">
+
+                <div class="col-lg-6">
+                    <div class="platform-section-heading text-lg-start mb-0">
+                        <div class="eyebrow">FOCOST AI Coach</div>
+
+                        <h2>
+                            Ask questions about your finances in natural language.
+                        </h2>
+
+                        <p>
+                            Instead of navigating through numbers alone, use
+                            conversational AI to explore your financial position,
+                            understand trends and ask follow-up questions.
+                        </p>
+
+                        <p>
+                            Where financial calculations are involved, FOCOST is
+                            designed to use application-generated financial facts
+                            as the authoritative basis for the explanation.
+                        </p>
+
+                        <a
+                            href="{{ url_for('auth.register') }}"
+                            class="btn btn-primary mt-2">
+                            <i class="bi bi-chat-dots-fill me-2"></i>
+                            Try FOCOST AI
+                        </a>
+                    </div>
+                </div>
+
+                <div class="col-lg-6">
+                    <div class="platform-ai-panel">
+
+                        <div class="platform-ai-panel-header">
+                            <div class="platform-ai-avatar">
+                                <i class="bi bi-stars"></i>
+                            </div>
+
+                            <div>
+                                <div class="fw-bold">FOCOST AI Coach</div>
+                                <div class="small text-muted">
+                                    Financial context assistant
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="p-4">
+
+                            <div class="small text-muted mb-2">
+                                You
+                            </div>
+
+                            <div class="platform-chat-bubble mb-4">
+                                Why did my savings decrease this month?
+                            </div>
+
+                            <div class="small text-muted mb-2">
+                                FOCOST AI
+                            </div>
+
+                            <div class="platform-chat-bubble">
+                                Your savings decreased because total expenses
+                                were higher relative to income during the
+                                selected period. I can also break down the
+                                change by expense category and compare it with
+                                previous periods.
+                            </div>
+
+                        </div>
+
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </section>
+
+    <!-- Financial integrity -->
+    <section class="platform-section platform-section-soft">
+        <div class="container">
+
+            <div class="platform-section-heading">
+                <div class="eyebrow">Financial integrity</div>
+                <h2>Designed to keep financial meaning clear</h2>
+                <p>
+                    FOCOST distinguishes cash-flow activity from information
+                    that changes an asset's value without representing a cash
+                    transaction.
+                </p>
+            </div>
+
+            <div class="row g-4">
+
+                <div class="col-12 col-lg-6">
+                    <div class="platform-trust-card">
+                        <div class="platform-feature-icon">
+                            <i class="bi bi-shield-check"></i>
+                        </div>
+
+                        <h3>Authoritative calculations</h3>
+
+                        <p>
+                            Financial dashboards, reports and AI explanations
+                            are designed around application-level calculations
+                            rather than independently recreated figures.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="col-12 col-lg-6">
+                    <div class="platform-trust-card">
+                        <div class="platform-feature-icon">
+                            <i class="bi bi-cash-stack"></i>
+                        </div>
+
+                        <h3>Cash-flow distinction</h3>
+
+                        <p>
+                            Investment funding and qualifying goal contributions
+                            remain part of cash-flow expense calculations, while
+                            non-cash investment valuation gains and losses do not
+                            become income or expense.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="col-12 col-lg-6">
+                    <div class="platform-trust-card">
+                        <div class="platform-feature-icon">
+                            <i class="bi bi-clock-history"></i>
+                        </div>
+
+                        <h3>Traceable financial history</h3>
+
+                        <p>
+                            Financial activities are retained as structured
+                            records so users can review transactions and
+                            understand how reported figures were produced.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="col-12 col-lg-6">
+                    <div class="platform-trust-card">
+                        <div class="platform-feature-icon">
+                            <i class="bi bi-lock-fill"></i>
+                        </div>
+
+                        <h3>Security-conscious architecture</h3>
+
+                        <p>
+                            FOCOST incorporates authentication, authorization,
+                            CSRF protection, security headers, account-state
+                            controls and administrative access controls as part
+                            of the application architecture.
+                        </p>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </section>
+
+    <!-- Data context -->
+    <section class="platform-section">
+        <div class="container">
+
+            <div class="row align-items-center g-5">
+
+                <div class="col-lg-6">
+                    <div class="platform-section-heading text-lg-start mb-0">
+                        <div class="eyebrow">Your financial context</div>
+
+                        <h2>
+                            Built around the information you actually need.
+                        </h2>
+
+                        <p>
+                            FOCOST brings related financial information together
+                            so that individual transactions can be understood
+                            within the wider context of your financial life.
+                        </p>
+
+                        <p>
+                            This makes the platform useful not only for recording
+                            what happened, but also for understanding what it
+                            means and deciding what to do next.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="col-lg-6">
+                    <div class="platform-trust-card">
+
+                        <ul class="platform-data-list">
+                            <li>
+                                <i class="bi bi-check-circle-fill"></i>
+                                <span>Income and expense activity</span>
+                            </li>
+
+                            <li>
+                                <i class="bi bi-check-circle-fill"></i>
+                                <span>Budget performance and utilization</span>
+                            </li>
+
+                            <li>
+                                <i class="bi bi-check-circle-fill"></i>
+                                <span>Goal targets and contribution progress</span>
+                            </li>
+
+                            <li>
+                                <i class="bi bi-check-circle-fill"></i>
+                                <span>Investment funding and value tracking</span>
+                            </li>
+
+                            <li>
+                                <i class="bi bi-check-circle-fill"></i>
+                                <span>Financial reports and historical trends</span>
+                            </li>
+
+                            <li>
+                                <i class="bi bi-check-circle-fill"></i>
+                                <span>AI-assisted financial conversations</span>
+                            </li>
+                        </ul>
+
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </section>
+
+    <!-- Trust / responsible use -->
+    <section class="platform-section platform-section-soft">
+        <div class="container">
+
+            <div class="platform-section-heading">
+                <div class="eyebrow">Responsible use</div>
+                <h2>Technology that supports better financial awareness</h2>
+                <p>
+                    FOCOST is designed to help users understand and organize
+                    their personal finances. It is not a bank, broker,
+                    investment adviser, tax adviser, legal adviser or fiduciary.
+                </p>
+            </div>
+
+            <div class="row g-4">
+
+                <div class="col-12 col-md-4">
+                    <div class="platform-trust-card text-center">
+                        <div class="platform-feature-icon">
+                            <i class="bi bi-person-check-fill"></i>
+                        </div>
+                        <h3>User control</h3>
+                        <p>
+                            Financial decisions remain with the user. FOCOST
+                            provides tools, information and AI-assisted guidance
+                            rather than making decisions on the user's behalf.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="col-12 col-md-4">
+                    <div class="platform-trust-card text-center">
+                        <div class="platform-feature-icon">
+                            <i class="bi bi-database-check"></i>
+                        </div>
+                        <h3>Data awareness</h3>
+                        <p>
+                            Financial insights depend on the accuracy and
+                            completeness of the information recorded in the
+                            application.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="col-12 col-md-4">
+                    <div class="platform-trust-card text-center">
+                        <div class="platform-feature-icon">
+                            <i class="bi bi-shield-lock-fill"></i>
+                        </div>
+                        <h3>Security mindset</h3>
+                        <p>
+                            Security and privacy considerations are incorporated
+                            throughout the product architecture and operational
+                            controls.
+                        </p>
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+    </section>
+
+    <!-- CTA -->
+    <section class="platform-cta">
+        <div class="container text-center">
+
+            <h2 class="fw-bold">
+                Start turning your financial data into clearer decisions.
+            </h2>
+
+            <p>
+                Create your FOCOST account and build a more structured view of
+                your income, spending, goals, investments and financial future.
+            </p>
+
+            <div class="d-flex flex-column flex-sm-row justify-content-center gap-2 mt-4">
+
+                <a
+                    href="{{ url_for('auth.register') }}"
+                    class="btn btn-light">
+                    <i class="bi bi-rocket-takeoff-fill me-2"></i>
+                    Get Started Free
+                </a>
+
+                <a
+                    href="{{ url_for('showcase.pricing') }}"
+                    class="btn btn-outline-light">
+                    <i class="bi bi-tags-fill me-2"></i>
+                    View Pricing
+                </a>
+
+            </div>
+
+        </div>
+    </section>
+
+</div>
+
 {% endblock %}

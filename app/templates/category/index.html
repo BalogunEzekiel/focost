@@ -1,0 +1,69 @@
+{% extends "layouts/dashboard.html" %}
+{% block title %}Category Management | FOCOST{% endblock %}
+{% block content %}
+<div class="container-fluid py-3">
+  <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+    <div>
+      <h2 class="fw-bold mb-1">Personal Categories</h2>
+      <p class="text-muted mb-0">Create categories tailored to your finances. Plus and Pro only.</p>
+    </div>
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#categoryModal">
+      <i class="bi bi-plus-lg me-1"></i> New Category
+    </button>
+  </div>
+  <div class="alert alert-primary border-0 shadow-sm">
+    <strong>Single category source:</strong> system and personal expense categories are automatically available to Budgets.
+  </div>
+  <div class="row g-4">
+    {% for title, items, icon in [
+      ("Income Categories", income_categories, "bi-arrow-down-circle"),
+      ("Expense Categories", expense_categories, "bi-arrow-up-circle")
+    ] %}
+    <div class="col-xl-6">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-header bg-white py-3"><h5 class="mb-0"><i class="bi {{ icon }} me-2"></i>{{ title }}</h5></div>
+        <div class="list-group list-group-flush">
+          {% for item in items %}
+          <div class="list-group-item d-flex justify-content-between align-items-center gap-3">
+            <div><div class="fw-semibold">{{ item.name }}</div><small class="text-muted">{{ item.description or ("System category" if item.is_system else "Personal category") }}</small></div>
+            {% if not item.is_system %}
+            <div class="d-flex gap-1">
+              <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#edit{{ item.id }}"><i class="bi bi-pencil"></i></button>
+              <form method="post" action="{{ url_for('categories.archive', category_id=item.id) }}" onsubmit="return confirm('Archive this category? Existing transactions will remain unchanged.');">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn btn-sm btn-outline-danger"><i class="bi bi-archive"></i></button>
+              </form>
+            </div>
+            <div class="modal fade" id="edit{{ item.id }}" tabindex="-1"><div class="modal-dialog"><div class="modal-content">
+              <form method="post" action="{{ url_for('categories.update', category_id=item.id) }}">
+                <div class="modal-header"><h5 class="modal-title">Edit Category</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+                <div class="modal-body">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                  <input type="hidden" name="category_type" value="{{ item.category_type }}">
+                  <label class="form-label">Name</label><input name="name" class="form-control mb-3" maxlength="100" value="{{ item.name }}" required>
+                  <label class="form-label">Description</label><textarea name="description" class="form-control" maxlength="255">{{ item.description or '' }}</textarea>
+                </div>
+                <div class="modal-footer"><button class="btn btn-primary">Save changes</button></div>
+              </form>
+            </div></div></div>
+            {% endif %}
+          </div>
+          {% else %}<div class="list-group-item text-muted">No categories available.</div>{% endfor %}
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+<div class="modal fade" id="categoryModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content">
+<form method="post" action="{{ url_for('categories.create') }}">
+  <div class="modal-header"><h5 class="modal-title">Create Personal Category</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+  <div class="modal-body">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label class="form-label">Category Type</label><select name="category_type" class="form-select mb-3" required><option value="income">Income</option><option value="expense">Expense</option></select>
+    <label class="form-label">Name</label><input name="name" class="form-control mb-3" maxlength="100" required>
+    <label class="form-label">Description</label><textarea name="description" class="form-control" maxlength="255"></textarea>
+  </div>
+  <div class="modal-footer"><button class="btn btn-primary">Create Category</button></div>
+</form>
+</div></div></div>
+{% endblock %}

@@ -4,6 +4,8 @@ from flask import request
 from flask_login import current_user
 
 from app.services.notification_service import NotificationService
+from app.services.subscription_gate import SubscriptionGate
+from app.services.announcement_service import AnnouncementService
 
 from app.rbac.helpers import (
     is_authenticated,
@@ -56,6 +58,8 @@ def register_context_processors(app):
                 # User
                 "current_user": current_user,
                 "user_plan": "Guest",
+                "active_announcements": [],
+                "can_customize_categories": False,
 
                 # RBAC Helpers
                 "is_authenticated": is_authenticated,
@@ -78,6 +82,7 @@ def register_context_processors(app):
 
         try:
 
+            AnnouncementService.ensure_in_app_delivery(current_user.id)
             NotificationService.generate_system_notifications(
                 current_user.id
             )
@@ -106,17 +111,26 @@ def register_context_processors(app):
             unread_count = 0
 
         try:
-            from app.subscriptions.service import SubscriptionService
-            subscription = SubscriptionService.current(current_user.id)
-            if subscription and subscription.is_trial:
-                user_plan = "Free Trial" if subscription.is_active_access else "Trial Expired"
-            elif subscription and subscription.plan:
-                user_plan = subscription.plan.name if subscription.is_active_access else "Subscription Expired"
+            if current_user.role_slug in {"admin", "super_admin"}:
+                user_plan = "Administrator"
             else:
-                user_plan = "No Active Plan"
+                from app.subscriptions.service import SubscriptionService
+                subscription = SubscriptionService.current(current_user.id)
+                if subscription and subscription.is_trial:
+                    user_plan = "Free Trial" if subscription.is_active_access else "Trial Expired"
+                elif subscription and subscription.plan:
+                    user_plan = subscription.plan.name if subscription.is_active_access else "Subscription Expired"
+                else:
+                    user_plan = "No Active Plan"
         except Exception:
             logger.exception("Failed loading subscription status")
             user_plan = "Subscription"
+
+        try:
+            announcements = AnnouncementService.active_for_user(current_user.id)
+        except Exception:
+            logger.exception("Failed loading announcements")
+            announcements = []
 
         return {
 
@@ -153,6 +167,11 @@ def register_context_processors(app):
             "current_user": current_user,
 
             "user_plan": user_plan,
+            "active_announcements": announcements,
+            "can_customize_categories": (
+                current_user.role_slug == "user"
+                and SubscriptionGate.has_paid_plan(current_user.id, {"plus", "pro"})
+            ),
 
             # ==================================================
             # RBAC Helpers

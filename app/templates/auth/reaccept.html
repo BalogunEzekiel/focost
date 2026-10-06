@@ -1,0 +1,10 @@
+{% extends "layouts/public.html" %}
+{% block title %}Updated Policies | FOCOST{% endblock %}
+{% block content %}
+<div class="container pb-5" style="max-width:760px;margin-top:-12rem;">
+<div class="card border-0 shadow-lg rounded-4"><div class="card-body p-4 p-md-5">
+<h2 class="fw-bold">Please review the updated FOCOST policies</h2><p class="text-muted">The current versions have changed. Review the documents before continuing. You can also consult the <a href="{{ url_for('showcase.faq') }}">FAQ</a> or <a href="{{ url_for('showcase.support') }}">Support Centre</a> if you have questions.</p>
+<ul class="list-group mb-4">{% for policy in policies %}<li class="list-group-item d-flex justify-content-between align-items-center"><span><strong>{{ policy.title }}</strong><small class="d-block text-muted">Version {{ policy.version }}</small></span><a href="{{ url_for('compliance.' + policy.slug.replace('-', '_')) }}" target="_blank" rel="noopener noreferrer">Review</a></li>{% endfor %}</ul>
+<form method="POST"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="accept" value="yes"><div class="form-check mb-4"><input class="form-check-input" type="checkbox" id="acceptPolicies" required><label class="form-check-label" for="acceptPolicies">I have reviewed and accept the current policies.</label></div><button class="btn btn-success btn-lg w-100">Accept and continue</button></form>
+</div></div></div>
+{% endblock %}

@@ -2886,3 +2886,126 @@ body.density-spacious
     margin-bottom: 2rem;
 
 }
+
+/* ==========================================================
+   FOCOST BRAND LOGO
+   ========================================================== */
+
+.focost-brand-logo {
+    width: auto;
+    height: 42px;
+    max-width: 180px;
+    object-fit: contain;
+    display: block;
+}
+
+.focost-sidebar-logo {
+    width: auto;
+    height: 48px;
+    max-width: 190px;
+    object-fit: contain;
+    display: inline-block;
+}
+
+/* Public navbar logo */
+.navbar-brand {
+    display: inline-flex;
+    align-items: center;
+    min-height: 42px;
+    text-decoration: none;
+}
+
+/* Sidebar logo area */
+#sidebar .focost-sidebar-logo {
+    max-height: 48px;
+}
+
+/* Tablet */
+@media (max-width: 991.98px) {
+
+    .focost-brand-logo {
+        height: 38px;
+        max-width: 165px;
+    }
+
+    .focost-sidebar-logo {
+        height: 44px;
+        max-width: 175px;
+    }
+
+}
+
+/* Small phones */
+@media (max-width: 576px) {
+
+    .focost-brand-logo {
+        height: 34px;
+        max-width: 150px;
+    }
+
+    .focost-sidebar-logo {
+        height: 40px;
+        max-width: 160px;
+    }
+
+}
+
+/* ==========================================================
+   FOCOST PUBLIC NAVBAR BRAND
+   ========================================================== */
+
+.focost-brand-logo {
+    width: auto;
+    height: 42px;
+    max-width: 180px;
+    object-fit: contain;
+    display: block;
+    flex-shrink: 0;
+}
+
+.focost-brand-name {
+    display: inline-block;
+    margin-left: 10px;
+    font-size: 1.25rem;
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: 0.01em;
+    color: var(--primary-color, #0d6efd);
+}
+
+.navbar-brand {
+    display: inline-flex;
+    align-items: center;
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+/* Tablet */
+@media (max-width: 991.98px) {
+
+    .focost-brand-logo {
+        height: 38px;
+        max-width: 165px;
+    }
+
+    .focost-brand-name {
+        font-size: 1.15rem;
+        margin-left: 8px;
+    }
+
+}
+
+/* Small phones */
+@media (max-width: 576px) {
+
+    .focost-brand-logo {
+        height: 34px;
+        max-width: 150px;
+    }
+
+    .focost-brand-name {
+        font-size: 1.05rem;
+        margin-left: 7px;
+    }
+
+}

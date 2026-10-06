@@ -1,0 +1,17 @@
+{% if request.cookies.get('focost_cookie_consent') is none %}
+<div id="focostCookieBanner" class="position-fixed bottom-0 start-0 end-0 bg-dark text-white p-3 shadow-lg" style="z-index:2000;">
+  <div class="container d-flex flex-column flex-md-row gap-3 align-items-md-center justify-content-between">
+    <div class="small">FOCOST uses essential session/security cookies. Optional cookies are disabled unless you choose to allow them. <a class="text-white fw-semibold" href="{{ url_for('compliance.cookies') }}">Cookie Notice</a>.</div>
+    <div class="d-flex gap-2 flex-shrink-0">
+      <button class="btn btn-outline-light btn-sm" onclick="setFocostCookieConsent('essential')">Essential only</button>
+      <button class="btn btn-success btn-sm" onclick="setFocostCookieConsent('all')">Allow optional</button>
+    </div>
+  </div>
+</div>
+<script>
+async function setFocostCookieConsent(choice){
+  const r = await fetch('{{ url_for("compliance.cookie_consent") }}', {method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':'{{ csrf_token() }}'},body:JSON.stringify({choice})});
+  if(r.ok){ document.getElementById('focostCookieBanner')?.remove(); }
+}
+</script>
+{% endif %}

@@ -1,0 +1,19 @@
+{% extends "layouts/public.html" %}
+{% block title %}{{ policy.title if policy else 'FOCOST Policy' }}{% endblock %}
+{% block content %}
+<div class="container pb-5" style="max-width:960px; margin-top:-12rem;">
+  {% if policy %}
+  <div class="card border-0 shadow-sm rounded-4">
+    <div class="card-body p-4 p-md-5">
+      <span class="badge bg-success-subtle text-success">Version {{ policy.version }}</span>
+      <h1 class="fw-bold mt-3">{{ policy.title }}</h1>
+      <p class="text-muted">Effective {{ policy.effective_at.strftime('%d %B %Y') }}</p>
+      <hr>
+      <div class="legal-content">{{ policy.content_html|safe }}</div>
+    </div>
+  </div>
+  {% else %}
+  <div class="alert alert-warning">This policy is not currently available.</div>
+  {% endif %}
+</div>
+{% endblock %}

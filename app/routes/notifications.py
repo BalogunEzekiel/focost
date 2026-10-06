@@ -10,6 +10,7 @@ from flask import (
 
 from flask_login import login_required, current_user
 
+from app.rbac.decorators import permission_required
 from app.services.notification_service import NotificationService
 
 
@@ -25,7 +26,7 @@ notifications_bp = Blueprint(
 # ---------------------------------------------------------
 
 @notifications_bp.route("/")
-@login_required
+@permission_required("notifications.view")
 def index():
 
     notifications = NotificationService.get_all(
@@ -44,7 +45,7 @@ def index():
 # ---------------------------------------------------------
 
 @notifications_bp.route("/api")
-@login_required
+@permission_required("notifications.view")
 def api():
     limit = max(1, min(request.args.get("limit", 10, type=int), 100))
     page = max(1, request.args.get("page", 1, type=int))
@@ -71,7 +72,7 @@ def api():
 # ---------------------------------------------------------
 
 @notifications_bp.route("/read/<int:notification_id>", methods=["POST"])
-@login_required
+@permission_required("notifications.view")
 def mark_read(notification_id):
 
     success = NotificationService.mark_read(
@@ -94,7 +95,7 @@ def mark_read(notification_id):
 # ---------------------------------------------------------
 
 @notifications_bp.route("/mark-all-read", methods=["POST"])
-@login_required
+@permission_required("notifications.view")
 def mark_all_read():
 
     NotificationService.mark_all_read(
@@ -114,7 +115,7 @@ def mark_all_read():
 # ---------------------------------------------------------
 
 @notifications_bp.route("/dismiss/<int:notification_id>", methods=["POST"])
-@login_required
+@permission_required("notifications.manage")
 def dismiss(notification_id):
     success = NotificationService.dismiss(notification_id, current_user.id)
     return jsonify({"success": success, "notification_count": NotificationService.get_unread_count(current_user.id)})
@@ -125,7 +126,7 @@ def dismiss(notification_id):
 # ---------------------------------------------------------
 
 @notifications_bp.route("/delete/<int:notification_id>", methods=["POST"])
-@login_required
+@permission_required("notifications.manage")
 def delete(notification_id):
 
     success = NotificationService.delete(
@@ -148,7 +149,7 @@ def delete(notification_id):
 # ---------------------------------------------------------
 
 @notifications_bp.route("/open/<int:notification_id>")
-@login_required
+@permission_required("notifications.view")
 def open_notification(notification_id):
 
     notification = NotificationService.get(
@@ -177,7 +178,7 @@ def open_notification(notification_id):
     return redirect(url_for("notifications.index"))
 
 @notifications_bp.route("/delete-all", methods=["POST"])
-@login_required
+@permission_required("notifications.manage")
 def delete_all():
 
     deleted = NotificationService.delete_all(
@@ -191,3 +192,36 @@ def delete_all():
             "notification_count": 0,
         }
     )
+
+@notifications_bp.post("/push/register")
+@permission_required("notifications.manage")
+def register_push_device():
+    from app.models.push_device import PushDevice
+    from app.extensions import db
+    from app.utils.timezone import utc_now
+
+    data = request.get_json(silent=True) or {}
+    token = str(data.get("token", "")).strip()
+    platform = str(data.get("platform", "android")).strip().lower()
+    provider = str(data.get("provider", "fcm")).strip().lower()
+    if not token or platform not in {"android", "ios", "web"}:
+        return jsonify({"success": False, "message": "A valid push token and platform are required."}), 400
+
+    device = PushDevice.query.filter_by(token=token).first()
+    if device and device.user_id != current_user.id:
+        return jsonify({"success": False, "message": "Push token is already registered."}), 409
+    if not device:
+        device = PushDevice(
+            user_id=current_user.id,
+            token=token,
+            platform=platform,
+            provider=provider,
+        )
+        db.session.add(device)
+    device.platform = platform
+    device.provider = provider
+    device.app_version = str(data.get("app_version", "")).strip()[:40] or None
+    device.last_seen_at = utc_now()
+    device.is_enabled = True
+    db.session.commit()
+    return jsonify({"success": True, "device_id": device.public_id})

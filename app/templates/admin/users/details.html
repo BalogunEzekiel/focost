@@ -231,15 +231,17 @@
                     {% endif %}
 
 
-                    {% if has_permission("users.update") %}
+                    {% if has_permission("users.update") and user.role_slug != "super_admin" %}
 
                         {% if user.is_active %}
 
                         <a
                             href="{{ url_for('admin_users.deactivate', public_id=user.public_id) }}"
-                            class="btn btn-warning">
+                            class="btn btn-sm btn-warning role-action-btn"
+                            title="Deactivate User">
 
-                            Deactivate
+                            <i class="bi bi-person-dash"></i>
+                            <span class="action-label">Deactivate</span>
 
                         </a>
 
@@ -247,9 +249,11 @@
 
                         <a
                             href="{{ url_for('admin_users.activate', public_id=user.public_id) }}"
-                            class="btn btn-success">
+                            class="btn btn-sm btn-success role-action-btn"
+                            title="Activate User">
 
-                            Activate
+                            <i class="bi bi-person-check"></i>
+                            <span class="action-label">Activate</span>
 
                         </a>
 
@@ -258,14 +262,16 @@
                     {% endif %}
 
 
-                    {% if has_permission("users.delete") %}
+                    {% if has_permission("users.delete") and user.role_slug != "super_admin" %}
 
                     <a
                         href="{{ url_for('admin_users.delete', public_id=user.public_id) }}"
-                        class="btn btn-danger"
-                        onclick="return confirm('Delete this user?')">
+                        class="btn btn-sm btn-danger role-action-btn"
+                        title="Delete User"
+                        onclick="return confirm('Close and anonymize this user account?')">
 
-                        Delete User
+                        <i class="bi bi-trash"></i>
+                        <span class="action-label">Delete</span>
 
                     </a>
 

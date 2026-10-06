@@ -1,16 +1,21 @@
-<nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm sticky-top">
-
+<nav
+    class="navbar navbar-expand-lg navbar-light bg-white shadow-sm sticky-top"
+    aria-label="FOCOST public navigation"
+>
     <div class="container">
-
-        <!-- Logo -->
-        <a class="navbar-brand fw-bold text-primary"
-           href="{{ url_for('dashboard.home') }}">
-
-            FOCOST
-
+        <a
+            class="navbar-brand d-inline-flex align-items-center gap-2"
+            href="{{ url_for('dashboard.home') }}"
+            aria-label="FOCOST Home"
+        >
+            <img
+                src="{{ url_for('static', filename='images/focost_logo.png') }}"
+                alt="FOCOST"
+                class="focost-brand-logo"
+            >
+            <span class="focost-brand-name">FOCOST</span>
         </a>
 
-        <!-- Mobile Toggle -->
         <button
             class="navbar-toggler border-0 shadow-none"
             type="button"
@@ -18,80 +23,75 @@
             data-bs-target="#navbarNav"
             aria-controls="navbarNav"
             aria-expanded="false"
-            aria-label="Toggle navigation">
-
+            aria-label="Toggle navigation"
+        >
             <span class="navbar-toggler-icon"></span>
-
         </button>
 
-        <!-- Navigation -->
-        <div class="collapse navbar-collapse"
-             id="navbarNav">
-
+        <div class="collapse navbar-collapse" id="navbarNav">
             <ul class="navbar-nav ms-auto align-items-lg-center mt-3 mt-lg-0">
-
                 <li class="nav-item">
                     <a class="nav-link px-lg-3" href="{{ url_for('showcase.platform') }}">
                         Platform
                     </a>
                 </li>
-
                 <li class="nav-item">
-                    <a class="nav-link px-lg-3" href="#pricing">
+                    <a class="nav-link px-lg-3" href="{{ url_for('showcase.pricing') }}">
                         Pricing
                     </a>
                 </li>
-
                 <li class="nav-item">
-                    <a class="nav-link px-lg-3" href="#faq">
+                    <a class="nav-link px-lg-3" href="{{ url_for('showcase.faq') }}">
                         FAQ
                     </a>
-            .    </li>
-
+                </li>
                 <li class="nav-item">
-                    <a class="nav-link px-lg-3" href="https://docs.google.com/forms/d/e/1FAIpQLSdGk30q3FtbEf9Sbu2A8Vu6q1SxS5ijTmSdlTHWAtKrtcMw7Q/viewform?usp=publish-editor">
-                        <strong>Feedback</strong>
+                    <a class="nav-link px-lg-3" href="{{ url_for('showcase.about') }}">
+                        About
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link px-lg-3" href="{{ url_for('feedback.submit') }}">
+                        Feedback
                     </a>
                 </li>
 
                 {% if current_user.is_authenticated %}
-
                     <li class="nav-item mt-3 mt-lg-0 ms-lg-3">
-                        <a href="{{ url_for('dashboard.dashboard') }}"
-                           class="btn btn-primary w-100">
+                        <a
+                            href="{{ url_for('dashboard.dashboard') }}"
+                            class="btn btn-primary w-100"
+                        >
                             Dashboard
                         </a>
                     </li>
-
                     <li class="nav-item mt-2 mt-lg-0 ms-lg-2">
-                        <a href="{{ url_for('auth.logout') }}"
-                           class="btn btn-outline-danger w-100">
+                        <a
+                            href="{{ url_for('auth.logout') }}"
+                            class="btn btn-outline-danger w-100"
+                        >
                             Logout
                         </a>
                     </li>
-
                 {% else %}
-
                     <li class="nav-item mt-3 mt-lg-0 ms-lg-3">
-                        <a href="{{ url_for('auth.login') }}"
-                           class="btn btn-outline-primary w-100">
+                        <a
+                            href="{{ url_for('auth.login') }}"
+                            class="btn btn-outline-primary w-100"
+                        >
                             Login
                         </a>
                     </li>
-
                     <li class="nav-item mt-2 mt-lg-0 ms-lg-2">
-                        <a href="{{ url_for('auth.register') }}"
-                           class="btn btn-primary w-100">
+                        <a
+                            href="{{ url_for('auth.register') }}"
+                            class="btn btn-primary w-100"
+                        >
                             Get Started
                         </a>
                     </li>
-
                 {% endif %}
-
             </ul>
-
         </div>
-
     </div>
-
 </nav>

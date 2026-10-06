@@ -43,6 +43,7 @@ def permission_required(*permissions):
 
             return view(*args, **kwargs)
 
+        wrapper._rbac_permissions = tuple(permissions)
         return wrapper
 
     return decorator

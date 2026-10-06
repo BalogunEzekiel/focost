@@ -33,7 +33,7 @@
 
             {% for budget in dashboard.budget_warnings %}
 
-            <div class="border rounded-3 p-3 mb-3">
+            <div class="border rounded-3 p-3 mb-3 {{ budget.background_class|default('bg-light') }}">
 
                 <!-- Header -->
 
@@ -57,31 +57,9 @@
                     </div>
 
 
-                    {% if budget.risk == "Critical" %}
-
-                        <span class="badge bg-danger">
-                            Critical
-                        </span>
-
-                    {% elif budget.risk == "High" %}
-
-                        <span class="badge bg-warning text-dark">
-                            High
-                        </span>
-
-                    {% elif budget.risk == "Medium" %}
-
-                        <span class="badge bg-info">
-                            Medium
-                        </span>
-
-                    {% else %}
-
-                        <span class="badge bg-success">
-                            Low
-                        </span>
-
-                    {% endif %}
+                    <span class="badge {{ budget.badge_class|default('bg-secondary') }}">
+                        {{ budget.status }}
+                    </span>
 
                 </div>
 
@@ -187,11 +165,11 @@
 
                 <div
                     class="mt-3 p-2 rounded small
-                    {% if budget.risk == 'Critical' %}
+                    {% if budget.status == 'Exceeded' %}
                         alert alert-danger
-                    {% elif budget.risk == 'High' %}
+                    {% elif budget.status == 'Critical' %}
                         alert alert-warning
-                    {% elif budget.risk == 'Medium' %}
+                    {% elif budget.status == 'Warning' %}
                         alert alert-info
                     {% else %}
                         alert alert-success

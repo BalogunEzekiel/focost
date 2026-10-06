@@ -1,0 +1,255 @@
+{% extends "layouts/public.html" %}
+
+{% block title %}Pricing | FOCOST{% endblock %}
+
+{% block content %}
+
+<style>
+.pricing-page {
+    background:
+        radial-gradient(circle at 85% 5%, rgba(37,99,235,.10), transparent 28%),
+        linear-gradient(180deg, #f8fbff 0%, #ffffff 55%, #f8fafc 100%);
+
+    /* Pull the page closer to the public topbar without excessive overlap */
+    margin-top: -15rem;
+    padding: 0 0 2.5rem;
+}
+
+.pricing-page .pricing-intro {
+    margin-bottom: 2rem !important;
+}
+
+.pricing-page .pricing-intro h1 {
+    margin-top: .75rem !important;
+}
+
+.pricing-page .pricing-intro p {
+    margin-top: .75rem !important;
+}
+
+.pricing-card {
+    border: 1px solid #e7edf6;
+    border-radius: 20px;
+    box-shadow: 0 12px 34px rgba(15,23,42,.06);
+    transition: .25s ease;
+}
+
+.pricing-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 18px 45px rgba(15,23,42,.10);
+}
+
+.pricing-card .card-body {
+    padding: 1.5rem !important;
+}
+
+.pricing-page .pricing-features {
+    margin-top: 1.5rem !important;
+}
+
+.pricing-page .support-features {
+    margin-top: 2rem !important;
+}
+
+.pricing-page .support-card {
+    padding: 1.25rem !important;
+}
+
+@media (max-width: 991.98px) {
+    .pricing-page {
+        margin-top: -2rem;
+    }
+}
+
+@media (max-width: 575.98px) {
+    .pricing-page {
+        margin-top: -1rem;
+        padding-bottom: 1.5rem;
+    }
+
+    .pricing-page .pricing-intro {
+        margin-bottom: 1.5rem !important;
+    }
+
+    .pricing-card .card-body {
+        padding: 1.25rem !important;
+    }
+
+    .pricing-page .support-features {
+        margin-top: 1.5rem !important;
+    }
+}
+</style>
+
+<div class="pricing-page">
+
+```
+<div class="container" style="max-width:1180px;">
+
+    <!-- HEADER -->
+    <div class="text-center pricing-intro">
+
+        <span class="badge bg-primary-subtle text-primary px-3 py-2">
+            FOCOST Plans
+        </span>
+
+        <h1 class="display-5 fw-bold mt-2 mb-2">
+            Simple, transparent pricing
+        </h1>
+
+        <p class="lead text-muted mx-auto mb-0" style="max-width:760px;">
+            Start with a 30-day free trial, then choose the paid plan whose
+            AI and transaction entitlements match your needs. Prices shown
+            here are the current public catalogue.
+        </p>
+
+    </div>
+
+    <!-- PRICING PLANS -->
+    <div class="row g-3 justify-content-center">
+
+        {% for plan in plans %}
+
+        <div class="col-md-6 col-xl-4">
+
+            <div class="pricing-card h-100 bg-white">
+
+                <div class="card-body d-flex flex-column">
+
+                    <h2 class="h4 fw-bold mb-2">
+                        {{ plan.name }}
+                    </h2>
+
+                    <p class="text-muted mb-3">
+                        {{ plan.description or
+                        'FOCOST financial intelligence and AI coaching.' }}
+                    </p>
+
+                    <div class="display-6 fw-bold mb-1">
+                        ₦{{ '{:,.0f}'.format(plan.amount) }}
+                    </div>
+
+                    <div class="text-muted mb-0">
+                        per month
+                    </div>
+
+                    <ul class="list-unstyled small pricing-features mb-4">
+
+                        <li class="mb-2">
+                            <i class="bi bi-check-circle-fill text-success me-2"></i>
+                            {{ '{:,}'.format(plan.ai_token_limit) }}
+                            AI tokens/month
+                        </li>
+
+                        <li class="mb-2">
+                            <i class="bi bi-check-circle-fill text-success me-2"></i>
+                            {{ '{:,}'.format(plan.ai_request_limit) }}
+                            AI requests/month
+                        </li>
+
+                        {% if plan.transaction_limit %}
+                        <li class="mb-2">
+                            <i class="bi bi-check-circle-fill text-success me-2"></i>
+                            Up to {{ '{:,}'.format(plan.transaction_limit) }}
+                            tracked transactions
+                        </li>
+                        {% endif %}
+
+                        {% for key, enabled in plan.entitlements().items() if enabled %}
+                        <li class="mb-2">
+                            <i class="bi bi-check-circle-fill text-success me-2"></i>
+                            {{ key|replace('_',' ')|title }}
+                        </li>
+                        {% endfor %}
+
+                    </ul>
+
+                    <a
+                        href="{{ url_for('auth.register') }}"
+                        class="btn btn-primary mt-auto"
+                    >
+                        Start 30-day trial
+                    </a>
+
+                </div>
+            </div>
+
+        </div>
+
+        {% else %}
+
+        <div class="col-12">
+            <div class="alert alert-warning">
+                Pricing is temporarily unavailable. Please contact support.
+            </div>
+        </div>
+
+        {% endfor %}
+
+    </div>
+
+    <!-- SUPPORT / BILLING INFORMATION -->
+    <div class="row g-3 support-features">
+
+        <div class="col-md-4">
+            <div class="border rounded-4 support-card h-100 bg-white">
+
+                <i class="bi bi-calendar-check text-primary fs-3"></i>
+
+                <h5 class="fw-bold mt-2 mb-2">
+                    30-day trial
+                </h5>
+
+                <p class="text-muted mb-0">
+                    New accounts receive the configured trial period before
+                    a paid plan is required.
+                </p>
+
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="border rounded-4 support-card h-100 bg-white">
+
+                <i class="bi bi-shield-check text-primary fs-3"></i>
+
+                <h5 class="fw-bold mt-2 mb-2">
+                    Secure payment
+                </h5>
+
+                <p class="text-muted mb-0">
+                    Web subscription payments are processed through the
+                    configured payment provider. FOCOST does not request
+                    your full card credentials in its application forms.
+                </p>
+
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="border rounded-4 support-card h-100 bg-white">
+
+                <i class="bi bi-life-preserver text-primary fs-3"></i>
+
+                <h5 class="fw-bold mt-2 mb-2">
+                    Billing questions
+                </h5>
+
+                <p class="text-muted mb-0">
+                    Visit the
+                    <a href="{{ url_for('showcase.support') }}">
+                        Support Centre
+                    </a>
+                    for payment, subscription and account assistance.
+                </p>
+
+            </div>
+        </div>
+
+    </div>
+
+</div>
+```
+
+</div>
+{% endblock %}

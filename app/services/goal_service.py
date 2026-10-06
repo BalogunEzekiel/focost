@@ -3,6 +3,10 @@ from app.extensions import db
 from app.models.goal import Goal
 from app.models.goal_contribution import GoalContribution
 from app.models.expense import Expense
+from app.models.income import Income
+from app.models.notification import Notification
+from datetime import datetime
+from app.utils.timezone import today
 
 class GoalService:
 
@@ -51,8 +55,77 @@ class GoalService:
 
     @staticmethod
     def delete_goal(goal):
+        """
+        Terminate a goal and return every contribution made to it as cash income.
+
+        Goal contributions were real cash outflows when they were made, so
+        their original Goal Contribution Expense records are historical
+        financial transactions and MUST NEVER be deleted or reversed.
+
+        When the goal is terminated, the total contributed amount is recorded
+        as a NEW income transaction dated on the actual termination date.
+        This makes the returned cash flow through FOCOST's normal income
+        source of truth and therefore automatically affects savings, available
+        balance, cashflow, charts, reports and other income-based analysis.
+
+        The goal and its GoalContribution history are deleted. The linked
+        Expense records remain permanently in the expense ledger.
+        """
+        if not goal or not goal.id:
+            return 0.0
+
+        contributions = list(goal.contributions or [])
+        total_return = sum(
+            float(contribution.amount or 0)
+            for contribution in contributions
+        )
+
+        # IMPORTANT: NEVER delete or reverse the original Goal Contribution
+        # expenses.  They are real historical cash-outflow transactions and
+        # must remain permanently recorded in the expense ledger.
+        #
+        # GoalContribution.expense_id is defined with ON DELETE SET NULL, so
+        # when the contribution records are deleted with the goal, the linked
+        # Expense records remain intact and their foreign-key link is cleared
+        # by the database.
+
+        # Remove goal-related notifications so deleted goal history does not
+        # continue appearing in the notification centre.
+        if goal.id:
+            goal_notification_prefixes = (
+                f"GOAL_COMPLETED_{goal.id}",
+                f"GOAL_DUE_{goal.id}",
+                f"GOAL_BEHIND_{goal.id}",
+            )
+            Notification.query.filter(
+                Notification.user_id == goal.user_id,
+                Notification.unique_key.in_(goal_notification_prefixes),
+            ).delete(synchronize_session=False)
+
+        # Restore the contributed cash at the moment of termination.  A goal
+        # with no contributions simply disappears without creating income.
+        if total_return > 0:
+            termination_date = today()
+            db.session.add(
+                Income(
+                    user_id=goal.user_id,
+                    source=goal.title,
+                    category="Goal Termination Return",
+                    amount=total_return,
+                    received_date=termination_date,
+                    notes=(
+                        f"Returned contributions from terminated goal: "
+                        f"{goal.title}"
+                    ),
+                    recurring=False,
+                    transaction_class="goal_termination",
+                )
+            )
+
         db.session.delete(goal)
         db.session.commit()
+
+        return total_return
 
     @staticmethod
     def add_contribution(form, goal, user_id):

@@ -8,6 +8,25 @@ Dashboard
 
 <div class="container-fluid px-2 px-md-3 px-lg-4">
 
+    {% set flyers = active_announcements | selectattr("flyer") | list %}
+    {% if flyers %}
+    <div class="row g-3 mb-4">
+        {% for announcement in flyers[:3] %}
+        <div class="col-md-6 col-xl-4">
+            <div class="card border-0 shadow-sm h-100 overflow-hidden">
+                {% if announcement.image_url %}<img src="{{ announcement.image_url }}" class="card-img-top" alt="{{ announcement.title }}" style="max-height:180px;object-fit:cover;">{% endif %}
+                <div class="card-body">
+                    <span class="badge text-bg-primary mb-2">{{ announcement.announcement_type|title }}</span>
+                    <h5 class="fw-bold">{{ announcement.title }}</h5>
+                    <p class="text-muted small">{{ announcement.message }}</p>
+                    {% if announcement.action_url %}<a href="{{ announcement.action_url }}" class="btn btn-sm btn-outline-primary">Learn more</a>{% endif %}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
     {% include "includes/dashboard/_summary.html" %}
 
     {% include "includes/dashboard/_kpis.html" %}

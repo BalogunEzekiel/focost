@@ -1,4 +1,10 @@
+####################################################################################################
+# FILE: app/services/ai_service.py
+####################################################################################################
+
 from datetime import date, timedelta
+
+from app.utils.timezone import today
 import calendar
 import json
 import re
@@ -6,6 +12,7 @@ import time
 import uuid
 
 from flask import session
+from app.extensions import db
 
 from app.services.dashboard_service import DashboardService
 from app.services.llm_service import LLMService
@@ -20,14 +27,87 @@ class AIService:
     Flask-session state only. Financial records are never stored in session.
     """
 
-    MAX_HISTORY_MESSAGES = 4
-    MAX_TRANSACTION_CONTEXT = 30
-    MAX_MONTHLY_HISTORY = 12
+    # Visible conversation history is retained for the current session.
+    # The AI receives only a smaller recent window to control token usage.
+    MAX_VISIBLE_HISTORY_MESSAGES = 100
+    MAX_AI_HISTORY_MESSAGES = 6
+    MAX_TRANSACTION_CONTEXT = 12
+    MAX_MONTHLY_HISTORY = 6
+
+    @staticmethod
+    def _is_explanation_followup(message):
+        text = re.sub(
+            r"\s+",
+            " ",
+            message.lower().strip(),
+        )
+
+        explanation_patterns = (
+            r"\bbreak\s*(it|them)?\s*down\b",
+            r"\bbreakdown\b",
+            r"\bbreak\s+this\s+down\b",
+            r"\bhow\s+did\s+you\s+(calculate|arrive|work)\b",
+            r"\bhow\s+did\s+you\s+get\b",
+            r"\bhow\s+was\s+this\s+calculated\b",
+            r"\bhow\s+was\s+that\s+calculated\b",
+            r"\bwhere\s+did\s+that\s+figure\s+come\s+from\b",
+            r"\bwhere\s+did\s+this\s+figure\s+come\s+from\b",
+            r"\bexplain\s+(that|this|it|the figure)\b",
+            r"\bshow\s+(me\s+)?the\s+calculation\b",
+            r"\bshow\s+(me\s+)?how\b",
+            r"\bwhy\s+is\s+(that|this)\b",
+            r"\bwhat\s+makes\s+(that|this)\b",
+        )
+
+        return any(
+            re.search(
+                pattern,
+                text,
+            )
+            for pattern in explanation_patterns
+        )
+
+    @staticmethod
+    def _is_contextual_followup(message):
+        """
+        Detect short conversational follow-ups that should inherit
+        the previous financial subject.
+        """
+        text = re.sub(
+            r"\s+",
+            " ",
+            message.lower().strip(),
+        )
+
+        return text in {
+            "yes",
+            "yeah",
+            "yep",
+            "yup",
+            "okay",
+            "ok",
+            "sure",
+            "go ahead",
+            "continue",
+            "more",
+            "details",
+            "detail",
+            "for what",
+            "what for",
+            "what was it for",
+            "which ones",
+            "which one",
+            "what were they",
+            "what are they",
+            "how so",
+            "why",
+            "why?",
+        }
 
     @staticmethod
     def _period_from_message(message):
         text = re.sub(r"\s+", " ", message.lower().strip())
-        today = date.today()
+        today_date = today()
 
         months = {
             name: number
@@ -85,7 +165,7 @@ class AIService:
 
             for match in month_matches[:2]:
                 month = months[match.group(1)]
-                year = int(match.group(2) or today.year)
+                year = int(match.group(2) or today_date.year)
                 parsed.append((year, month))
 
             if len(parsed) >= 2 and parsed[1] >= parsed[0]:
@@ -129,27 +209,30 @@ class AIService:
                 pass
 
         if "yesterday" in text:
-            d = today - timedelta(days=1)
+            d = today_date - timedelta(days=1)
             return d, d
 
         if "last week" in text:
-            end = today - timedelta(days=today.weekday() + 1)
+            end = today_date - timedelta(days=today_date.weekday() + 1)
             return end - timedelta(days=6), end
 
         if "this week" in text:
-            return today - timedelta(days=today.weekday()), today
+            return (
+                today_date - timedelta(days=today_date.weekday()),
+                today_date,
+            )
 
         if "last month" in text:
-            first = today.replace(day=1)
+            first = today_date.replace(day=1)
             end = first - timedelta(days=1)
             return end.replace(day=1), end
 
         if "this month" in text:
-            return today.replace(day=1), today
+            return today_date.replace(day=1), today_date
 
         if "last quarter" in text:
-            q = (today.month - 1) // 3
-            year = today.year
+            q = (today_date.month - 1) // 3
+            year = today_date.year
 
             if q == 0:
                 q, year = 4, year - 1
@@ -164,23 +247,23 @@ class AIService:
             )
 
         if "this quarter" in text:
-            q = (today.month - 1) // 3 + 1
+            q = (today_date.month - 1) // 3 + 1
 
             return (
-                date(today.year, (q - 1) * 3 + 1, 1),
-                today,
+                date(today_date.year, (q - 1) * 3 + 1, 1),
+                today_date,
             )
 
         if "last year" in text:
             return (
-                date(today.year - 1, 1, 1),
-                date(today.year - 1, 12, 31),
+                date(today_date.year - 1, 1, 1),
+                date(today_date.year - 1, 12, 31),
             )
 
         if "this year" in text:
-            return date(today.year, 1, 1), today
+            return date(today_date.year, 1, 1), today_date
 
-        return today.replace(day=1), today
+        return today_date.replace(day=1), today_date
 
     @staticmethod
     def _is_explicit_period(message):
@@ -402,7 +485,13 @@ class AIService:
         return None
 
     @staticmethod
-    def _get_session_history():
+    def _get_session_history(limit=None):
+        """
+        Return valid conversation history.
+
+        The complete session history is retained for the UI.
+        A smaller limit can be requested when preparing context for the LLM.
+        """
         history = session.get("ai_history", [])
 
         if not isinstance(history, list):
@@ -410,7 +499,7 @@ class AIService:
 
         valid = []
 
-        for item in history[-AIService.MAX_HISTORY_MESSAGES:]:
+        for item in history:
             if (
                 isinstance(item, dict)
                 and item.get("role") in {"user", "assistant"}
@@ -421,11 +510,22 @@ class AIService:
                     "content": item["content"],
                 })
 
+        if limit is not None:
+            return valid[-limit:]
+
         return valid
 
     @staticmethod
     def _save_session_history(history):
-        session["ai_history"] = history[-AIService.MAX_HISTORY_MESSAGES:]
+        """
+        Preserve the complete visible conversation for the current session.
+
+        AI context is trimmed separately when sending a request to the LLM.
+        """
+        session["ai_history"] = history[
+            -AIService.MAX_VISIBLE_HISTORY_MESSAGES:
+        ]
+
         session.modified = True
 
     @staticmethod
@@ -442,6 +542,14 @@ class AIService:
         stored here.
         """
         current_intent = AIService._classify_intent(message)
+        contextual_followup = (
+            AIService._is_contextual_followup(message)
+        )
+
+        explanation_followup = (
+            AIService._is_explanation_followup(message)
+        )
+
         explicit_period = AIService._is_explicit_period(message)
         month_only = AIService._is_month_only_message(message)
 
@@ -470,6 +578,16 @@ class AIService:
             else ""
         )
 
+        # Short conversational follow-ups such as:
+        # "for what?", "yes", "which ones?", and "why?"
+        # must inherit the previous financial subject.
+        if (
+            contextual_followup
+            and previous_intent
+            and previous_intent != "summary"
+        ):
+            current_intent = previous_intent
+
         if previous_user_message:
             previous_detected_intent = AIService._classify_intent(
                 previous_user_message
@@ -489,6 +607,17 @@ class AIService:
 
             if previous_message_focus:
                 previous_focus = previous_message_focus
+
+        # An explanation follow-up such as:
+        # "why?", "explain that", "how did you arrive at that?"
+        # should remain on the previous financial subject instead of being
+        # reclassified as a generic summary/advice intent.
+        if (
+            explanation_followup
+            and previous_intent
+            and previous_intent != "summary"
+        ):
+            current_intent = previous_intent
 
         # "What about income?" / "What about expenses?"
         # inherit the previous period.
@@ -563,109 +692,211 @@ class AIService:
             history,
         )
 
+        # DashboardService is the single authoritative financial-data source.
+        # All required financial context should be supplied here rather than
+        # being fetched again below.
         context = DashboardService.financial_context(
-            user_id=user_id,
-            start=start,
-            end=end,
+            user_id,
+            start,
+            end,
             intent=intent,
             focus=focus,
             message=message,
             transaction_limit=AIService.MAX_TRANSACTION_CONTEXT,
         )
 
-        context["today"] = date.today().isoformat()
+        context["today"] = today().isoformat()
         context["intent"] = intent
 
         if focus:
             context["focus"] = focus
 
-        if intent == "comparison":
-            context["monthly_history"] = DashboardService.monthly_series(
-                user_id,
-                months=AIService.MAX_MONTHLY_HISTORY,
-            )
-
-        elif intent == "forecast":
-            user_context = DashboardService._ai_user_context(user_id)
-
-            context["user"] = user_context
-            context["currency"] = user_context.get("currency", "NGN")
-
-            context["monthly_history"] = DashboardService.monthly_series(
-                user_id,
-                months=AIService.MAX_MONTHLY_HISTORY,
-            )
-
-            context["advanced_forecast"] = (
-                DashboardService.advanced_forecast(
-                    user_id,
-                    months_ahead=3,
-                )
-            )
-
-            context["month_end_forecast"] = (
-                DashboardService.month_end_forecast(user_id)
-            )
-
-            context["category_forecasts"] = (
-                DashboardService.category_forecasts(
-                    user_id,
-                    months=3,
-                )
-            )
-
-        elif intent in {"health", "advice"}:
-            context["financial_health"] = (
-                DashboardService.build_financial_health(user_id)
-            )
-
-        if intent == "advice":
-            context["monthly_history"] = DashboardService.monthly_series(
-                user_id,
-                months=6,
-            )
-
         return (
-            "You are FOCOST AI, a concise personal financial assistant.\n\n"
+            "You are FOCOST AI, a concise but highly capable personal financial assistant.\n\n"
+
+            "CORE PRINCIPLE:\n"
+            "DashboardService is the authoritative financial calculation engine.\n"
+            "The supplied AUTHORITATIVE DATABASE CONTEXT and its "
+            "`calculation_context` are the source of truth.\n"
+            "You must explain DashboardService's calculations and records rather "
+            "than inventing your own figures or claiming that information is "
+            "unavailable when the supplied context contains it.\n\n"
 
             "STRICT RESPONSE RULES:\n"
+
             "- Answer the user's question directly.\n"
-            "- Use clear, simple Nigerian English and maintain a friendly, warm, and approachable tone.\n"
-            "- Default to 1-3 short sentences.\n"
-            "- Use at most 3 brief bullet points when necessary.\n"
+
+            "- Use clear, simple Nigerian English and maintain a friendly, warm, "
+            "and approachable tone.\n"
+
+            "- Default to the shortest useful answer. For a simple lookup, answer "
+            "with one sentence whenever possible. Do not add explanations, methodology, "
+            "tables, classifications, or extra context unless the user asks for them.\n"
+
+            "- For simple lookups such as 'income', 'expenses', 'savings', 'balance', "
+            "or 'goals', give the requested figure/summary directly. Do not add a table, "
+            "methodology, raw records, or explanation unless the user asks for a breakdown.\n"
+
+            "- For a simple period summary such as 'last month', give only the requested "
+            "key figures. Do not automatically provide calculation methodology.\n"
+
+            "- Use tables only when the user explicitly asks for a table, detailed breakdown, "
+            "or when a table is clearly necessary to answer the request.\n"
+
+            "- Become more detailed only when the user asks 'how', 'why', 'breakdown', "
+            "'explain', 'where did this come from', 'how did you calculate', 'show me', "
+            "or asks for supporting details.\n"
+
             "- Never repeat the user's question.\n"
-            "- Never invent financial figures, transactions, categories, "
-            "merchants, dates, balances, or account facts.\n"
+
+            "- Never invent financial figures, transactions, categories, merchants, "
+            "dates, balances, formulas, or account facts.\n"
+
             "- Use only the supplied database-derived context.\n"
-            "- Distinguish historical facts, calculations, forecasts, and "
-            "recommendations.\n"
-            "- Forecasts are estimates, not guarantees.\n"
-            "- Recommendations must be grounded in the user's actual "
-            "financial data supplied in the context.\n"
+
+            "- Treat `calculation_context` as the authoritative explanation of "
+            "how DashboardService-derived figures were calculated.\n"
+
+            "- When a figure is questioned, explain the exact calculation using "
+            "the supplied calculation_context.\n"
+
+            "- When the user asks for a breakdown, use the actual underlying "
+            "transaction records, categories, classifications, and calculation "
+            "details supplied in the context.\n"
+
+            "- For expense breakdowns, include Goal Contributions and Investment "
+            "Funding when they are recorded as expenses. Do not hide or merge "
+            "those transactions into a generic expense category.\n"
+
+            "- A Goal Contribution is a legitimate expense transaction for "
+            "financial reporting and expense analysis. If multiple Goal "
+            "Contributions make up a requested expense total, identify the "
+            "individual contribution amounts when those records are supplied.\n"
+
+            "- For example, if today's expense total is ₦50,000 and the supplied "
+            "records contain Goal Contributions of ₦45,000 and ₦5,000, answer "
+            "that the ₦50,000 consists of those two Goal Contributions. Do not "
+            "invent merchants or categories.\n"
+
+            "- Never respond that you do not have a category breakdown, transaction "
+            "breakdown, calculation explanation, or supporting information if the "
+            "supplied context contains those details.\n"
+
+            "- If a total can be reconciled from supplied records, explicitly "
+            "reconcile it.\n"
+
+            "- When explaining a total, show the relevant components and the "
+            "relationship between them.\n"
+
+            "- When appropriate, use a compact equation such as:\n"
+            "  Total expenses = Expense A + Expense B + Expense C\n"
+
+            "- If the user asks why two dashboard figures differ, explain the "
+            "different definitions, classifications, periods, or calculation "
+            "rules supplied in the context.\n"
+
+            "- Distinguish historical facts, calculated values, forecasts, "
+            "recommendations, and interpretations.\n"
+
+            "- Forecasts are estimates based on the supplied DashboardService "
+            "forecast methodology, not guarantees.\n"
+
+            "- When explaining a forecast, identify the current-period inputs, "
+            "calculation method, projected components, and resulting forecast "
+            "where those details are supplied.\n"
+
+            "- If a forecast contains projected income, projected expenses, and "
+            "projected savings, explain how the projected savings relates to the "
+            "projected income and projected expenses.\n"
+
+            "- If category forecasts are supplied, use them to explain the "
+            "category-level contribution to the forecast.\n"
+
+            "- Recommendations must be grounded in the user's actual financial "
+            "data and DashboardService rules.\n"
+
             "- Do not introduce arbitrary financial thresholds, percentages, "
             "ratios, savings targets, expense caps, or budgeting rules.\n"
+
             "- Do not recommend a percentage-based target unless that percentage "
             "is explicitly present in the supplied financial context or the user "
             "explicitly asks for a general percentage-based guideline.\n"
+
             "- Do not invent a weekly, monthly, or category spending limit.\n"
+
             "- Prefer concrete actions derived directly from the user's actual "
             "income, expenses, savings, goals, budgets, cash flow, and trends.\n"
-            "- Do not promise or predict a specific financial outcome unless it "
+
+            "- Never promise or predict a specific financial outcome unless it "
             "can be directly calculated from the supplied data.\n"
-            "- Prefer recommendations based on the user's actual income, "
-            "expenses, savings, goals, budgets, cash flow, and trends.\n"
-            "- If the supplied context does not contain the requested "
-            "information, say so briefly.\n"
-            "- Distinguish operating expenses from investments and goal "
-            "contributions when the context provides transaction_class.\n"
+
+            "- Distinguish operating expenses from investment funding, liquidation "
+            "proceeds, and goal contributions when "
+            "the context provides transaction_class or equivalent classification.\n"
+
+            "- Do not silently treat an investment funding transaction as an "
+            "ordinary operating expense when DashboardService identifies it as "
+            "investment funding.\n"
+
+            "- Do not silently treat investment liquidation proceeds as ordinary "
+            "operating income when the supplied classification identifies their "
+            "investment origin. Investment valuation gains/losses are non-cash "
+            "and are not income.\n"
+
             "- Use the user's configured currency from the database-derived context.\n"
+
             "- Treat the configured currency as authoritative.\n"
-            "- Never assume USD or use \"$\" unless the configured currency is USD.\n"
-            "- If the configured currency is NGN, display monetary amounts using \"₦\".\n"
-            "- Never convert financial amounts between currencies unless the user explicitly requests conversion.\n"
+
+            "- Never assume USD or use '$' unless the configured currency is USD.\n"
+
+            "- If the configured currency is NGN, display monetary amounts using '₦'.\n"
+
+            "- Never convert financial amounts between currencies unless the user "
+            "explicitly requests conversion.\n"
+
             "- Never invent or substitute a currency symbol.\n"
-            "- Keep the answer concise unless the user explicitly asks "
-            "for detail.\n\n"
+
+            "- Keep simple answers concise, but provide sufficient evidence and "
+            "calculation detail whenever the user asks for an explanation or "
+            "breakdown.\n\n"
+
+            "CONCISE RESPONSE STYLE:\n"
+
+            "For a direct metric request, prefer: 'Income for September: ₦270,000.' "
+            "If useful, add only the key components in one short sentence. Do not repeat "
+            "database classifications or internal service names unless the user asks why.\n"
+
+            "CALCULATION EXPLANATION PROTOCOL:\n"
+
+            "When the user asks how a DashboardService figure was obtained:\n"
+
+            "1. Identify the figure being discussed.\n"
+            "2. Identify its period or point-in-time definition.\n"
+            "3. Identify the source records or components supplied in context.\n"
+            "4. Identify the DashboardService formula or rule supplied in "
+            "calculation_context.\n"
+            "5. Show the calculation using the actual supplied numbers.\n"
+            "6. State the resulting figure.\n"
+            "7. If useful, explain what the result means for the user's finances.\n\n"
+
+            "BREAKDOWN PROTOCOL:\n"
+
+            "If the user asks for an expense, income, savings, balance, investment, "
+            "budget, goal, or forecast breakdown, do not merely repeat the total. "
+            "Break the figure into the relevant supplied components.\n\n"
+
+            "FORECAST EXPLANATION PROTOCOL:\n"
+
+            "If the user asks how a forecast was produced, explain the actual "
+            "DashboardService methodology supplied in calculation_context. "
+            "Do not replace that methodology with a generic forecasting method.\n\n"
+
+            "CONTEXT AVAILABILITY RULE:\n"
+
+            "If the requested information is genuinely absent from the supplied "
+            "context, say so briefly and specifically. Do not make a generic claim "
+            "that information is unavailable when related records or calculations "
+            "are present.\n\n"
 
             "AUTHORITATIVE DATABASE CONTEXT:\n"
             + json.dumps(
@@ -677,11 +908,31 @@ class AIService:
 
     @staticmethod
     def chat(user_id, message):
-        history = AIService._get_session_history()
+        from app.models.user import User
+        user = db.session.get(User, user_id)
+        if user and user.role_slug in {"admin", "super_admin"}:
+            return {
+                "success": False,
+                "code": "AI_ADMIN_FORBIDDEN",
+                "message": "FOCOST AI is available only to normal users.",
+            }
+
+        # Full history is retained for the current session/UI.
+        full_history = AIService._get_session_history()
+
+        # Only a small recent window is sent to the LLM
+        # to control token usage.
+        ai_history = AIService._get_session_history(
+            limit=AIService.MAX_AI_HISTORY_MESSAGES
+        )
 
         # Casual messages do not consume AI usage.
         if AIService._is_casual_message(message):
-            text = re.sub(r"\s+", " ", message.lower().strip())
+            text = re.sub(
+                r"\s+",
+                " ",
+                message.lower().strip(),
+            )
 
             casual_responses = {
                 "hi": "Hey!",
@@ -712,7 +963,7 @@ class AIService:
             )
 
             AIService._save_session_history(
-                history + [
+                full_history + [
                     {
                         "role": "user",
                         "content": message,
@@ -740,19 +991,47 @@ class AIService:
                 "message": reason,
             }
 
+        # Use the full session history for context resolution so that
+        # conversational follow-ups can inherit the previous subject.
         system_prompt = AIService.build_system_prompt(
             user_id,
             message,
-            history=history,
+            history=full_history,
         )
 
         request_id = uuid.uuid4().hex
         started = time.perf_counter()
 
+        detailed_request = (
+            AIService._is_explanation_followup(message)
+            or any(
+                phrase in message.lower()
+                for phrase in (
+                    "breakdown",
+                    "break it down",
+                    "show me",
+                    "explain",
+                    "how did",
+                    "why did",
+                    "calculate",
+                )
+            )
+        )
+
         result = LLMService().chat(
             user_message=message,
             system_prompt=system_prompt,
-            history=history,
+
+            # Only send the limited recent history to the LLM.
+            history=ai_history,
+
+            # Short responses by default.
+            # More room only when the user explicitly requests detail.
+            max_tokens=(
+                320
+                if detailed_request
+                else 120
+            ),
         )
 
         duration_ms = int(
@@ -770,7 +1049,7 @@ class AIService:
 
         if result.get("success"):
             AIService._save_session_history(
-                history + [
+                full_history + [
                     {
                         "role": "user",
                         "content": message,

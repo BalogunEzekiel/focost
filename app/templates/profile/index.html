@@ -13,5 +13,6 @@
 <div class="col-md-6"><label class="form-label">Occupation</label><input class="form-control" name="occupation" value="{{ current_user.occupation or '' }}"></div>
 <div class="col-md-6"><label class="form-label">Profile picture</label><input class="form-control" type="file" name="avatar" accept="image/png,image/jpeg,image/webp"></div>
 </div><button class="btn btn-primary mt-4">Save Profile</button></form>
-</div></div></div></div></div>
+</div></div></div>
+<div class="col-xl-8 mt-4"><div class="card border-danger shadow-sm"><div class="card-body p-4"><h5 class="text-danger fw-bold">Delete account</h5><p class="text-muted">This permanently removes your account and associated personal data, subject to records that must be retained by law.</p><form method="POST" action="{{ url_for('account.delete_account') }}" class="row g-3"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><div class="col-md-6"><input type="password" name="password" class="form-control" placeholder="Current password" required></div><div class="col-md-6"><input type="text" name="confirmation" class="form-control" placeholder="Type DELETE" required></div><div class="col-12"><button class="btn btn-outline-danger" onclick="return confirm('Permanently delete this account and its personal data?')">Delete my account</button></div></form></div></div></div></div>
 {% endblock %}

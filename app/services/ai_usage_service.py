@@ -1,10 +1,12 @@
-from datetime import datetime
+from datetime import timedelta
 import os
+
 from sqlalchemy import func
 
 from app.extensions import db
 from app.models.ai_usage import AIUsage
 from app.subscriptions.service import SubscriptionService
+from app.utils.timezone import as_utc, utc_now
 
 
 class AIUsageService:
@@ -13,25 +15,54 @@ class AIUsageService:
     @staticmethod
     def current_period(user_id):
         sub = SubscriptionService.current(user_id)
-        now = datetime.utcnow()
+        now = utc_now()
 
         if not sub:
-            return now.replace(day=1, hour=0, minute=0, second=0, microsecond=0), None
+            return (
+                now.replace(
+                    day=1,
+                    hour=0,
+                    minute=0,
+                    second=0,
+                    microsecond=0,
+                ),
+                None,
+            )
 
         if sub.is_trial:
-            start = sub.trial_started_at or sub.created_at or now
+            start = (
+                sub.trial_started_at
+                or sub.created_at
+                or now
+            )
             end = sub.trial_ends_at
         else:
-            start = sub.current_period_start or sub.started_at or sub.created_at or now
+            start = (
+                sub.current_period_start
+                or sub.started_at
+                or sub.created_at
+                or now
+            )
             end = sub.current_period_end
 
-        return start, end
+        return (
+            as_utc(start),
+            as_utc(end) if end else None,
+        )
 
     @staticmethod
     def period_start(user_id=None):
         if user_id is None:
-            now = datetime.utcnow()
-            return now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+            now = utc_now()
+
+            return now.replace(
+                day=1,
+                hour=0,
+                minute=0,
+                second=0,
+                microsecond=0,
+            )
+
         return AIUsageService.current_period(user_id)[0]
 
     @staticmethod
@@ -56,7 +87,9 @@ class AIUsageService:
         )
 
         if end:
-            query = query.filter(AIUsage.created_at < end)
+            query = query.filter(
+                AIUsage.created_at < end
+            )
 
         row = query.one()
         ent = SubscriptionService.entitlements(user_id)
@@ -67,8 +100,16 @@ class AIUsageService:
         request_limit = ent.get("ai_request_limit")
 
         return {
-            "period_start": start.isoformat() if start else None,
-            "period_end": end.isoformat() if end else None,
+            "period_start": (
+                start.isoformat()
+                if start
+                else None
+            ),
+            "period_end": (
+                end.isoformat()
+                if end
+                else None
+            ),
             "billing_status": ent.get("status"),
             "plan_name": ent.get("plan_name"),
             "input_tokens": int(row[0] or 0),
@@ -77,15 +118,30 @@ class AIUsageService:
             "requests": requests,
             "token_limit": token_limit,
             "request_limit": request_limit,
-            "remaining_tokens": None if token_limit is None else max(token_limit - used, 0),
-            "remaining_requests": None if request_limit is None else max(request_limit - requests, 0),
-            "token_exceeded": token_limit is not None and used >= token_limit,
-            "request_exceeded": request_limit is not None and requests >= request_limit,
+            "remaining_tokens": (
+                None
+                if token_limit is None
+                else max(token_limit - used, 0)
+            ),
+            "remaining_requests": (
+                None
+                if request_limit is None
+                else max(request_limit - requests, 0)
+            ),
+            "token_exceeded": (
+                token_limit is not None
+                and used >= token_limit
+            ),
+            "request_exceeded": (
+                request_limit is not None
+                and requests >= request_limit
+            ),
         }
 
     @staticmethod
     def can_consume(user_id):
         ent = SubscriptionService.entitlements(user_id)
+
         if not ent.get("active"):
             return False, "Your trial or subscription is not active."
 
@@ -101,20 +157,61 @@ class AIUsageService:
 
     @staticmethod
     def record(user_id, request_id, result, duration_ms):
-        input_rate = float(os.getenv("FOCOST_AI_INPUT_COST_PER_1M_USD", "0"))
-        output_rate = float(os.getenv("FOCOST_AI_OUTPUT_COST_PER_1M_USD", "0"))
+        input_rate = float(
+            os.getenv(
+                "FOCOST_AI_INPUT_COST_PER_1M_USD",
+                "0",
+            )
+        )
 
-        input_tokens = int(result.get("usage", {}).get("input_tokens", 0) or 0)
-        output_tokens = int(result.get("usage", {}).get("output_tokens", 0) or 0)
-        total_tokens = int(result.get("usage", {}).get("total_tokens", 0) or 0)
+        output_rate = float(
+            os.getenv(
+                "FOCOST_AI_OUTPUT_COST_PER_1M_USD",
+                "0",
+            )
+        )
+
+        input_tokens = int(
+            result.get("usage", {}).get(
+                "input_tokens",
+                0,
+            )
+            or 0
+        )
+
+        output_tokens = int(
+            result.get("usage", {}).get(
+                "output_tokens",
+                0,
+            )
+            or 0
+        )
+
+        total_tokens = int(
+            result.get("usage", {}).get(
+                "total_tokens",
+                0,
+            )
+            or 0
+        )
 
         usd = (
             (input_tokens / 1_000_000) * input_rate
             + (output_tokens / 1_000_000) * output_rate
         )
 
-        usd_ngn = float(os.getenv("FOCOST_USD_NGN_RATE", "0"))
-        estimated_cost_minor = round(usd * usd_ngn * 100) if usd_ngn else 0
+        usd_ngn = float(
+            os.getenv(
+                "FOCOST_USD_NGN_RATE",
+                "0",
+            )
+        )
+
+        estimated_cost_minor = (
+            round(usd * usd_ngn * 100)
+            if usd_ngn
+            else 0
+        )
 
         usage = AIUsage(
             user_id=user_id,
@@ -126,11 +223,22 @@ class AIUsageService:
             total_tokens=total_tokens,
             duration_ms=duration_ms,
             estimated_cost_minor=estimated_cost_minor,
-            status="success" if result.get("success") else "failed",
-            error_message=result.get("message") if not result.get("success") else None,
-            billing_period_start=AIUsageService.current_period(user_id)[0],
+            status=(
+                "success"
+                if result.get("success")
+                else "failed"
+            ),
+            error_message=(
+                result.get("message")
+                if not result.get("success")
+                else None
+            ),
+            billing_period_start=(
+                AIUsageService.current_period(user_id)[0]
+            ),
         )
 
         db.session.add(usage)
         db.session.commit()
+
         return usage

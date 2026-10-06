@@ -248,7 +248,7 @@ Goals
 
                     {% for goal in goals %}
 
-                    <tr>
+                    <tr class="{{ goal.background_class }}">
 
                         <td>
 
@@ -289,19 +289,7 @@ Goals
                             <div class="progress" style="height:15px;">
 
                                 <div
-                                    class="progress-bar
-
-                                    {% if goal.percentage_completed >= 100 %}
-                                        bg-success
-                                    {% elif goal.percentage_completed >= 75 %}
-                                        bg-info
-                                    {% elif goal.percentage_completed >= 40 %}
-                                        bg-warning
-                                    {% else %}
-                                        bg-danger
-                                    {% endif %}
-
-                                    "
+                                    class="progress-bar {{ goal.progress_color }}"
                                     role="progressbar"
                                     style="width: {{ goal.percentage_completed }}%;"
                                     aria-valuenow="{{ goal.percentage_completed }}"
@@ -318,39 +306,11 @@ Goals
 
                         <td>
 
-                            {% if goal.progress_status=="Completed" %}
+                            <span class="badge {{ goal.badge_class }}">
 
-                            <span class="badge bg-success">
-
-                                Completed
+                                {{ goal.progress_status }}
 
                             </span>
-
-                            {% elif goal.progress_status=="Overdue" %}
-
-                            <span class="badge bg-danger">
-
-                                Overdue
-
-                            </span>
-
-                            {% elif goal.progress_status=="On Track" %}
-
-                            <span class="badge bg-info">
-
-                                On Track
-
-                            </span>
-
-                            {% else %}
-
-                            <span class="badge bg-warning text-dark">
-
-                                In Progress
-
-                            </span>
-
-                            {% endif %}
 
                         </td>
 

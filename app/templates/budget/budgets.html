@@ -247,7 +247,7 @@ Budgets
 
                     {% for budget in budgets %}
 
-                    <tr>
+                    <tr class="{{ budget.background_class }}">
 
                         <td>{{ budget.category }}</td>
 
@@ -268,16 +268,9 @@ Budgets
 
                             <div class="progress mb-3" style="height:15px;">
 
-                                <div class="progress-bar
-                                    {% if budget.percentage_used >= 100 %}
-                                        bg-danger
-                                    {% elif budget.percentage_used >= 80 %}
-                                        bg-warning
-                                    {% else %}
-                                        bg-success
-                                    {% endif %}"
+                                <div class="progress-bar {{ budget.progress_color }}"
                                     role="progressbar"
-                                    style="width: {{ budget.percentage_used }}%;">
+                                    style="width: {{ [budget.percentage_used, 100]|min }}%;">
 
                                     {{ budget.percentage_used }}%
 
@@ -291,31 +284,11 @@ Budgets
 
                         <td>
 
-                            {% if budget.status == "Healthy" %}
+                            <span class="badge {{ budget.badge_class }}">
 
-                                <span class="badge bg-success">
+                                {{ budget.status }}
 
-                                    Healthy
-
-                                </span>
-
-                            {% elif budget.status == "Warning" %}
-
-                                <span class="badge bg-warning text-dark">
-
-                                    Warning
-
-                                </span>
-
-                            {% else %}
-
-                                <span class="badge bg-danger">
-
-                                    Exceeded
-
-                                </span>
-
-                            {% endif %}
+                            </span>
 
                         </td>
 

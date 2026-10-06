@@ -55,6 +55,9 @@ class Expense(BaseModel):
 
     # Accounting classification for cash outflows that are not operating expenses.
     # Values: expense, investment, goal_contribution.
+    #
+    # Investment valuation/revaluation is non-cash and must never create
+    # an Expense record.
     transaction_class = db.Column(
         db.String(30),
         nullable=False,

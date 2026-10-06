@@ -1,4 +1,5 @@
 from datetime import date, datetime
+from app.utils.timezone import today
 from sqlalchemy import func, extract, or_
 
 from app.extensions import db
@@ -6,8 +7,9 @@ from app.models.income import Income
 from app.models.expense import Expense
 from app.models.budget import Budget
 from app.models.goal import Goal
-from app.models.asset import Asset
 from app.models.investment_event import InvestmentEvent
+from app.models.asset import Asset
+from app.services.dashboard_service import DashboardService
 
 
 class ReportService:
@@ -25,7 +27,7 @@ class ReportService:
             return None
 
         if isinstance(value, datetime):
-            return value.date()
+            return value
 
         if isinstance(value, date):
             return value
@@ -132,6 +134,45 @@ class ReportService:
         savings = income_total - expense_total
         savings_rate = (savings / income_total * 100) if income_total else 0
 
+        # ------------------------------------------------------
+        # Recent Transactions
+        # ------------------------------------------------------
+        # Income and expenses are fetched separately for the report
+        # calculations above.  Recent Transactions must, however, be
+        # presented as ONE chronological stream.  Otherwise the template
+        # can consume the five income slots before it ever reaches an
+        # investment-funding expense.
+        #
+        # Investment funding is a real Expense (transaction_class="investment")
+        # and therefore belongs in this stream.  Non-cash investment
+        # valuation events are not Income/Expense records and are not added.
+        recent_transactions = []
+
+        for item in incomes:
+            recent_transactions.append({
+                "id": item.id,
+                "date": item.received_date,
+                "type": "Income",
+                "category": item.category,
+                "description": item.source,
+                "amount": float(item.amount or 0),
+            })
+
+        for item in expenses:
+            recent_transactions.append({
+                "id": item.id,
+                "date": item.expense_date,
+                "type": "Expense",
+                "category": item.category,
+                "description": item.merchant,
+                "amount": float(item.amount or 0),
+            })
+
+        recent_transactions.sort(
+            key=lambda row: (row["date"], row["id"]),
+            reverse=True,
+        )
+
         # Financial-position components that are intentionally kept separate
         # from ordinary operating income/expense totals.
         investment_funding = sum(float(x.amount or 0) for x in Expense.query.filter(
@@ -144,16 +185,35 @@ class ReportService:
             Expense.expense_date >= ReportService._date(start_date) if ReportService._date(start_date) else True,
             Expense.expense_date <= ReportService._date(end_date) if ReportService._date(end_date) else True,
         ).all())
-        investment_losses = sum(float(x.amount or 0) for x in Expense.query.filter(
-            Expense.user_id == user_id, Expense.transaction_class == "investment_loss",
-            Expense.expense_date >= ReportService._date(start_date) if ReportService._date(start_date) else True,
-            Expense.expense_date <= ReportService._date(end_date) if ReportService._date(end_date) else True,
-        ).all())
-        investment_gains = sum(float(x.amount or 0) for x in Income.query.filter(
-            Income.user_id == user_id, Income.transaction_class == "investment_gain",
-            Income.received_date >= ReportService._date(start_date) if ReportService._date(start_date) else True,
-            Income.received_date <= ReportService._date(end_date) if ReportService._date(end_date) else True,
-        ).all())
+        # Valuation gains/losses are investment-value changes, not
+        # Income/Expense transactions. Keep them available as investment
+        # reporting metrics, sourced from the investment event ledger.
+        valuation_query = InvestmentEvent.query.filter(
+            InvestmentEvent.user_id == user_id,
+            InvestmentEvent.event_type == "valuation",
+        )
+        valuation_start = ReportService._date(start_date)
+        valuation_end = ReportService._date(end_date)
+        if valuation_start:
+            valuation_query = valuation_query.filter(
+                InvestmentEvent.event_date >= valuation_start
+            )
+        if valuation_end:
+            valuation_query = valuation_query.filter(
+                InvestmentEvent.event_date <= valuation_end
+            )
+
+        valuation_events = valuation_query.all()
+        investment_gains = sum(
+            float(x.realized_gain_loss or 0)
+            for x in valuation_events
+            if float(x.realized_gain_loss or 0) > 0
+        )
+        investment_losses = sum(
+            abs(float(x.realized_gain_loss or 0))
+            for x in valuation_events
+            if float(x.realized_gain_loss or 0) < 0
+        )
         liquidation_proceeds = sum(float(x.amount or 0) for x in Income.query.filter(
             Income.user_id == user_id, Income.transaction_class == "investment_liquidation",
             Income.received_date >= ReportService._date(start_date) if ReportService._date(start_date) else True,
@@ -181,6 +241,7 @@ class ReportService:
             "goals": Goal.query.filter_by(user_id=user_id).all(),
             "income_records": incomes,
             "expense_records": expenses,
+            "recent_transactions": recent_transactions,
             "goal_contributions": goal_contributions,
             "investment_funding": investment_funding,
             "investment_losses": investment_losses,
@@ -212,9 +273,9 @@ class ReportService:
         start = ReportService._date(start_date)
         end = ReportService._date(end_date)
         if not start and not end:
-            today = date.today()
-            start = date(today.year, 1, 1)
-            end = date(today.year, 12, 31)
+            today_date = today()
+            start = date(today_date.year, 1, 1)
+            end = date(today_date.year, 12, 31)
         elif start and not end:
             end = date(start.year, 12, 31)
         elif end and not start:
@@ -270,8 +331,17 @@ class ReportService:
     @staticmethod
     def report_data(user_id, start_date=None, end_date=None, category=None):
         summary = ReportService.dashboard(user_id, start_date, end_date, category)
+
+        # DashboardService is the authoritative source for current cash, goal
+        # allocations, investment carrying values and the resulting net worth.
+        # Keeping this object separate from period-performance data prevents a
+        # date/category filter from accidentally changing the user's current
+        # financial position or introducing a second source of truth.
+        financial_position = DashboardService.financial_position_summary(user_id)
+
         return {
             "summary": summary,
+            "financial_position": financial_position,
             "income_categories": ReportService.income_by_category(user_id, start_date, end_date, category),
             "expense_categories": ReportService.expense_by_category(user_id, start_date, end_date, category),
             "monthly_trend": ReportService.monthly_trend(user_id, start_date, end_date, category),
