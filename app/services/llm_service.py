@@ -31,7 +31,7 @@ class LLMService:
     #
     # This is NOT intended to replace targeted DB retrieval.
     # It is a final safety mechanism against accidental oversized prompts.
-    MAX_INPUT_CHARACTERS = 30000
+    MAX_INPUT_CHARACTERS = 24000
 
     def __init__(self):
         self.providers = self._build_providers()

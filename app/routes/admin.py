@@ -18,7 +18,6 @@ from flask_login import (
     current_user
 )
 
-from app.ai_coach.services import AICoachService
 from app.services.llm_service import LLMService
 from app.services.admin_service import AdminService
 from app.audit.service import AuditService

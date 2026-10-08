@@ -9,7 +9,7 @@
 <div class="row g-3">
 <div class="col-md-6"><label class="form-label">Title</label><input name="title" class="form-control" required maxlength="180"></div>
 <div class="col-md-3"><label class="form-label">Type</label><select name="announcement_type" class="form-select">{% for x in ['notice','announcement','advertisement','legal','security','maintenance'] %}<option value="{{x}}">{{x|title}}</option>{% endfor %}</select></div>
-<div class="col-md-3"><label class="form-label">Audience</label><select name="audience" class="form-select">{% for x in ['all','free_trial','basic','plus','pro','user'] %}<option value="{{x}}">{{x|replace('_',' ')|title}}</option>{% endfor %}</select></div>
+<div class="col-md-3"><label class="form-label">Audience</label><select name="audience" class="form-select">{% for value, label in audience_options %}<option value="{{ value }}">{{ label }}</option>{% endfor %}</select></div>
 <div class="col-md-3"><label class="form-label">Priority</label><select name="priority" class="form-select">{% for x in ['low','normal','high','urgent'] %}<option value="{{x}}">{{x|title}}</option>{% endfor %}</select></div>
 <div class="col-12"><label class="form-label">Message</label><textarea name="message" class="form-control" rows="4" required></textarea></div>
 <div class="col-md-6"><label class="form-label">Action URL</label><input name="action_url" class="form-control" maxlength="500"></div>

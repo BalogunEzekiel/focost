@@ -8,10 +8,37 @@ from app.models.role_permission import RolePermission
 
 from app.rbac.constants import (
     SYSTEM_ROLES,
-    SYSTEM_PERMISSIONS
+    SYSTEM_PERMISSIONS,
+    SYSTEM_ROLE_SLUGS,
+    ADMIN_FORBIDDEN_PERMISSION_CODES,
+    DEFAULT_USER_PERMISSION_CODES,
 )
 
 import os
+
+
+ADMIN_DEFAULT_PERMISSION_CODES = {
+    "admin.dashboard.view",
+    "users.view",
+    "users.create",
+    "users.edit",
+    "users.update",
+    "users.delete",
+    "roles.view",
+    "roles.create",
+    "roles.edit",
+    "roles.update",
+    "roles.delete",
+    "roles.assign",
+    "roles.remove",
+    "permissions.assign",
+    "notifications.view",
+    "notifications.manage",
+    "profile.view",
+    "profile.edit",
+    "settings.view",
+    "settings.edit",
+}
 
 
 class RBACSeed:
@@ -33,14 +60,19 @@ class RBACSeed:
 
     @staticmethod
     def seed_roles():
+        """Create/synchronize the three system groups and custom admin roles."""
 
         for role_data in SYSTEM_ROLES:
-
             role = Role.query.filter_by(
                 slug=role_data["slug"]
             ).first()
 
             if role:
+                # Keep the configured display name intact; synchronize only
+                # protected structural identity fields.
+                role.group_slug = role_data["group_slug"]
+                role.is_system = True
+                role.is_active = True
                 continue
 
             db.session.add(
@@ -48,16 +80,25 @@ class RBACSeed:
                     slug=role_data["slug"],
                     name=role_data["name"],
                     description=role_data.get("description"),
-                    is_system=role_data.get(
-                        "is_system",
-                        True
-                    )
+                    is_system=True,
+                    group_slug=role_data["group_slug"],
                 )
             )
 
-        db.session.commit()
+        db.session.flush()
 
-        print("✓ Roles seeded")
+        # Every non-reserved role is a custom administrative role. This
+        # repairs older roles such as developer/content_creator that predate
+        # the explicit group field.
+        for role in Role.query.all():
+            if role.slug in SYSTEM_ROLE_SLUGS:
+                continue
+            role.group_slug = "admin"
+            role.is_system = False
+            role.is_active = True
+
+        db.session.commit()
+        print("✓ Roles/groups synchronized")
 
     # ==========================================================
     # PERMISSIONS
@@ -93,55 +134,117 @@ class RBACSeed:
 
         print("✓ Permissions seeded")
 
+    @staticmethod
+    def assign_default_admin_permissions():
+        """Synchronize the reserved Admin group's core employee permissions."""
+        admin_role = Role.query.filter_by(slug="admin").first()
+        if not admin_role:
+            return
+
+        permissions = Permission.query.filter(
+            Permission.code.in_(ADMIN_DEFAULT_PERMISSION_CODES)
+        ).all()
+        existing = {
+            rp.permission_id: rp
+            for rp in RolePermission.query.filter_by(
+                role_id=admin_role.id
+            ).all()
+        }
+
+        added = 0
+        for permission in permissions:
+            if permission.id not in existing:
+                db.session.add(
+                    RolePermission(
+                        role_id=admin_role.id,
+                        permission_id=permission.id,
+                    )
+                )
+                added += 1
+
+        db.session.commit()
+        print(
+            f"✓ Admin group permissions synchronized "
+            f"(+{added})"
+        )
+
     # ==========================================================
     # SUPER ADMIN PERMISSIONS
     # ==========================================================
 
     @staticmethod
     def assign_super_admin_permissions():
-
         super_admin = Role.query.filter_by(
             slug="super_admin"
         ).first()
 
         if not super_admin:
-
-            print(
-                "✗ Super Admin role not found."
-            )
-
+            print("✗ Super Admin role not found.")
             return
 
         permissions = Permission.query.all()
+        allowed_codes = {
+            permission.code
+            for permission in permissions
+            if permission.code not in ADMIN_FORBIDDEN_PERMISSION_CODES
+        }
+
+        existing = {
+            rp.permission_id: rp
+            for rp in RolePermission.query.filter_by(
+                role_id=super_admin.id
+            ).all()
+        }
 
         added = 0
+        removed = 0
 
         for permission in permissions:
-
-            exists = RolePermission.query.filter_by(
-                role_id=super_admin.id,
-                permission_id=permission.id
-            ).first()
-
-            if exists:
-                continue
-
-            db.session.add(
-                RolePermission(
-                    role_id=super_admin.id,
-                    permission_id=permission.id
-                )
-            )
-
-            added += 1
+            rp = existing.get(permission.id)
+            if permission.code in allowed_codes:
+                if not rp:
+                    db.session.add(
+                        RolePermission(
+                            role_id=super_admin.id,
+                            permission_id=permission.id,
+                        )
+                    )
+                    added += 1
+            elif rp:
+                db.session.delete(rp)
+                removed += 1
 
         db.session.commit()
-
         print(
-            f"✓ {added} permissions assigned "
-            "to Super Admin"
+            f"✓ Super Admin permissions synchronized "
+            f"(+{added}, -{removed})"
         )
 
+
+    @staticmethod
+    def sanitize_role_permissions():
+        """Remove structurally invalid permissions from every role group."""
+        removed = 0
+
+        for role in Role.query.all():
+            allowed = None
+
+            if role.group_slug in {"super_admin", "admin"}:
+                allowed = lambda code: code not in ADMIN_FORBIDDEN_PERMISSION_CODES
+            elif role.group_slug == "user":
+                allowed = lambda code: code in DEFAULT_USER_PERMISSION_CODES
+
+            if allowed is None:
+                continue
+
+            for rp in list(role.permissions):
+                permission = rp.permission
+                if permission and not allowed(permission.code):
+                    db.session.delete(rp)
+                    removed += 1
+
+        db.session.commit()
+        print(f"✓ Role permission boundaries synchronized (-{removed})")
 
 
     @staticmethod
@@ -150,25 +253,41 @@ class RBACSeed:
         if not user_role:
             return
 
-        default_codes = {
-            "dashboard.view", "income.view", "income.create", "income.edit", "income.delete",
-            "expenses.view", "expenses.create", "expenses.edit", "expenses.delete",
-            "budgets.view", "budgets.create", "budgets.edit", "budgets.delete",
-            "goals.view", "goals.create", "goals.edit", "goals.delete",
-            "reports.view", "profile.view", "profile.edit", "notifications.view",
-            "ai.chat", "settings.view_profile", "investments.view",
+        permissions = Permission.query.filter(
+            Permission.code.in_(DEFAULT_USER_PERMISSION_CODES)
+        ).all()
+        desired_ids = {permission.id for permission in permissions}
+
+        existing = {
+            rp.permission_id: rp
+            for rp in RolePermission.query.filter_by(
+                role_id=user_role.id
+            ).all()
         }
-        permissions = Permission.query.filter(Permission.code.in_(default_codes)).all()
+
+        added = 0
+        removed = 0
+
         for permission in permissions:
-            exists = RolePermission.query.filter_by(
-                role_id=user_role.id, permission_id=permission.id
-            ).first()
-            if not exists:
-                db.session.add(RolePermission(
-                    role_id=user_role.id, permission_id=permission.id
-                ))
+            if permission.id not in existing:
+                db.session.add(
+                    RolePermission(
+                        role_id=user_role.id,
+                        permission_id=permission.id,
+                    )
+                )
+                added += 1
+
+        for permission_id, rp in existing.items():
+            if permission_id not in desired_ids:
+                db.session.delete(rp)
+                removed += 1
+
         db.session.commit()
-        print("✓ Default User permissions synchronized")
+        print(
+            f"✓ Default User permissions synchronized "
+            f"(+{added}, -{removed})"
+        )
 
     # ==========================================================
     # INITIAL / PRIMARY SUPER ADMIN
@@ -459,9 +578,13 @@ class RBACSeed:
 
         cls.seed_permissions()
 
+        cls.assign_default_admin_permissions()
+
         cls.assign_super_admin_permissions()
 
         cls.assign_default_user_permissions()
+
+        cls.sanitize_role_permissions()
 
         cls.seed_super_admin()
 

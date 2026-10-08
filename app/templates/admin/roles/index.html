@@ -194,6 +194,8 @@ Role Management
 
                         <th>Slug</th>
 
+                        <th>Group</th>
+
                         <th>Type</th>
 
                         <th>Permissions</th>
@@ -229,6 +231,14 @@ Role Management
                         <td>
 
                             {{ role.slug }}
+
+                        </td>
+
+                        <td>
+
+                            <span class="badge text-bg-primary">
+                                {{ 'Super Admin' if role.group_slug == 'super_admin' else 'Admin' if role.group_slug == 'admin' else 'User' }}
+                            </span>
 
                         </td>
 

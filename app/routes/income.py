@@ -45,7 +45,6 @@ def list_income():
         type=str
     ).strip()
 
-
     # ------------------------------------------------------
     # Pagination
     # ------------------------------------------------------
@@ -62,14 +61,12 @@ def list_income():
         type=int
     )
 
-
     # Keep pagination within sensible limits
     if page < 1:
         page = 1
 
     if per_page not in [10, 20, 50, 100]:
         per_page = 10
-
 
     # ------------------------------------------------------
     # Base Query
@@ -78,7 +75,6 @@ def list_income():
     query = Income.query.filter_by(
         user_id=current_user.id
     )
-
 
     # ------------------------------------------------------
     # Search
@@ -98,7 +94,6 @@ def list_income():
             )
         )
 
-
     # ------------------------------------------------------
     # IMPORTANT:
     # Latest income must always appear first.
@@ -112,9 +107,20 @@ def list_income():
         Income.id.desc()
     )
 
+    # ------------------------------------------------------
+    # ALL FILTERED INCOME RECORDS
+    #
+    # This is used for the summary cards.
+    # It contains ALL records matching the current search,
+    # not just the records on the current pagination page.
+    # ------------------------------------------------------
+
+    all_incomes = query.all()
 
     # ------------------------------------------------------
     # Pagination
+    #
+    # This is used by the income table only.
     # ------------------------------------------------------
 
     income_pagination = query.paginate(
@@ -123,17 +129,16 @@ def list_income():
         error_out=False
     )
 
-
     # ------------------------------------------------------
-    # Records on current page
+    # Current page records
     # ------------------------------------------------------
 
     incomes = income_pagination.items
 
-
     return render_template(
         "income/list.html",
         incomes=incomes,
+        all_incomes=all_incomes,
         income_pagination=income_pagination,
         search=search,
     )

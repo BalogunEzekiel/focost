@@ -288,7 +288,7 @@ User Management
 
                         {% endif %}
 
-                        {% if has_permission("users.update") and user.role_slug != "super_admin" %}
+                        {% if has_permission("users.update") and user.role_group != "super_admin" %}
 
                             {% if user.is_active %}
 
@@ -314,7 +314,7 @@ User Management
 
                         {% endif %}
 
-                        {% if has_permission("users.delete") and user.role_slug != "super_admin" %}
+                        {% if has_permission("users.delete") and user.role_group != "super_admin" %}
 
                         <a
                             href="{{ url_for('admin_users.delete', public_id=user.public_id) }}"

@@ -328,7 +328,15 @@
 
                             <small class="text-muted">
 
-                                {% if current_user.role_slug == "user" %}{{ user_plan }}{% elif current_user.role_slug %}{{ current_user.role_slug|replace("_", " ")|title }}{% else %}{{ user_plan }}{% endif %}
+                                {% if current_user.role_group == "user" %}
+                                    {{ user_plan }}
+                                {% elif current_user.role_group == "super_admin" %}
+                                    Super Administrator
+                                {% elif current_user.role_group == "admin" %}
+                                    {{ current_user.role.name }}
+                                {% else %}
+                                    {{ user_plan }}
+                                {% endif %}
 
                             </small>
 
@@ -364,14 +372,6 @@
 
                                 My Profile
 
-                            </a>
-
-                        </li>
-
-                        <li>
-                            <a class="dropdown-item" href="{{ url_for('billing.index') }}">
-                                <i class="bi bi-credit-card me-2"></i>
-                                Plan & Billing
                             </a>
 
                         </li>

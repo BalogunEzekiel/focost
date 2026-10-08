@@ -94,8 +94,7 @@ def create_app(config_override=None):
         if not current_user.is_authenticated:
             return None
 
-        role = getattr(current_user, "role_slug", None)
-        if role not in {"admin", "super_admin"}:
+        if not current_user.is_admin_group:
             return None
 
         endpoint = request.endpoint or ""
@@ -274,6 +273,8 @@ def create_app(config_override=None):
     from .routes.admin_analytics import admin_analytics_bp
     from .routes.admin_communications import admin_communications_bp
     from .routes.feedback import feedback_bp
+    from .routes.communications import communications_bp
+
 
     app.register_blueprint(dashboard_bp)
     app.register_blueprint(auth_bp)
@@ -299,6 +300,8 @@ def create_app(config_override=None):
     app.register_blueprint(admin_analytics_bp)
     app.register_blueprint(admin_communications_bp)
     app.register_blueprint(feedback_bp)
+    app.register_blueprint(communications_bp)
+
 
     RBACMiddleware.init_app(app)
     register_context_processors(app)

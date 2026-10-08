@@ -4,6 +4,13 @@ import logging
 from app.extensions import db
 from app.models.role import Role
 from app.models.user_role import UserRole
+from app.rbac.constants import (
+    ADMIN_FORBIDDEN_PERMISSION_CODES,
+    ADMIN_GROUP,
+    SUPER_ADMIN_GROUP,
+    USER_GROUP,
+    DEFAULT_USER_PERMISSION_CODES,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -16,46 +23,7 @@ class RBACService:
     # Default permissions for every User
     # ======================================================
 
-    DEFAULT_USER_PERMISSIONS = {
-
-        "dashboard.view",
-
-        "income.view",
-        "income.create",
-        "income.edit",
-        "income.delete",
-
-        "expenses.view",
-        "expenses.create",
-        "expenses.edit",
-        "expenses.delete",
-
-        "budgets.view",
-        "budgets.create",
-        "budgets.edit",
-        "budgets.delete",
-
-        "goals.view",
-        "goals.create",
-        "goals.edit",
-        "goals.delete",
-
-        "reports.view",
-
-        "profile.view",
-        "profile.edit",
-
-        "notifications.view",
-
-        "ai.chat",
-
-        "settings.view_profile",
-
-        "categories.view",
-        "profile.view",
-        "profile.edit",
-        "investments.view"
-    }
+    DEFAULT_USER_PERMISSIONS = DEFAULT_USER_PERMISSION_CODES
 
     # ======================================================
     # Authentication
@@ -76,6 +44,12 @@ class RBACService:
             return False
 
         return current_user.has_role(role)
+
+    @staticmethod
+    def has_role_group(group_slug):
+        if not RBACService.is_authenticated():
+            return False
+        return current_user.has_role_group(group_slug)
 
     @staticmethod
     def has_any_role(*roles):
@@ -99,44 +73,60 @@ class RBACService:
 
     @staticmethod
     def has_permission(permission):
-
         if not RBACService.is_authenticated():
             logger.info(
                 "Anonymous user attempted permission check: %s",
-                permission
+                permission,
             )
             return False
 
-        role = getattr(
-            current_user,
-            "primary_role",
-            None
-        )
+        role = getattr(current_user, "primary_role", None)
 
         logger.info(
-            "User=%s Role=%s Permission=%s",
+            "User=%s Role=%s Group=%s Permission=%s",
             getattr(current_user, "email", None),
             getattr(role, "slug", None),
+            getattr(role, "group_slug", None),
             permission,
         )
 
-        if role is None:
-            logger.info("No primary role found.")
+        if role is None or not getattr(role, "is_active", False):
             return False
 
-        if role.slug == "super_admin":
+        group = getattr(role, "group_slug", None)
+
+        # Administrative accounts can never use normal-user financial
+        # operations or end-user AI chat/use, regardless of assigned
+        # role permissions.
+        if group == ADMIN_GROUP and permission in ADMIN_FORBIDDEN_PERMISSION_CODES:
+            return False
+
+        # Super Admin is unrestricted within the administrative permission
+        # surface, but is still explicitly excluded from normal-user
+        # financial operations and end-user AI use above.
+        if group == SUPER_ADMIN_GROUP:
             return True
 
-        if role.slug == "user":
-            # The database RolePermission registry is authoritative in
-            # production. The legacy default set is only a bootstrap fallback
-            # for unseeded test/development role records.
-            if getattr(role, "permissions", None):
-                return current_user.has_permission(permission)
-            return permission in RBACService.DEFAULT_USER_PERMISSIONS
+        # Normal users may only exercise the canonical normal-user
+        # permission set. This prevents accidental assignment of an
+        # administrative permission from becoming effective.
+        if group == USER_GROUP:
+            if permission not in RBACService.DEFAULT_USER_PERMISSIONS:
+                return False
 
         return current_user.has_permission(permission)
 
+
+    @staticmethod
+    def permission_allowed_for_group(group_slug, permission_code):
+        """Return whether a permission is structurally valid for a role group."""
+        if group_slug in {"super_admin", "admin"}:
+            return permission_code not in ADMIN_FORBIDDEN_PERMISSION_CODES
+
+        if group_slug == USER_GROUP:
+            return permission_code in RBACService.DEFAULT_USER_PERMISSIONS
+
+        return False
 
     @staticmethod
     def has_any_permission(*permissions):
@@ -165,16 +155,22 @@ class RBACService:
 
     @staticmethod
     def is_admin():
+        return RBACService.is_admin_group()
 
-        if not RBACService.is_authenticated():
-            return False
+    @staticmethod
+    def is_admin_group():
+        return (
+            RBACService.is_authenticated()
+            and getattr(current_user, "role_group", None)
+            in {"super_admin", "admin"}
+        )
 
-        role = current_user.primary_role
-
-        if role is None:
-            return False
-
-        return role.slug in ("super_admin", "admin")
+    @staticmethod
+    def is_user_group():
+        return (
+            RBACService.is_authenticated()
+            and getattr(current_user, "role_group", None) == USER_GROUP
+        )
 
     @staticmethod
     def is_user():
@@ -194,22 +190,36 @@ class RBACService:
 
     @staticmethod
     def permissions():
-
         if not RBACService.is_authenticated():
             return set()
 
         role = current_user.primary_role
-
-        if role is None:
+        if role is None or not getattr(role, "is_active", False):
             return set()
 
-        if role.slug == "super_admin":
-            return {"*"}
+        group = getattr(role, "group_slug", None)
 
-        if role.slug == "user" and not getattr(role, "permissions", None):
+        if group == SUPER_ADMIN_GROUP:
+            return {
+                code
+                for code in RBACService._all_permission_codes()
+                if code not in ADMIN_FORBIDDEN_PERMISSION_CODES
+            }
+
+        if group == USER_GROUP:
             return set(RBACService.DEFAULT_USER_PERMISSIONS)
 
-        return current_user.permissions
+        return {
+            code
+            for code in current_user.permissions
+            if code not in ADMIN_FORBIDDEN_PERMISSION_CODES
+        }
+
+    @staticmethod
+    def _all_permission_codes():
+        from app.rbac.constants import SYSTEM_PERMISSIONS
+        return {item["code"] for item in SYSTEM_PERMISSIONS}
+
 
     # app/rbac/service.py
 

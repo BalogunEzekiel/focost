@@ -11,6 +11,7 @@
 
         <!-- ==================================================
              LOGO
+             Intentionally centered
         =================================================== -->
 
         <div class="text-center mb-4">
@@ -20,16 +21,15 @@
                 class="d-inline-flex align-items-center justify-content-center"
                 aria-label="FOCOST Dashboard"
             >
-
                 <img
                     src="{{ url_for('static', filename='images/focost_logo.png') }}"
                     alt="FOCOST"
                     class="focost-sidebar-logo"
                 >
-
             </a>
 
         </div>
+
 
         <!-- ==================================================
              MOBILE SEARCH
@@ -61,301 +61,841 @@
 
 
         <!-- ==================================================
-             CURRENT ROLE
+             CURRENT ROLE / GROUP
         =================================================== -->
 
         {% set current_role = current_user.role_slug %}
+        {% set current_group = current_user.role_group %}
+
+
+        <!-- ==================================================
+             ACTIVE ENDPOINT FLAGS
+             Centralized so parent and child menu states
+             always remain synchronized.
+        =================================================== -->
+
+        {% set people_access_active =
+            request.endpoint in [
+                'admin_users.index',
+                'admin_roles.index',
+                'admin.permissions'
+            ]
+        %}
+
+        {% set communications_active =
+            request.endpoint
+            and (
+                request.endpoint.startswith('admin_communications.')
+                or request.endpoint in [
+                    'admin.feedback',
+                    'admin.feedback_detail',
+                    'admin_documents.index',
+                    'admin_documents.download'
+                ]
+            )
+        %}
+
+        {% set intelligence_active =
+            request.endpoint in [
+                'admin_analytics.index',
+                'admin.ai_settings'
+            ]
+        %}
+
+        {% set subscriptions_active =
+            request.endpoint in [
+                'admin.subscriptions'
+            ]
+        %}
+
+        {% set security_active =
+            request.endpoint in [
+                'admin.audit',
+                'admin.audit_logs'
+            ]
+        %}
+
+        {% set platform_active =
+            request.endpoint in [
+                'admin.settings'
+            ]
+        %}
 
 
         <!-- ==================================================
              NAVIGATION
         =================================================== -->
 
-        <nav
-            class="nav flex-column flex-grow-1"
-        >
+        <nav class="nav flex-column flex-grow-1">
+
 
             <!-- =================================================
-                 SUPER ADMIN / ADMINISTRATION
-            ================================================== -->
+                 ADMINISTRATION
+                 Available only to Super Admin and Admin groups.
+            ================================================= -->
 
-            {% if current_role == "super_admin"
-                  or has_permission("admin.dashboard.view")
-                  or has_permission("users.view")
-                  or has_permission("roles.view")
-                  or has_permission("permissions.view")
-                  or has_permission("audit.view")
-                  or has_permission("subscriptions.view")
-                  or has_permission("ai.view")
-                  or has_permission("settings.view")
-                  or has_permission("documents.view")
-                  or has_permission("feedback.view")
-                  or has_permission("analytics.view")
-                  or has_permission("communications.view") %}
+            {% if current_group in ("super_admin", "admin") %}
 
 
-                <!-- Admin Dashboard -->
+                <!-- =================================================
+                     ADMIN DASHBOARD
+                ================================================= -->
 
-                {% if has_permission("admin.dashboard.view") %}
+                {% if current_group == "super_admin"
+                      or has_permission("admin.dashboard.view") %}
 
                     <a
                         href="{{ url_for('admin.dashboard') }}"
                         class="nav-link
+                               text-start
+                               rounded
+                               px-3
+                               py-2
+                               {% if request.endpoint == 'admin.dashboard' %}
+                                   active
+                               {% else %}
+                                   text-white
+                               {% endif %}"
                         {% if request.endpoint == 'admin.dashboard' %}
-                            active
-                        {% else %}
-                            text-white
-                        {% endif %}"
+                            aria-current="page"
+                        {% endif %}
                     >
 
                         <i class="bi bi-speedometer2 me-2"></i>
 
-                        Admin Dashboard
+                        <span>Dashboard</span>
 
                     </a>
 
                 {% endif %}
 
 
-                <!-- Users -->
+                <!-- =================================================
+                     PEOPLE & ACCESS
+                ================================================== -->
 
-                {% if has_permission("users.view") %}
+                {% if current_group == "super_admin"
+                      or has_permission("users.view")
+                      or has_permission("roles.view")
+                      or has_permission("permissions.view") %}
 
-                    <a
-                        href="{{ url_for('admin_users.index') }}"
-                        class="nav-link
-                        {% if request.endpoint == 'admin_users.index' %}
-                            active
-                        {% else %}
-                            text-white
-                        {% endif %}"
-                    >
+                    <div class="mt-3">
 
-                        <i class="bi bi-people me-2"></i>
+                        <button
+                            class="nav-link
+                                   w-100
+                                   border-0
+                                   bg-transparent
+                                   d-flex
+                                   align-items-center
+                                   text-start
+                                   rounded
+                                   px-3
+                                   py-2
+                                   {% if people_access_active %}
+                                       active
+                                   {% else %}
+                                       text-white
+                                   {% endif %}"
+                            type="button"
+                            data-bs-toggle="collapse"
+                            data-bs-target="#adminPeopleAccess"
+                            aria-expanded="{{ 'true' if people_access_active else 'false' }}"
+                            aria-controls="adminPeopleAccess"
+                        >
 
-                        Users
+                            <i class="bi bi-people me-2"></i>
 
-                    </a>
+                            <span class="flex-grow-1 text-start">
+                                People & Access
+                            </span>
 
-                {% endif %}
+                            <i class="bi bi-chevron-down small ms-auto"></i>
 
-
-                <!-- Roles -->
-
-                {% if has_permission("roles.view") %}
-
-                    <a
-                        href="{{ url_for('admin_roles.index') }}"
-                        class="nav-link
-                        {% if request.endpoint == 'admin_roles.index' %}
-                            active
-                        {% else %}
-                            text-white
-                        {% endif %}"
-                    >
-
-                        <i class="bi bi-person-badge me-2"></i>
-
-                        Roles
-
-                    </a>
-
-                {% endif %}
-
-
-                <!-- Permissions -->
-
-                {% if has_permission("permissions.view") %}
-
-                    <a
-                        href="{{ url_for('admin.permissions') }}"
-                        class="nav-link
-                        {% if request.endpoint == 'admin.permissions' %}
-                            active
-                        {% else %}
-                            text-white
-                        {% endif %}"
-                    >
-
-                        <i class="bi bi-key me-2"></i>
-
-                        Permissions
-
-                    </a>
-
-                {% endif %}
+                        </button>
 
 
-                <!-- Audit -->
+                        <div
+                            id="adminPeopleAccess"
+                            class="collapse
+                                   {% if people_access_active %}
+                                       show
+                                   {% endif %}"
+                        >
 
-                {% if has_permission("audit.view") %}
+                            <div
+                                class="ms-3
+                                       ps-2
+                                       border-start
+                                       border-secondary"
+                            >
 
-                    <a
-                        href="{{ url_for('admin.audit_logs') }}"
-                        class="nav-link
-                        {% if request.endpoint == 'admin.audit_logs' %}
-                            active
-                        {% else %}
-                            text-white
-                        {% endif %}"
-                    >
+                                <!-- Users -->
 
-                        <i class="bi bi-clock-history me-2"></i>
+                                {% if has_permission("users.view") %}
 
-                        Audit Logs
+                                    <a
+                                        href="{{ url_for('admin_users.index') }}"
+                                        class="nav-link
+                                               text-start
+                                               small
+                                               rounded
+                                               {% if request.endpoint == 'admin_users.index' %}
+                                                   active
+                                               {% else %}
+                                                   text-white
+                                               {% endif %}"
+                                        {% if request.endpoint == 'admin_users.index' %}
+                                            aria-current="page"
+                                        {% endif %}
+                                    >
 
-                    </a>
+                                        <i class="bi bi-person-lines-fill me-2"></i>
 
-                {% endif %}
+                                        Users
 
+                                    </a>
 
-                <!-- Subscriptions -->
-
-                {% if has_permission("subscriptions.view") %}
-
-                    <a
-                        href="{{ url_for('admin.subscriptions') }}"
-                        class="nav-link
-                        {% if request.endpoint == 'admin.subscriptions' %}
-                            active
-                        {% else %}
-                            text-white
-                        {% endif %}"
-                    >
-
-                        <i class="bi bi-credit-card me-2"></i>
-
-                        Subscriptions
-
-                    </a>
-
-                {% endif %}
+                                {% endif %}
 
 
-                <!-- AI -->
+                                <!-- Roles -->
 
-                {% if has_permission("ai.view") %}
+                                {% if has_permission("roles.view") %}
 
-                    <a
-                        href="{{ url_for('admin.ai_settings') }}"
-                        class="nav-link
-                        {% if request.endpoint == 'admin.ai_settings' %}
-                            active
-                        {% else %}
-                            text-white
-                        {% endif %}"
-                    >
+                                    <a
+                                        href="{{ url_for('admin_roles.index') }}"
+                                        class="nav-link
+                                               text-start
+                                               small
+                                               rounded
+                                               {% if request.endpoint == 'admin_roles.index' %}
+                                                   active
+                                               {% else %}
+                                                   text-white
+                                               {% endif %}"
+                                        {% if request.endpoint == 'admin_roles.index' %}
+                                            aria-current="page"
+                                        {% endif %}
+                                    >
 
-                        <i class="bi bi-cpu me-2"></i>
+                                        <i class="bi bi-person-badge me-2"></i>
 
-                        AI Settings
+                                        Roles
 
-                    </a>
+                                    </a>
 
-                {% endif %}
-
-
-                <!-- Document Archive -->
-
-                {% if has_permission("documents.view") %}
-
-                    <a href="{{ url_for('admin_documents.index') }}"
-                       class="nav-link {% if request.endpoint in ['admin_documents.index', 'admin_documents.download'] %}active{% else %}text-white{% endif %}">
-                        <i class="bi bi-folder2-open me-2"></i>
-                        Archive
-                    </a>
-
-                {% endif %}
+                                {% endif %}
 
 
-                <!-- Analytics Center -->
-                {% if has_permission("analytics.view") %}
-                    <a href="{{ url_for('admin_analytics.index') }}" class="nav-link {% if request.endpoint == 'admin_analytics.index' %}active{% else %}text-white{% endif %}">
-                        <i class="bi bi-bar-chart-fill me-2"></i> Analytics
-                    </a>
-                {% endif %}
+                                <!-- Permissions -->
 
-                <!-- Communications Center -->
-                {% if has_permission("communications.view") %}
-                    <a href="{{ url_for('admin_communications.index') }}" class="nav-link {% if request.endpoint and request.endpoint.startswith('admin_communications.') %}active{% else %}text-white{% endif %}">
-                        <i class="bi bi-megaphone-fill me-2"></i> Communications
-                    </a>
-                {% endif %}
+                                {% if has_permission("permissions.view") %}
 
-                <!-- Feedback Management -->
+                                    <a
+                                        href="{{ url_for('admin.permissions') }}"
+                                        class="nav-link
+                                               text-start
+                                               small
+                                               rounded
+                                               {% if request.endpoint == 'admin.permissions' %}
+                                                   active
+                                               {% else %}
+                                                   text-white
+                                               {% endif %}"
+                                        {% if request.endpoint == 'admin.permissions' %}
+                                            aria-current="page"
+                                        {% endif %}
+                                    >
 
-                {% if has_permission("feedback.view") %}
+                                        <i class="bi bi-key me-2"></i>
 
-                    <a
-                        href="{{ url_for('admin.feedback') }}"
-                        class="nav-link
-                        {% if request.endpoint in ['admin.feedback', 'admin.feedback_detail'] %}
-                            active
-                        {% else %}
-                            text-white
-                        {% endif %}"
-                    >
+                                        Permissions
 
-                        <i class="bi bi-chat-square-heart me-2"></i>
+                                    </a>
 
-                        Feedback
+                                {% endif %}
 
-                    </a>
+                            </div>
+
+                        </div>
+
+                    </div>
 
                 {% endif %}
 
 
-                <!-- System Settings -->
+                <!-- =================================================
+                     COMMUNICATIONS
+                ================================================== -->
 
-                {% if has_permission("settings.view") %}
+                {% if current_group == "super_admin"
+                      or has_permission("communications.view")
+                      or has_permission("feedback.view")
+                      or has_permission("documents.view") %}
 
-                    <a
-                        href="{{ url_for('admin.settings') }}"
-                        class="nav-link
-                        {% if request.endpoint == 'admin.settings' %}
-                            active
-                        {% else %}
-                            text-white
-                        {% endif %}"
-                    >
+                    <div class="mt-2">
 
-                        <i class="bi bi-gear me-2"></i>
+                        <button
+                            class="nav-link
+                                   w-100
+                                   border-0
+                                   bg-transparent
+                                   d-flex
+                                   align-items-center
+                                   text-start
+                                   rounded
+                                   px-3
+                                   py-2
+                                   {% if communications_active %}
+                                       active
+                                   {% else %}
+                                       text-white
+                                   {% endif %}"
+                            type="button"
+                            data-bs-toggle="collapse"
+                            data-bs-target="#adminCommunications"
+                            aria-expanded="{{ 'true' if communications_active else 'false' }}"
+                            aria-controls="adminCommunications"
+                        >
 
-                        System Settings
+                            <i class="bi bi-megaphone me-2"></i>
 
-                    </a>
+                            <span class="flex-grow-1 text-start">
+                                Communications
+                            </span>
+
+                            <i class="bi bi-chevron-down small ms-auto"></i>
+
+                        </button>
+
+
+                        <div
+                            id="adminCommunications"
+                            class="collapse
+                                   {% if communications_active %}
+                                       show
+                                   {% endif %}"
+                        >
+
+                            <div
+                                class="ms-3
+                                       ps-2
+                                       border-start
+                                       border-secondary"
+                            >
+
+                                <!-- Announcements -->
+
+                                {% if has_permission("communications.view") %}
+
+                                    <a
+                                        href="{{ url_for('admin_communications.index') }}"
+                                        class="nav-link
+                                               text-start
+                                               small
+                                               rounded
+                                               {% if request.endpoint
+                                                     and request.endpoint.startswith('admin_communications.') %}
+                                                   active
+                                               {% else %}
+                                                   text-white
+                                               {% endif %}"
+                                        {% if request.endpoint
+                                              and request.endpoint.startswith('admin_communications.') %}
+                                            aria-current="page"
+                                        {% endif %}
+                                    >
+
+                                        <i class="bi bi-megaphone-fill me-2"></i>
+
+                                        Announcements
+
+                                    </a>
+
+                                {% endif %}
+
+
+                                <!-- Feedback -->
+
+                                {% if has_permission("feedback.view") %}
+
+                                    <a
+                                        href="{{ url_for('admin.feedback') }}"
+                                        class="nav-link
+                                               text-start
+                                               small
+                                               rounded
+                                               {% if request.endpoint in [
+                                                   'admin.feedback',
+                                                   'admin.feedback_detail'
+                                               ] %}
+                                                   active
+                                               {% else %}
+                                                   text-white
+                                               {% endif %}"
+                                        {% if request.endpoint in [
+                                            'admin.feedback',
+                                            'admin.feedback_detail'
+                                        ] %}
+                                            aria-current="page"
+                                        {% endif %}
+                                    >
+
+                                        <i class="bi bi-chat-square-heart me-2"></i>
+
+                                        Feedback
+
+                                    </a>
+
+                                {% endif %}
+
+
+                                <!-- Document Archive -->
+
+                                {% if has_permission("documents.view") %}
+
+                                    <a
+                                        href="{{ url_for('admin_documents.index') }}"
+                                        class="nav-link
+                                               text-start
+                                               small
+                                               rounded
+                                               {% if request.endpoint in [
+                                                   'admin_documents.index',
+                                                   'admin_documents.download'
+                                               ] %}
+                                                   active
+                                               {% else %}
+                                                   text-white
+                                               {% endif %}"
+                                        {% if request.endpoint in [
+                                            'admin_documents.index',
+                                            'admin_documents.download'
+                                        ] %}
+                                            aria-current="page"
+                                        {% endif %}
+                                    >
+
+                                        <i class="bi bi-folder2-open me-2"></i>
+
+                                        Document Archive
+
+                                    </a>
+
+                                {% endif %}
+
+                            </div>
+
+                        </div>
+
+                    </div>
 
                 {% endif %}
+
+
+                <!-- =================================================
+                     ANALYTICS & INTELLIGENCE
+                ================================================== -->
+
+                {% if current_group == "super_admin"
+                      or has_permission("analytics.view")
+                      or has_permission("ai.view") %}
+
+                    <div class="mt-2">
+
+                        <button
+                            class="nav-link
+                                   w-100
+                                   border-0
+                                   bg-transparent
+                                   d-flex
+                                   align-items-center
+                                   text-start
+                                   rounded
+                                   px-3
+                                   py-2
+                                   {% if intelligence_active %}
+                                       active
+                                   {% else %}
+                                       text-white
+                                   {% endif %}"
+                            type="button"
+                            data-bs-toggle="collapse"
+                            data-bs-target="#adminIntelligence"
+                            aria-expanded="{{ 'true' if intelligence_active else 'false' }}"
+                            aria-controls="adminIntelligence"
+                        >
+
+                            <i class="bi bi-graph-up-arrow me-2"></i>
+
+                            <span class="flex-grow-1 text-start">
+                                Analytics & Intelligence
+                            </span>
+
+                            <i class="bi bi-chevron-down small ms-auto"></i>
+
+                        </button>
+
+
+                        <div
+                            id="adminIntelligence"
+                            class="collapse
+                                   {% if intelligence_active %}
+                                       show
+                                   {% endif %}"
+                        >
+
+                            <div
+                                class="ms-3
+                                       ps-2
+                                       border-start
+                                       border-secondary"
+                            >
+
+                                <!-- Analytics -->
+
+                                {% if has_permission("analytics.view") %}
+
+                                    <a
+                                        href="{{ url_for('admin_analytics.index') }}"
+                                        class="nav-link
+                                               text-start
+                                               small
+                                               rounded
+                                               {% if request.endpoint == 'admin_analytics.index' %}
+                                                   active
+                                               {% else %}
+                                                   text-white
+                                               {% endif %}"
+                                        {% if request.endpoint == 'admin_analytics.index' %}
+                                            aria-current="page"
+                                        {% endif %}
+                                    >
+
+                                        <i class="bi bi-bar-chart-fill me-2"></i>
+
+                                        Analytics
+
+                                    </a>
+
+                                {% endif %}
+
+
+                                <!-- AI Management -->
+
+                                {% if has_permission("ai.view") %}
+
+                                    <a
+                                        href="{{ url_for('admin.ai_settings') }}"
+                                        class="nav-link
+                                               text-start
+                                               small
+                                               rounded
+                                               {% if request.endpoint == 'admin.ai_settings' %}
+                                                   active
+                                               {% else %}
+                                                   text-white
+                                               {% endif %}"
+                                        {% if request.endpoint == 'admin.ai_settings' %}
+                                            aria-current="page"
+                                        {% endif %}
+                                    >
+
+                                        <i class="bi bi-cpu me-2"></i>
+
+                                        AI Management
+
+                                    </a>
+
+                                {% endif %}
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                {% endif %}
+
+
+                <!-- =================================================
+                     SUBSCRIPTIONS
+                ================================================== -->
+
+                {% if current_group == "super_admin"
+                      or has_permission("subscriptions.view") %}
+
+                    <div class="mt-2">
+
+                        <button
+                            class="nav-link
+                                   w-100
+                                   border-0
+                                   bg-transparent
+                                   d-flex
+                                   align-items-center
+                                   text-start
+                                   rounded
+                                   px-3
+                                   py-2
+                                   {% if subscriptions_active %}
+                                       active
+                                   {% else %}
+                                       text-white
+                                   {% endif %}"
+                            type="button"
+                            data-bs-toggle="collapse"
+                            data-bs-target="#adminSubscriptions"
+                            aria-expanded="{{ 'true' if subscriptions_active else 'false' }}"
+                            aria-controls="adminSubscriptions"
+                        >
+
+                            <i class="bi bi-credit-card me-2"></i>
+
+                            <span class="flex-grow-1 text-start">
+                                Subscriptions
+                            </span>
+
+                            <i class="bi bi-chevron-down small ms-auto"></i>
+
+                        </button>
+
+
+                        <div
+                            id="adminSubscriptions"
+                            class="collapse
+                                   {% if subscriptions_active %}
+                                       show
+                                   {% endif %}"
+                        >
+
+                            <div
+                                class="ms-3
+                                       ps-2
+                                       border-start
+                                       border-secondary"
+                            >
+
+                                <a
+                                    href="{{ url_for('admin.subscriptions') }}"
+                                    class="nav-link
+                                           text-start
+                                           small
+                                           rounded
+                                           {% if subscriptions_active %}
+                                               active
+                                           {% else %}
+                                               text-white
+                                           {% endif %}"
+                                    {% if subscriptions_active %}
+                                        aria-current="page"
+                                    {% endif %}
+                                >
+
+                                    <i class="bi bi-list-check me-2"></i>
+
+                                    Customer Subscriptions
+
+                                </a>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                {% endif %}
+
+
+                <!-- =================================================
+                     SECURITY & COMPLIANCE
+                ================================================== -->
+
+                {% if current_group == "super_admin"
+                      or has_permission("audit.view") %}
+
+                    <div class="mt-2">
+
+                        <button
+                            class="nav-link
+                                   w-100
+                                   border-0
+                                   bg-transparent
+                                   d-flex
+                                   align-items-center
+                                   text-start
+                                   rounded
+                                   px-3
+                                   py-2
+                                   {% if security_active %}
+                                       active
+                                   {% else %}
+                                       text-white
+                                   {% endif %}"
+                            type="button"
+                            data-bs-toggle="collapse"
+                            data-bs-target="#adminSecurity"
+                            aria-expanded="{{ 'true' if security_active else 'false' }}"
+                            aria-controls="adminSecurity"
+                        >
+
+                            <i class="bi bi-shield-lock me-2"></i>
+
+                            <span class="flex-grow-1 text-start">
+                                Security & Compliance
+                            </span>
+
+                            <i class="bi bi-chevron-down small ms-auto"></i>
+
+                        </button>
+
+
+                        <div
+                            id="adminSecurity"
+                            class="collapse
+                                   {% if security_active %}
+                                       show
+                                   {% endif %}"
+                        >
+
+                            <div
+                                class="ms-3
+                                       ps-2
+                                       border-start
+                                       border-secondary"
+                            >
+
+                                <a
+                                    href="{{ url_for('admin.audit_logs') }}"
+                                    class="nav-link
+                                           text-start
+                                           small
+                                           rounded
+                                           {% if security_active %}
+                                               active
+                                           {% else %}
+                                               text-white
+                                           {% endif %}"
+                                    {% if security_active %}
+                                        aria-current="page"
+                                    {% endif %}
+                                >
+
+                                    <i class="bi bi-clock-history me-2"></i>
+
+                                    Audit Logs
+
+                                </a>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                {% endif %}
+
+
+                <!-- =================================================
+                     PLATFORM
+                ================================================== -->
+
+                {% if current_group == "super_admin"
+                      or has_permission("settings.view") %}
+
+                    <div class="mt-2">
+
+                        <button
+                            class="nav-link
+                                   w-100
+                                   border-0
+                                   bg-transparent
+                                   d-flex
+                                   align-items-center
+                                   text-start
+                                   rounded
+                                   px-3
+                                   py-2
+                                   {% if platform_active %}
+                                       active
+                                   {% else %}
+                                       text-white
+                                   {% endif %}"
+                            type="button"
+                            data-bs-toggle="collapse"
+                            data-bs-target="#adminPlatform"
+                            aria-expanded="{{ 'true' if platform_active else 'false' }}"
+                            aria-controls="adminPlatform"
+                        >
+
+                            <i class="bi bi-sliders me-2"></i>
+
+                            <span class="flex-grow-1 text-start">
+                                Platform
+                            </span>
+
+                            <i class="bi bi-chevron-down small ms-auto"></i>
+
+                        </button>
+
+
+                        <div
+                            id="adminPlatform"
+                            class="collapse
+                                   {% if platform_active %}
+                                       show
+                                   {% endif %}"
+                        >
+
+                            <div
+                                class="ms-3
+                                       ps-2
+                                       border-start
+                                       border-secondary"
+                            >
+
+                                <a
+                                    href="{{ url_for('admin.settings') }}"
+                                    class="nav-link
+                                           text-start
+                                           small
+                                           rounded
+                                           {% if platform_active %}
+                                               active
+                                           {% else %}
+                                               text-white
+                                           {% endif %}"
+                                    {% if platform_active %}
+                                        aria-current="page"
+                                    {% endif %}
+                                >
+
+                                    <i class="bi bi-gear me-2"></i>
+
+                                    System Settings
+
+                                </a>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                {% endif %}
+
 
             {% endif %}
 
 
             <!-- =================================================
                  FINANCIAL APPLICATION
+                 Available exclusively to normal User group.
             ================================================== -->
 
-            {% if not (
-                    current_role == "super_admin"
-                    or has_permission("admin.dashboard.view")
-                    or has_permission("users.view")
-                    or has_permission("roles.view")
-                    or has_permission("permissions.view")
-                    or has_permission("audit.view")
-                    or has_permission("subscriptions.view")
-                    or has_permission("ai.view")
-                    or has_permission("settings.view")
-                    or has_permission("analytics.view")
-                    or has_permission("communications.view")
-                )
-                and (
-                    has_permission("dashboard.view")
-                    or has_permission("income.view")
-                    or has_permission("expenses.view")
-                    or has_permission("budgets.view")
-                    or has_permission("goals.view")
-                    or has_permission("reports.view")
-                )
-            %}
+            {% if current_group == "user" %}
+
 
                 <!-- Dashboard -->
 
@@ -364,11 +904,18 @@
                     <a
                         href="{{ url_for('dashboard.dashboard') }}"
                         class="nav-link
+                               text-start
+                               rounded
+                               px-3
+                               py-2
+                               {% if request.endpoint == 'dashboard.dashboard' %}
+                                   active
+                               {% else %}
+                                   text-white
+                               {% endif %}"
                         {% if request.endpoint == 'dashboard.dashboard' %}
-                            active
-                        {% else %}
-                            text-white
-                        {% endif %}"
+                            aria-current="page"
+                        {% endif %}
                     >
 
                         <i class="bi bi-speedometer2 me-2"></i>
@@ -387,12 +934,20 @@
                     <a
                         href="{{ url_for('income.list_income') }}"
                         class="nav-link
+                               text-start
+                               rounded
+                               px-3
+                               py-2
+                               {% if request.endpoint
+                                     and request.endpoint.startswith('income.') %}
+                                   active
+                               {% else %}
+                                   text-white
+                               {% endif %}"
                         {% if request.endpoint
                               and request.endpoint.startswith('income.') %}
-                            active
-                        {% else %}
-                            text-white
-                        {% endif %}"
+                            aria-current="page"
+                        {% endif %}
                     >
 
                         <i class="bi bi-wallet2 me-2"></i>
@@ -411,12 +966,20 @@
                     <a
                         href="{{ url_for('expense.list_expense') }}"
                         class="nav-link
+                               text-start
+                               rounded
+                               px-3
+                               py-2
+                               {% if request.endpoint
+                                     and request.endpoint.startswith('expense.') %}
+                                   active
+                               {% else %}
+                                   text-white
+                               {% endif %}"
                         {% if request.endpoint
                               and request.endpoint.startswith('expense.') %}
-                            active
-                        {% else %}
-                            text-white
-                        {% endif %}"
+                            aria-current="page"
+                        {% endif %}
                     >
 
                         <i class="bi bi-cash-stack me-2"></i>
@@ -435,12 +998,20 @@
                     <a
                         href="{{ url_for('budget.list_budgets') }}"
                         class="nav-link
+                               text-start
+                               rounded
+                               px-3
+                               py-2
+                               {% if request.endpoint
+                                     and request.endpoint.startswith('budget.') %}
+                                   active
+                               {% else %}
+                                   text-white
+                               {% endif %}"
                         {% if request.endpoint
                               and request.endpoint.startswith('budget.') %}
-                            active
-                        {% else %}
-                            text-white
-                        {% endif %}"
+                            aria-current="page"
+                        {% endif %}
                     >
 
                         <i class="bi bi-pie-chart me-2"></i>
@@ -459,12 +1030,20 @@
                     <a
                         href="{{ url_for('goal.list_goals') }}"
                         class="nav-link
+                               text-start
+                               rounded
+                               px-3
+                               py-2
+                               {% if request.endpoint
+                                     and request.endpoint.startswith('goal.') %}
+                                   active
+                               {% else %}
+                                   text-white
+                               {% endif %}"
                         {% if request.endpoint
                               and request.endpoint.startswith('goal.') %}
-                            active
-                        {% else %}
-                            text-white
-                        {% endif %}"
+                            aria-current="page"
+                        {% endif %}
                     >
 
                         <i class="bi bi-bullseye me-2"></i>
@@ -476,23 +1055,98 @@
                 {% endif %}
 
 
-                {% if can_customize_categories and has_permission("categories.view") %}
-                    <a href="{{ url_for('categories.index') }}" class="nav-link {% if request.endpoint and request.endpoint.startswith('categories.') %}active{% else %}text-white{% endif %}">
-                        <i class="bi bi-tags me-2"></i> Categories
+                <!-- Categories -->
+
+                {% if can_customize_categories
+                      and has_permission("categories.view") %}
+
+                    <a
+                        href="{{ url_for('categories.index') }}"
+                        class="nav-link
+                               text-start
+                               rounded
+                               px-3
+                               py-2
+                               {% if request.endpoint
+                                     and request.endpoint.startswith('categories.') %}
+                                   active
+                               {% else %}
+                                   text-white
+                               {% endif %}"
+                        {% if request.endpoint
+                              and request.endpoint.startswith('categories.') %}
+                            aria-current="page"
+                        {% endif %}
+                    >
+
+                        <i class="bi bi-tags me-2"></i>
+
+                        Categories
+
                     </a>
+
                 {% endif %}
+
 
                 <!-- Plan & Billing -->
-                <a href="{{ url_for('billing.index') }}" class="nav-link {% if request.endpoint and request.endpoint.startswith('billing.') %}active{% else %}text-white{% endif %}">
-                    <i class="bi bi-credit-card-2-front me-2"></i> Plan & Billing
+
+                <a
+                    href="{{ url_for('billing.index') }}"
+                    class="nav-link
+                           text-start
+                           rounded
+                           px-3
+                           py-2
+                           {% if request.endpoint
+                                 and request.endpoint.startswith('billing.') %}
+                               active
+                           {% else %}
+                               text-white
+                           {% endif %}"
+                    {% if request.endpoint
+                          and request.endpoint.startswith('billing.') %}
+                        aria-current="page"
+                    {% endif %}
+                >
+
+                    <i class="bi bi-credit-card-2-front me-2"></i>
+
+                    Plan & Billing
+
                 </a>
 
-                <!-- Assets -->
+
+                <!-- Investments -->
+
                 {% if has_permission("investments.view") %}
-                    <a href="{{ url_for('assets.index') }}" class="nav-link {% if request.endpoint and request.endpoint.startswith('assets.') %}active{% else %}text-white{% endif %}">
-                        <i class="bi bi-briefcase me-2"></i> Investments
+
+                    <a
+                        href="{{ url_for('assets.index') }}"
+                        class="nav-link
+                               text-start
+                               rounded
+                               px-3
+                               py-2
+                               {% if request.endpoint
+                                     and request.endpoint.startswith('assets.') %}
+                                   active
+                               {% else %}
+                                   text-white
+                               {% endif %}"
+                        {% if request.endpoint
+                              and request.endpoint.startswith('assets.') %}
+                            aria-current="page"
+                        {% endif %}
+                    >
+
+                        <i class="bi bi-briefcase me-2"></i>
+
+                        Investments
+
                     </a>
+
                 {% endif %}
+
 
                 <!-- Reports -->
 
@@ -501,12 +1155,20 @@
                     <a
                         href="{{ url_for('reports.index') }}"
                         class="nav-link
+                               text-start
+                               rounded
+                               px-3
+                               py-2
+                               {% if request.endpoint
+                                     and request.endpoint.startswith('reports.') %}
+                                   active
+                               {% else %}
+                                   text-white
+                               {% endif %}"
                         {% if request.endpoint
                               and request.endpoint.startswith('reports.') %}
-                            active
-                        {% else %}
-                            text-white
-                        {% endif %}"
+                            aria-current="page"
+                        {% endif %}
                     >
 
                         <i class="bi bi-bar-chart-line me-2"></i>
@@ -516,6 +1178,7 @@
                     </a>
 
                 {% endif %}
+
 
             {% endif %}
 
@@ -533,24 +1196,38 @@
                    mb-3"
         >
 
-            <div class="d-flex align-items-center">
+            <div class="d-flex align-items-center text-start">
 
                 <!-- Avatar -->
 
-                {% if current_user.avatar and current_user.avatar != "default-avatar.png" %}
+                {% if current_user.avatar
+                      and current_user.avatar != "default-avatar.png" %}
+
                     <img
                         src="{{ url_for('profile.avatar', filename=current_user.avatar.split('/')[-1]) }}"
                         alt="{{ current_user.first_name }} {{ current_user.last_name }}"
                         class="rounded-circle me-2 flex-shrink-0"
                         style="width:36px;height:36px;object-fit:cover;"
                     >
+
                 {% else %}
+
                     <div
-                        class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center me-2 flex-shrink-0"
+                        class="rounded-circle
+                               bg-primary
+                               text-white
+                               d-flex
+                               align-items-center
+                               justify-content-center
+                               me-2
+                               flex-shrink-0"
                         style="width:36px;height:36px;"
                     >
+
                         {{ current_user.first_name[:1]|upper }}
+
                     </div>
+
                 {% endif %}
 
 
@@ -558,10 +1235,11 @@
 
                 <div
                     class="flex-grow-1
-                           overflow-hidden"
+                           overflow-hidden
+                           text-start"
                 >
 
-                    <div class="fw-semibold text-truncate">
+                    <div class="fw-semibold text-truncate text-start">
 
                         {{ current_user.first_name }}
                         {{ current_user.last_name }}
@@ -572,22 +1250,21 @@
                     <small
                         class="text-secondary
                                text-truncate
+                               text-start
                                d-block"
                     >
 
-                        {% if current_role == "super_admin" %}
+                        {% if current_group == "super_admin" %}
 
                             Super Administrator
 
-                        {% elif current_role == "user" %}
+                        {% elif current_group == "user" %}
 
                             {{ user_plan }}
 
-                        {% elif current_role %}
+                        {% elif current_group == "admin" %}
 
-                            {{ current_role
-                               |replace("_", " ")
-                               |title }}
+                            {{ current_user.role.name }}
 
                         {% else %}
 
@@ -612,7 +1289,7 @@
 
             <a
                 href="{{ url_for('auth.logout') }}"
-                class="btn btn-danger w-100"
+                class="btn btn-danger w-100 text-start"
             >
 
                 <i class="bi bi-box-arrow-right me-2"></i>

@@ -10,7 +10,11 @@ from app.services.announcement_service import AnnouncementService
 from app.rbac.helpers import (
     is_authenticated,
     is_admin,
+    is_admin_group,
+    is_super_admin,
+    is_user_group,
     has_role,
+    has_role_group,
     has_any_role,
     has_permission,
     has_any_permission,
@@ -59,13 +63,18 @@ def register_context_processors(app):
                 "current_user": current_user,
                 "user_plan": "Guest",
                 "active_announcements": [],
+                "role_group": None,
                 "can_customize_categories": False,
 
                 # RBAC Helpers
                 "is_authenticated": is_authenticated,
                 "is_admin": is_admin,
+                "is_admin_group": is_admin_group,
+                "is_super_admin": is_super_admin,
+                "is_user_group": is_user_group,
 
                 "has_role": has_role,
+                "has_role_group": has_role_group,
                 "has_any_role": has_any_role,
 
                 "has_permission": has_permission,
@@ -111,7 +120,7 @@ def register_context_processors(app):
             unread_count = 0
 
         try:
-            if current_user.role_slug in {"admin", "super_admin"}:
+            if current_user.is_admin_group:
                 user_plan = "Administrator"
             else:
                 from app.subscriptions.service import SubscriptionService
@@ -127,7 +136,10 @@ def register_context_processors(app):
             user_plan = "Subscription"
 
         try:
-            announcements = AnnouncementService.active_for_user(current_user.id)
+            announcements = AnnouncementService.active_for_user(
+                current_user.id,
+                channel="dashboard"
+            )
         except Exception:
             logger.exception("Failed loading announcements")
             announcements = []
@@ -167,9 +179,10 @@ def register_context_processors(app):
             "current_user": current_user,
 
             "user_plan": user_plan,
+            "role_group": current_user.role_group,
             "active_announcements": announcements,
             "can_customize_categories": (
-                current_user.role_slug == "user"
+                current_user.is_normal_user
                 and SubscriptionGate.has_paid_plan(current_user.id, {"plus", "pro"})
             ),
 
@@ -180,6 +193,9 @@ def register_context_processors(app):
             "is_authenticated": is_authenticated,
 
             "is_admin": is_admin,
+            "is_admin_group": is_admin_group,
+            "is_super_admin": is_super_admin,
+            "is_user_group": is_user_group,
 
             "has_role": has_role,
 

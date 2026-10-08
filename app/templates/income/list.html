@@ -57,7 +57,7 @@ Income
                     <h4 class="fw-bold text-success mt-2">
 
                         ₦{{ "{:,.2f}".format(
-                            incomes|sum(attribute='amount')
+                            all_incomes|sum(attribute='amount')
                         ) }}
 
                     </h4>
@@ -104,7 +104,7 @@ Income
 
                     <h4 class="fw-bold text-primary mt-2">
 
-                        {{ incomes|selectattr("recurring")|list|length }}
+                        {{ all_incomes|selectattr("recurring")|list|length }}
 
                     </h4>
 
@@ -127,7 +127,7 @@ Income
 
                     <h4 class="fw-bold text-warning mt-2">
 
-                        {{ incomes|map(attribute='category')|unique|list|length }}
+                        {{ all_incomes|map(attribute='category')|unique|list|length }}
 
                     </h4>
 
@@ -293,7 +293,7 @@ Income
 
 
                             <td class="text-nowrap">
-
+ 
                                 <strong>
 
                                     ₦{{ "{:,.2f}".format(

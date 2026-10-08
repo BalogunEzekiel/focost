@@ -14,7 +14,7 @@ class Announcement(BaseModel):
     priority = db.Column(db.String(20), nullable=False, default="normal")
     status = db.Column(db.String(20), nullable=False, default="draft", index=True)
 
-    # Targeting: all, free_trial, basic, plus, pro, or user.
+    # Targeting: all, super_admin, admin, user, free_trial, basic, plus, pro.
     audience = db.Column(db.String(30), nullable=False, default="all", index=True)
     target_user_id = db.Column(db.Integer, db.ForeignKey("users.id", ondelete="CASCADE"), nullable=True)
 

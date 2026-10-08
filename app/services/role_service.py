@@ -20,9 +20,8 @@ class RoleService:
 
         A user can never receive a second role.
 
-        Once a role exists, the account's role is permanent.
-        The user must create a new account/email to obtain
-        another role.
+        Once a role exists, the account has exactly one role.
+        Administrative reassignment is handled by AdminUserService.
         """
 
         # ------------------------------------------------------
@@ -52,10 +51,23 @@ class RoleService:
             )
 
         if not role.is_active:
-
             raise ValueError(
                 f"Role '{role_slug}' is inactive."
             )
+
+        # Initial self/registration assignment is always the normal User
+        # group. Administrative roles require an authenticated administrative
+        # actor and can never create/assign Super Admin.
+        if role.group_slug == "super_admin":
+            raise PermissionError(
+                "Super Admin can only be provisioned by the system seed."
+            )
+
+        if role.group_slug == "admin":
+            if not assigned_by or assigned_by.role_group not in {"super_admin", "admin"}:
+                raise PermissionError(
+                    "Only Super Admin or Admin accounts can assign administrative roles."
+                )
 
         # ------------------------------------------------------
         # Create role assignment

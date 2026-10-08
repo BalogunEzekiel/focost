@@ -10,11 +10,40 @@ Design principles:
     - Permission codes must not be hardcoded elsewhere when a
       constant can be imported from this module.
     - RBAC seeding synchronizes SYSTEM_PERMISSIONS with the database.
-    - Super Admin receives all registered permissions.
+    - Super Admin receives all administrative permissions, but never normal-user financial operations or end-user AI chat/use.
     - DEFAULT_USER_PERMISSION_CODES defines the permissions granted
       to the standard User role.
     - Each user may have only one role.
 """
+
+
+# ==========================================================
+# ROLE GROUPS
+# ==========================================================
+#
+# These are the three immutable system-level identity groups.
+# Individual role slugs such as "developer" or "finance_manager"
+# are custom roles inside the "admin" group; they are not new
+# system groups.
+# ==========================================================
+
+SUPER_ADMIN_GROUP = "super_admin"
+ADMIN_GROUP = "admin"
+USER_GROUP = "user"
+
+ROLE_GROUPS = (
+    SUPER_ADMIN_GROUP,
+    ADMIN_GROUP,
+    USER_GROUP,
+)
+
+SYSTEM_ROLE_SLUGS = ROLE_GROUPS
+
+ROLE_GROUP_LABELS = {
+    SUPER_ADMIN_GROUP: "Super Admin",
+    ADMIN_GROUP: "Admin",
+    USER_GROUP: "User",
+}
 
 
 # ==========================================================
@@ -27,18 +56,21 @@ SYSTEM_ROLES = [
         "name": "Super Administrator",
         "description": "Full unrestricted administrative access.",
         "is_system": True,
+        "group_slug": SUPER_ADMIN_GROUP,
     },
     {
         "slug": "admin",
         "name": "Administrator",
         "description": "Administrative access to assigned system functions.",
         "is_system": True,
+        "group_slug": ADMIN_GROUP,
     },
     {
         "slug": "user",
         "name": "User",
         "description": "Regular FOCOST application user.",
         "is_system": True,
+        "group_slug": USER_GROUP,
     },
 ]
 
@@ -55,7 +87,8 @@ SYSTEM_ROLES = [
 # RBACSeed.seed_permissions() synchronizes this registry with
 # the Permission table.
 #
-# Super Admin receives all permissions registered here.
+# Super Admin receives all administrative permissions registered here;
+# normal-user financial and end-user AI permissions are structurally forbidden.
 # ==========================================================
 
 SYSTEM_PERMISSIONS = [
@@ -616,7 +649,8 @@ SYSTEM_PERMISSIONS = [
 # DEFAULT_USER_PERMISSION_CODES
 #     = the subset available to normal application users.
 #
-# Super Admin is NOT restricted by this list.
+# Administrative groups are structurally denied normal-user financial and
+# end-user AI permissions even if a stale database assignment exists.
 # ==========================================================
 
 DEFAULT_USER_PERMISSION_CODES = {
@@ -663,6 +697,53 @@ DEFAULT_USER_PERMISSION_CODES = {
 
     # Profile settings
     "settings.view_profile",
+}
+
+
+# ==========================================================
+# ADMIN-GROUP FORBIDDEN USER FEATURES
+# ==========================================================
+#
+# Administrative accounts operate the administrative surface.
+# They must never gain normal-user financial operations or
+# end-user AI chat/use, even if a permission was accidentally
+# assigned to an administrative custom role.
+# ==========================================================
+
+ADMIN_FORBIDDEN_PERMISSION_CODES = {
+    "dashboard.view",
+
+    "income.view",
+    "income.create",
+    "income.edit",
+    "income.delete",
+
+    "expenses.view",
+    "expenses.create",
+    "expenses.edit",
+    "expenses.delete",
+
+    "budgets.view",
+    "budgets.create",
+    "budgets.edit",
+    "budgets.delete",
+
+    "goals.view",
+    "goals.create",
+    "goals.edit",
+    "goals.delete",
+
+    "reports.view",
+    "reports.export",
+
+    "investments.view",
+    "investments.manage",
+
+    "categories.view",
+    "categories.manage",
+
+    "ai.chat",
+    "ai.use",
 }
 
 

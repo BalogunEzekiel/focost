@@ -12,6 +12,8 @@ from app.models.subscription import (
 )
 from app.services.notification_service import NotificationService
 from app.utils.timezone import as_utc, utc_now
+from app.models.role import Role
+from app.models.user_role import UserRole
 
 
 TRIAL_DAYS = 30
@@ -19,6 +21,84 @@ TRIAL_DAYS = 30
 
 class SubscriptionService:
     """Subscription domain service. Billing is deliberately independent of AI processing."""
+
+    @staticmethod
+    def ai_context(user_id):
+        """Return safe, database-derived subscription context for FOCOST AI.
+
+        Payment-provider secrets, provider subscription codes, and payment
+        credentials are deliberately excluded. SubscriptionService remains
+        the authoritative source for plan and subscription facts.
+        """
+        user = db.session.get(User, user_id)
+
+        plans = []
+        for plan in SubscriptionService.plans(public_only=True):
+            entitlements = plan.entitlements()
+            plans.append({
+                "slug": plan.slug,
+                "name": plan.name,
+                "description": plan.description,
+                "price": round((plan.amount_minor or 0) / 100, 2),
+                "currency": plan.currency,
+                "interval": plan.interval,
+                "ai_token_limit": plan.ai_token_limit,
+                "ai_request_limit": plan.ai_request_limit,
+                "transaction_limit": plan.transaction_limit,
+                "features": entitlements,
+            })
+
+        if user and user.is_admin_group:
+            return {
+                "account_type": "administrator",
+                "current": {
+                    "status": "not_applicable",
+                    "plan_name": "Administrator",
+                },
+                "plans": plans,
+                "billing": {
+                    "available": False,
+                    "upgrade_route": "/billing/",
+                },
+            }
+
+        sub = SubscriptionService.current(user_id)
+        entitlements = SubscriptionService.entitlements(user_id)
+
+        current = None
+        if sub:
+            current = {
+                "status": sub.status,
+                "is_trial": bool(sub.is_trial),
+                "plan_name": sub.plan.name if sub.plan else "Free Trial",
+                "plan_slug": sub.plan.slug if sub.plan else None,
+                "start_date": (sub.start_date.isoformat() if sub.start_date else None),
+                "end_date": (sub.end_date.isoformat() if sub.end_date else None),
+                "current_period_start": (sub.current_period_start.isoformat() if sub.current_period_start else None),
+                "current_period_end": (sub.current_period_end.isoformat() if sub.current_period_end else None),
+                "cancel_at_period_end": bool(sub.cancel_at_period_end),
+                "active_access": bool(sub.is_active_access),
+            }
+
+        return {
+            "account_type": "user",
+            "current": current,
+            "entitlements": entitlements,
+            "plans": plans,
+            "billing": {
+                "available": True,
+                "billing_page": "/billing/",
+                "initialize_payment": "/billing/initialize",
+                "cancel_subscription": "/billing/cancel",
+                "process": [
+                    "Open FOCOST Plan & Billing.",
+                    "Choose an available plan.",
+                    "Start payment through FOCOST.",
+                    "Complete payment with the payment provider.",
+                    "FOCOST verifies the payment before activating the subscription.",
+                ],
+            },
+        }
 
     @staticmethod
     def plans(public_only=True):
@@ -43,7 +123,7 @@ class SubscriptionService:
 
     @staticmethod
     def start_trial(user, commit=True):
-        if user.role_slug in {"admin", "super_admin"}:
+        if user.is_admin_group:
             return None
 
         existing = (
@@ -104,7 +184,7 @@ class SubscriptionService:
         # Administrators are system operators, not FOCOST plan subscribers.
         # They never receive trials, paid plans, or billing state.
         user = db.session.get(User, user_id)
-        if user and user.role_slug in {"admin", "super_admin"}:
+        if user and user.is_admin_group:
             return None
 
         now = utc_now()
@@ -205,6 +285,19 @@ class SubscriptionService:
 
     @staticmethod
     def entitlements(user_id):
+        user = db.session.get(User, user_id)
+
+        if user and user.is_admin_group:
+            return {
+                "active": False,
+                "status": "not_applicable",
+                "plan_name": "Administrator",
+                "plan_slug": None,
+                "ai_token_limit": None,
+                "ai_request_limit": None,
+                "transaction_limit": None,
+            }
+
         sub = SubscriptionService.current(user_id)
 
         if not sub:
@@ -325,8 +418,10 @@ class SubscriptionService:
         provider_data = provider_data or {}
 
         user = db.session.get(User, tx.user_id)
-        if user and user.role_slug in {"admin", "super_admin"}:
-            raise PermissionError("Administrative accounts cannot hold FOCOST subscription plans.")
+        if user and user.is_admin_group:
+            raise PermissionError(
+                "Administrative accounts cannot hold FOCOST subscription plans."
+            )
 
         plan = (
             tx.plan
@@ -449,6 +544,14 @@ class SubscriptionService:
 
     @staticmethod
     def can_add_transaction(user_id):
+        user = db.session.get(User, user_id)
+
+        if user and user.is_admin_group:
+            return (
+                False,
+                "Administrative accounts cannot create normal-user financial records.",
+            )
+
         ent = SubscriptionService.entitlements(user_id)
 
         limit = ent.get("transaction_limit")
@@ -532,38 +635,152 @@ class SubscriptionService:
 
     @staticmethod
     def admin_summary():
+        """
+        Return subscription administration metrics.
+
+        Normal users are identified by Role.group_slug == "user".
+        Administrative accounts are identified by Role.group_slug in
+        {"super_admin", "admin"}.
+
+        Subscription and payment metrics intentionally exclude all
+        administrative accounts.
+        """
+
+        normal_user_ids = (
+            db.session.query(User.id)
+            .join(
+                UserRole,
+                UserRole.user_id == User.id,
+            )
+            .join(
+                Role,
+                Role.id == UserRole.role_id,
+            )
+            .filter(
+                Role.group_slug == "user"
+            )
+            .subquery()
+        )
+
+        admin_user_ids = (
+            db.session.query(User.id)
+            .join(
+                UserRole,
+                UserRole.user_id == User.id,
+            )
+            .join(
+                Role,
+                Role.id == UserRole.role_id,
+            )
+            .filter(
+                Role.group_slug.in_(
+                    ["super_admin", "admin"]
+                )
+            )
+            .subquery()
+        )
+
         return {
-            "total_users": User.query.count(),
-            "active_subscriptions": (
-                UserSubscription.query
-                .filter_by(status="active")
-                .count()
-            ),
-            "trial_subscriptions": (
-                UserSubscription.query
-                .filter_by(status="trial")
-                .count()
-            ),
-            "expired_subscriptions": (
-                UserSubscription.query
+            # --------------------------------------------------
+            # CUSTOMER KPIs
+            # --------------------------------------------------
+
+            # Normal users only.
+            # Includes Free Trial, Basic, Plus, Pro and users
+            # whose subscription has expired/canceled.
+            "total_users": (
+                User.query
                 .filter(
-                    UserSubscription.status.in_(
-                        ["expired", "canceled"]
-                    )
+                    User.id.in_(normal_user_ids)
                 )
                 .count()
             ),
+
+            # Normal users with active paid subscriptions.
+            "active_subscriptions": (
+                UserSubscription.query
+                .filter(
+                    UserSubscription.user_id.in_(
+                        normal_user_ids
+                    ),
+                    UserSubscription.status == "active",
+                )
+                .count()
+            ),
+
+            # Normal users currently on trial.
+            "trial_subscriptions": (
+                UserSubscription.query
+                .filter(
+                    UserSubscription.user_id.in_(
+                        normal_user_ids
+                    ),
+                    UserSubscription.status == "trial",
+                )
+                .count()
+            ),
+
+            # Normal users with expired/canceled subscriptions.
+            "expired_subscriptions": (
+                UserSubscription.query
+                .filter(
+                    UserSubscription.user_id.in_(
+                        normal_user_ids
+                    ),
+                    UserSubscription.status.in_(
+                        ["expired", "canceled"]
+                    ),
+                )
+                .count()
+            ),
+
+            # --------------------------------------------------
+            # ADMINISTRATIVE KPI
+            # --------------------------------------------------
+
+            "admin_users": (
+                User.query
+                .filter(
+                    User.id.in_(admin_user_ids)
+                )
+                .count()
+            ),
+
+            # --------------------------------------------------
+            # PLANS
+            # --------------------------------------------------
+
             "plans": SubscriptionService.plans(False),
+
+            # --------------------------------------------------
+            # CUSTOMER SUBSCRIPTIONS
+            # --------------------------------------------------
+
             "subscriptions": (
                 UserSubscription.query
+                .filter(
+                    UserSubscription.user_id.in_(
+                        normal_user_ids
+                    )
+                )
                 .order_by(
                     UserSubscription.created_at.desc()
                 )
                 .limit(100)
                 .all()
             ),
+
+            # --------------------------------------------------
+            # CUSTOMER PAYMENT TRANSACTIONS
+            # --------------------------------------------------
+
             "payment_transactions": (
                 PaymentTransaction.query
+                .filter(
+                    PaymentTransaction.user_id.in_(
+                        normal_user_ids
+                    )
+                )
                 .order_by(
                     PaymentTransaction.created_at.desc()
                 )

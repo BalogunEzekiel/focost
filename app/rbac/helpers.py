@@ -27,6 +27,11 @@ def has_role(role):
     return RBACService.has_role(role)
 
 
+def has_role_group(group_slug):
+    """Check the immutable system role group."""
+    return RBACService.has_role_group(group_slug)
+
+
 def has_any_role(*roles):
     """
     Returns True if the current user
@@ -85,3 +90,17 @@ def is_admin():
     """
 
     return RBACService.is_admin()
+
+def is_admin_group():
+    """Return True for both Super Admin and custom Admin-group roles."""
+    return RBACService.is_admin_group()
+
+
+def is_super_admin():
+    """Return True only for the reserved Super Admin group."""
+    return RBACService.is_super_admin()
+
+
+def is_user_group():
+    """Return True only for the normal User group."""
+    return RBACService.is_user_group()

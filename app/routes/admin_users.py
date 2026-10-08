@@ -9,7 +9,10 @@ from flask import (
 
 from flask_login import login_required
 
-from app.rbac.decorators import permission_required
+from app.rbac.decorators import (
+    admin_required,
+    permission_required
+)
 
 from app.audit.service import AuditService
 from app.audit.constants import (
@@ -22,9 +25,8 @@ from app.audit.constants import (
     RBAC
 )
 
-#from app.routes.admin import roles
 from app.services.admin_user_service import AdminUserService
-from app.models.role import Role
+
 
 admin_users_bp = Blueprint(
     "admin_users",
@@ -39,6 +41,7 @@ admin_users_bp = Blueprint(
 
 @admin_users_bp.route("/")
 @login_required
+@admin_required
 @permission_required("users.view")
 def index():
 
@@ -67,12 +70,14 @@ def index():
         search=search
     )
 
+
 # ==========================================================
 # User Details
 # ==========================================================
 
 @admin_users_bp.route("/<public_id>")
 @login_required
+@admin_required
 @permission_required("users.view")
 def details(public_id):
 
@@ -91,12 +96,7 @@ def details(public_id):
             url_for("admin_users.index")
         )
 
-    roles = (
-        Role.query
-        .filter_by(is_active=True)
-        .order_by(Role.name)
-        .all()
-    )
+    roles = AdminUserService.assignable_roles()
 
     return render_template(
         "admin/users/details.html",
@@ -114,6 +114,7 @@ def details(public_id):
     methods=["GET", "POST"]
 )
 @login_required
+@admin_required
 @permission_required("users.create")
 def create():
 
@@ -163,11 +164,13 @@ def create():
                 "danger"
             )
 
-    roles = Role.query.order_by(Role.name).all()
+    roles = AdminUserService.assignable_roles()
+
     return render_template(
         "admin/users/create.html",
         roles=roles
     )
+
 
 # ==========================================================
 # Edit User
@@ -178,6 +181,7 @@ def create():
     methods=["GET", "POST"]
 )
 @login_required
+@admin_required
 @permission_required("users.update")
 def edit(public_id):
 
@@ -232,8 +236,10 @@ def edit(public_id):
             )
 
             return redirect(
-                url_for("admin_users.details",
-                public_id=public_id)
+                url_for(
+                    "admin_users.details",
+                    public_id=public_id
+                )
             )
 
         except Exception as ex:
@@ -257,6 +263,7 @@ def edit(public_id):
     "/<public_id>/activate"
 )
 @login_required
+@admin_required
 @permission_required("users.update")
 def activate(public_id):
 
@@ -297,6 +304,7 @@ def activate(public_id):
     "/<public_id>/deactivate"
 )
 @login_required
+@admin_required
 @permission_required("users.update")
 def deactivate(public_id):
 
@@ -337,6 +345,7 @@ def deactivate(public_id):
     "/<public_id>/delete"
 )
 @login_required
+@admin_required
 @permission_required("users.delete")
 def delete(public_id):
 
@@ -345,6 +354,7 @@ def delete(public_id):
     )
 
     if user:
+
         AdminUserService.delete_user(
             public_id
         )
@@ -368,6 +378,7 @@ def delete(public_id):
     methods=["POST"]
 )
 @login_required
+@admin_required
 @permission_required("roles.assign")
 def assign_role(public_id):
 
@@ -443,6 +454,7 @@ def assign_role(public_id):
         )
     )
 
+
 # ==========================================================
 # Remove Role
 # ==========================================================
@@ -452,43 +464,29 @@ def assign_role(public_id):
     methods=["POST"]
 )
 @login_required
+@admin_required
 @permission_required("roles.remove")
 def remove_role(public_id):
 
-    user = AdminUserService.get_user(
-        public_id
-    )
+    user = AdminUserService.get_user(public_id)
+    role_slug = request.form.get("role")
 
-    role_slug = request.form.get(
-        "role"
-    )
-
-    AdminUserService.remove_role(
-        user,
-        role_slug
-    )
-
-    AuditService.log(
-
-        action=ROLE_REMOVED,
-
-        category=RBAC,
-
-        resource="Role",
-
-        resource_id=role_slug,
-
-        description=f"{role_slug} removed from {user.email}"
-    )
-
-    flash(
-        "Role removed.",
-        "success"
-    )
+    try:
+        AdminUserService.remove_role(user, role_slug)
+        AuditService.log(
+            action=ROLE_REMOVED,
+            category=RBAC,
+            resource="Role",
+            resource_id=role_slug,
+            description=f"{role_slug} removed from {user.email}",
+        )
+        flash("Role removed.", "success")
+    except Exception as ex:
+        flash(str(ex), "warning")
 
     return redirect(
         url_for(
             "admin_users.details",
-            public_id=public_id
+            public_id=public_id,
         )
     )

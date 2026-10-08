@@ -25,13 +25,16 @@ class AdminAnalyticsService:
             query = query.filter(User.is_active.is_(False))
 
         users = query.all()
+        # This analytics center measures normal application users and their
+        # consumer subscription cohorts. Administrative employees are not
+        # subscribers and must never be mixed into these cohorts.
+        users = [u for u in users if u.role_group == "user"]
+
         if plan == "all":
             return [u.id for u in users]
 
         result = []
         for user in users:
-            if user.role_slug in {"admin", "super_admin"}:
-                continue
             sub = (
                 UserSubscription.query
                 .filter_by(user_id=user.id)

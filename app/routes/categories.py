@@ -12,7 +12,7 @@ categories_bp = Blueprint("categories", __name__, url_prefix="/categories")
 @categories_bp.before_request
 @login_required
 def protect():
-    if current_user.role_slug != "user":
+    if not current_user.is_normal_user:
         from flask import abort
         abort(403)
     if not CategoryService.can_customize(current_user.id):

@@ -176,6 +176,25 @@ class User(BaseModel, UserMixin):
         return self.role.slug
 
     @property
+    def role_group(self):
+        if not self.role:
+            return None
+
+        return self.role.group_slug
+
+    @property
+    def is_super_admin(self):
+        return self.role_group == "super_admin"
+
+    @property
+    def is_admin_group(self):
+        return self.role_group in {"super_admin", "admin"}
+
+    @property
+    def is_normal_user(self):
+        return self.role_group == "user"
+
+    @property
     def primary_role(self):
         return self.role
 
@@ -186,16 +205,15 @@ class User(BaseModel, UserMixin):
 
         return [self.role.slug]
 
-    @property
-    def is_super_admin(self):
-        return self.role_slug == "super_admin"
-
     # ==========================================================
     # ROLE CHECKS
     # ==========================================================
 
     def has_role(self, slug):
         return self.role_slug == slug
+
+    def has_role_group(self, group_slug):
+        return self.role_group == group_slug
 
     def has_any_role(self, *roles):
         return self.role_slug in roles
@@ -324,7 +342,7 @@ def _protect_super_admin_before_delete(
     seeded Super Admin, the operation is rejected.
     """
 
-    if target.role_slug == "super_admin":
+    if target.is_super_admin:
         raise ValueError(
             "The Super Admin account is system-protected "
             "and cannot be deleted."

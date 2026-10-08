@@ -12,10 +12,17 @@ class SubscriptionGate:
             if isinstance(user_or_id, User)
             else db.session.get(User, user_or_id)
         )
-        return bool(user and user.role_slug in {"admin", "super_admin"})
+        return bool(user and user.is_admin_group)
 
     @staticmethod
     def current_plan_slug(user_id):
+        """
+        Return the subscription plan slug for a normal User account.
+
+        Subscription entitlement belongs exclusively to the normal
+        User group. Administrative accounts are outside the subscription
+        domain regardless of whether a legacy subscription record exists.
+        """
         if SubscriptionGate.is_admin_user(user_id):
             return None
 
@@ -38,5 +45,21 @@ class SubscriptionGate:
 
     @staticmethod
     def ads_allowed(user_id):
+        """
+        Ads are consumer-facing only.
+
+        Administrative accounts are never eligible for advertisements.
+        Among normal User accounts, only Free Trial and Basic are
+        eligible for ad delivery.
+        """
+        if SubscriptionGate.is_admin_user(user_id):
+            return False
+
         slug = SubscriptionGate.current_plan_slug(user_id)
-        return slug in {"free_trial", "basic", None}
+        return slug in {"free_trial", "basic"}
+
+
+def current_subscription(user_id):
+    from app.subscriptions.service import SubscriptionService
+
+    return SubscriptionService.current(user_id)
