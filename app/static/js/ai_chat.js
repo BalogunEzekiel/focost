@@ -1314,13 +1314,9 @@ async function sendMessage() {
         return;
 
     appendMessage(
-
         "You",
-
         question,
-
         "user"
-
     );
 
     input.value = "";
@@ -1330,39 +1326,97 @@ async function sendMessage() {
     try {
 
         const response = await fetch(
-
             "/ai/chat",
-
             {
-
                 method: "POST",
 
                 headers: {
-
                     "Content-Type": "application/json",
-                    "X-CSRFToken": document.querySelector('meta[name="csrf-token"]')?.content || ""
-
+                    "X-CSRFToken":
+                        document.querySelector(
+                            'meta[name="csrf-token"]'
+                        )?.content || ""
                 },
 
                 body: JSON.stringify({
-
                     message: question
-
                 })
-
             }
-
         );
 
-        const data = await response.json();
+        const contentType =
+            response.headers.get("content-type") || "";
+
+        let data = null;
+        let rawResponse = "";
+
+        if (contentType.includes("application/json")) {
+
+            try {
+                data = await response.json();
+            } catch (error) {
+                console.error(
+                    "FOCOST AI returned invalid JSON:",
+                    error
+                );
+            }
+
+        } else {
+
+            try {
+                rawResponse = await response.text();
+            } catch (error) {
+                console.error(
+                    "Unable to read FOCOST AI response:",
+                    error
+                );
+            }
+
+        }
 
         removeTyping();
 
-        if (data.success) {
+        /*
+         * IMPORTANT:
+         * HTTP errors such as 400/401/403/500 are NOT network errors.
+         * Display the actual Flask response instead of falsely saying
+         * "Unable to reach AI service".
+         */
+        if (!response.ok) {
+
+            console.error(
+                "FOCOST AI request failed:",
+                {
+                    status: response.status,
+                    statusText: response.statusText,
+                    data,
+                    rawResponse
+                }
+            );
+
+            const backendMessage =
+                data?.message ||
+                data?.error ||
+                (rawResponse && rawResponse.trim()) ||
+                `AI request failed (${response.status} ${
+                    response.statusText || ""
+                })`.trim();
 
             appendMessage(
                 "FOCOST AI",
-                data.message,
+                backendMessage,
+                "assistant"
+            );
+
+            return;
+        }
+
+        if (data?.success) {
+
+            appendMessage(
+                "FOCOST AI",
+                data.message ||
+                    "FOCOST AI returned an empty response.",
                 "assistant"
             );
 
@@ -1370,30 +1424,30 @@ async function sendMessage() {
 
             appendMessage(
                 "FOCOST AI",
-                data.message || "Something went wrong.",
+                data?.message ||
+                    data?.error ||
+                    "FOCOST AI returned an unexpected response.",
                 "assistant"
             );
-
         }
 
     }
 
-    catch {
+    catch (error) {
 
         removeTyping();
 
-        appendMessage(
-
-            "FOCOST AI",
-
-            "Unable to reach AI service (Retry later).",
-
-            "assistant"
-
+        console.error(
+            "FOCOST AI network/request error:",
+            error
         );
 
+        appendMessage(
+            "FOCOST AI",
+            "Unable to reach the FOCOST AI service. Please check your connection and try again.",
+            "assistant"
+        );
     }
-
 }
 
 // ==========================================================

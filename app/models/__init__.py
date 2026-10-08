@@ -33,3 +33,5 @@ from .category import FinancialCategory
 from .announcement import Announcement
 
 from .push_device import PushDevice
+
+from .announcement_user_state import AnnouncementUserState

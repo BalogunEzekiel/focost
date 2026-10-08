@@ -14,7 +14,11 @@ admin_communications_bp = Blueprint("admin_communications", __name__, url_prefix
 @permission_required("communications.view")
 def index():
     items = Announcement.query.order_by(Announcement.created_at.desc()).limit(100).all()
-    return render_template("admin/communications.html", announcements=items)
+    return render_template(
+        "admin/communications.html",
+        announcements=items,
+        audience_options=AnnouncementService.audience_options(),
+    )
 
 
 @admin_communications_bp.post("/create")

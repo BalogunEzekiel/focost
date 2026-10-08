@@ -33,6 +33,8 @@ from app.models.role_permission import RolePermission
 from app.models.user_role import UserRole
 from app.extensions import db
 from app.models.user import User
+from app.rbac.service import RBACService
+from app.services.admin_user_service import AdminUserService
 
 admin_roles_bp = Blueprint(
     "admin_roles",
@@ -160,7 +162,7 @@ def create():
             name=name,
             slug=slug,
             description=description,
-            is_system=request.form.get("is_system") == "on"
+            is_system=False,
         )
 
         AuditService.log(
@@ -205,26 +207,21 @@ def edit(role_id):
 
     if request.method == "POST":
 
-        slug = request.form.get("slug")
+        slug = request.form.get("slug") or role.slug
 
-        if AdminRoleService.slug_exists(
-            slug,
-            exclude_id=role_id
-        ):
-
+        if slug.strip().lower() != role.slug:
             flash(
-                "Slug already exists.",
-                "danger"
+                "Role slugs are immutable and cannot be changed.",
+                "danger",
             )
-
             return redirect(request.url)
 
         AdminRoleService.update_role(
             role=role,
             name=request.form.get("name"),
-            slug=slug,
+            slug=role.slug,
             description=request.form.get("description"),
-            is_system=request.form.get("is_system") == "on"
+            is_system=role.is_system,
         )
 
         AuditService.log(
@@ -324,8 +321,8 @@ def clone(role_id):
         slug=f"{role.slug}_copy",
 
         description=role.description,
-
-        is_system=False
+        is_system=False,
+        group_slug="admin",
     )
 
     db.session.add(clone)
@@ -337,15 +334,20 @@ def clone(role_id):
     ).all()
 
     for rp in permissions:
+        permission = db.session.get(Permission, rp.permission_id)
+        if not permission:
+            continue
+
+        if not RBACService.permission_allowed_for_group(
+            clone.group_slug,
+            permission.code,
+        ):
+            continue
 
         db.session.add(
-
             RolePermission(
-
                 role_id=clone.id,
-
-                permission_id=rp.permission_id
-
+                permission_id=rp.permission_id,
             )
         )
 
@@ -390,10 +392,10 @@ def permissions(role_id):
 
     role = Role.query.get_or_404(role_id)
 
-    if current_user.role_slug != "super_admin":
+    if current_user.role_group not in {"super_admin", "admin"}:
         abort(403)
 
-    if role.slug == "super_admin" and current_user.role_slug != "super_admin":
+    if role.is_system and current_user.role_group != "super_admin":
         abort(403)
 
     if request.method == "POST":
@@ -402,16 +404,27 @@ def permissions(role_id):
             role_id=role_id
         ).delete()
 
-        permission_ids = request.form.getlist(
-            "permissions"
-        )
+        permission_ids = request.form.getlist("permissions")
 
         for permission_id in permission_ids:
+            permission = db.session.get(
+                Permission,
+                int(permission_id),
+            )
+
+            if not permission:
+                continue
+
+            if not RBACService.permission_allowed_for_group(
+                role.group_slug,
+                permission.code,
+            ):
+                continue
 
             db.session.add(
                 RolePermission(
                     role_id=role_id,
-                    permission_id=int(permission_id)
+                    permission_id=permission.id,
                 )
             )
 
@@ -530,87 +543,67 @@ def assign_users(role_id):
 
     role = Role.query.get_or_404(role_id)
 
-    if current_user.role_slug != "super_admin":
+    if current_user.role_group != "super_admin":
         abort(403)
 
-    if role.slug == "super_admin":
+    if role.group_slug == "super_admin":
         abort(403)
 
     assigned_ids = {
         row.user_id
-        for row in UserRole.query.filter_by(
-            role_id=role_id
-        ).all()
+        for row in UserRole.query.filter_by(role_id=role_id).all()
     }
 
     query = User.query
-
     if assigned_ids:
-        query = query.filter(
-            ~User.id.in_(assigned_ids)
-        )
+        query = query.filter(~User.id.in_(assigned_ids))
 
     available_users = (
         query
-        .order_by(
-            User.first_name,
-            User.last_name
-        )
+        .order_by(User.first_name, User.last_name)
         .all()
     )
 
     if request.method == "POST":
-
         user_ids = request.form.getlist("users")
-
         added = 0
 
-        for user_id in user_ids:
+        for raw_user_id in user_ids:
+            try:
+                user = db.session.get(User, int(raw_user_id))
+                if not user or user.role_group == "super_admin":
+                    continue
 
-            exists = UserRole.query.filter_by(
-                user_id=int(user_id),
-                role_id=role_id
-            ).first()
-
-            if exists:
+                AdminUserService.change_role(user, role.slug)
+                added += 1
+            except (ValueError, PermissionError):
+                db.session.rollback()
                 continue
-
-            db.session.add(
-                UserRole(
-                    user_id=int(user_id),
-                    role_id=role_id,
-                    assigned_by_id=current_user.id
-                )
-            )
-
-            added += 1
-
-        db.session.commit()
 
         AuditService.log(
             action=ROLE_ASSIGNED,
             category=RBAC,
             resource="Role",
             resource_id=role.public_id,
-            description=f"{added} user(s) assigned to role '{role.name}'"
+            description=f"{added} user(s) assigned to role '{role.name}'",
         )
 
         flash(
             f"{added} user(s) assigned successfully.",
-            "success"
+            "success",
         )
 
         return redirect(
             url_for(
                 "admin_roles.role_users",
-                role_id=role_id
+                role_id=role_id,
             )
         )
 
     return render_template(
         "admin/roles/assign_users.html",
         role=role,
-        users=available_users
+        users=available_users,
     )
 
 
@@ -635,14 +628,23 @@ def remove_user(role_id, user_id):
 
     user = db.session.get(User, user_id)
 
-    if user and user.role_slug == "super_admin":
+    if user and user.role_group == "super_admin":
         abort(403)
 
-    if role.slug == "super_admin":
+    if role.group_slug == "super_admin":
         abort(403)
 
-    db.session.delete(assignment)
-    db.session.commit()
+    flash(
+        "Users must retain exactly one system role. Change the role instead of removing it.",
+        "warning",
+    )
+
+    return redirect(
+        url_for(
+            "admin_roles.role_users",
+            role_id=role_id,
+        )
+    )
 
     AuditService.log(
         action=ROLE_REMOVED,

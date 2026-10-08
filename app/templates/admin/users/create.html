@@ -102,15 +102,16 @@
                                 name="role"
                                 class="form-select">
 
-                                <option value="">
-                                    No Role
+                                <option value="user" selected>
+                                    User
                                 </option>
 
-                                {% for role in roles %}
+                                {% for role in roles if role.slug != "user" %}
 
                                 <option value="{{ role.slug }}">
 
                                     {{ role.name }}
+                                    — {{ "Admin" if role.group_slug == "admin" else role.group_slug|replace("_", " ")|title }}
 
                                 </option>
 

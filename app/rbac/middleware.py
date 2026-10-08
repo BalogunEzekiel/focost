@@ -1,18 +1,13 @@
-from flask import request
-from flask import abort
-
+from flask import request, abort
 from app.rbac.service import RBACService
 
 
 class RBACMiddleware:
     """
-    Global authentication middleware.
+    Global RBAC boundary for the administrative URL surface.
 
-    Ensures every request under /admin
-    is made by an authenticated user.
-
-    Authorization is handled by the
-    @permission_required decorators.
+    Authentication is required first; membership in the admin role group
+    is required before route-level permissions are evaluated.
     """
 
     ADMIN_PREFIX = "/admin"
@@ -23,19 +18,11 @@ class RBACMiddleware:
         @app.before_request
         def protect_admin():
 
-            # ------------------------------------------
-            # Protect only /admin routes
-            # ------------------------------------------
-
-            if not request.path.startswith(
-                cls.ADMIN_PREFIX
-            ):
+            if not request.path.startswith(cls.ADMIN_PREFIX):
                 return
 
-            # ------------------------------------------
-            # User must be authenticated
-            # ------------------------------------------
-
             if not RBACService.is_authenticated():
-
                 abort(401)
+
+            if not RBACService.is_admin_group():
+                abort(403)

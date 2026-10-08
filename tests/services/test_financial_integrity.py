@@ -172,7 +172,6 @@ def test_initial_investment_valuation_never_enters_income_or_expense(app, user, 
 def test_income_breakdown_is_period_aware_and_authoritative(app, user):
     from datetime import date
     from app.models.income import Income
-    from app.ai_coach.queries import FinanceQueries
     from app.extensions import db
 
     with app.app_context():
@@ -182,8 +181,11 @@ def test_income_breakdown_is_period_aware_and_authoritative(app, user):
             Income(user_id=user.id, source="Salary", category="Employment", amount=500000, received_date=date(2026, 8, 1)),
         ])
         db.session.commit()
-        rows = FinanceQueries.income_breakdown(user.id, "last_month")
-        # Test current implementation's date engine using the app's current test date.
-        # The query must return grouped source/category rows rather than an overall-only total.
+        context = DashboardService.ai_income_context(
+            user.id,
+            date(2026, 9, 1),
+            date(2026, 9, 30),
+        )
+        rows = context["category_breakdown"]
         assert rows
-        assert all(getattr(row, "total", None) is not None for row in rows)
+        assert all(row.get("amount") is not None for row in rows)

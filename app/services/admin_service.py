@@ -98,19 +98,7 @@ class AdminService:
             )
 
             .filter(
-
-                Role.slug.in_(
-
-                    [
-
-                        "super_admin",
-
-                        "administrator"
-
-                    ]
-
-                )
-
+                Role.group_slug.in_(["super_admin", "admin"])
             )
 
             .scalar()

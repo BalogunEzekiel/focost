@@ -1,6 +1,8 @@
 from functools import wraps
+
 from flask import abort
 from flask_login import login_required
+
 from app.rbac.service import RBACService
 
 
@@ -44,6 +46,7 @@ def permission_required(*permissions):
             return view(*args, **kwargs)
 
         wrapper._rbac_permissions = tuple(permissions)
+
         return wrapper
 
     return decorator

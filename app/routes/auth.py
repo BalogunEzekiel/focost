@@ -537,256 +537,64 @@ def reaccept_policies():
 
 def get_role_landing_url(user):
     """
-    Determine where a successfully authenticated user
-    should be redirected.
+    Determine the post-authentication landing page from the immutable
+    system role group, not from a custom role slug.
     """
 
+    role_group = getattr(user, "role_group", None)
+
     current_app.logger.warning(
-        "========== ROLE LANDING =========="
+        "ROLE LANDING: user=%s role=%s group=%s",
+        getattr(user, "email", None),
+        getattr(user, "role_slug", None),
+        role_group,
     )
 
-    try:
+    if not role_group:
+        return url_for("auth.no_access")
 
-        role_slug = user.role_slug
+    if role_group == "super_admin":
+        return url_for("admin.dashboard")
 
-        current_app.logger.warning(
-            "USER: %s",
-            getattr(user, "email", None)
-        )
+    if role_group == "user":
+        return url_for("dashboard.dashboard")
 
-        current_app.logger.warning(
-            "ROLE: %s",
-            role_slug
-        )
+    if role_group != "admin":
+        return url_for("auth.no_access")
 
-    except Exception:
-
-        current_app.logger.exception(
-            "FAILED TO READ USER ROLE"
-        )
-
-        return url_for(
-            "auth.no_access"
-        )
-
-    # ------------------------------------------------------
-    # NO ROLE
-    # ------------------------------------------------------
-
-    if not role_slug:
-
-        current_app.logger.warning(
-            "USER HAS NO ROLE"
-        )
-
-        return url_for(
-            "auth.no_access"
-        )
-
-    # ------------------------------------------------------
-    # SUPER ADMIN
-    # ------------------------------------------------------
-
-    if role_slug == "super_admin":
-
-        current_app.logger.warning(
-            "SUPER ADMIN LOGIN"
-        )
-
-        try:
-
-            return url_for(
-                "admin.dashboard"
-            )
-
-        except Exception:
-
-            current_app.logger.exception(
-                "ADMIN DASHBOARD ENDPOINT NOT FOUND"
-            )
-
-            return url_for(
-                "auth.no_access"
-            )
-
-    # ------------------------------------------------------
-    # NORMAL USER
-    # ------------------------------------------------------
-
-    if role_slug == "user":
-
-        current_app.logger.warning(
-            "NORMAL USER LOGIN"
-        )
-
-        try:
-
-            return url_for(
-                "dashboard.dashboard"
-            )
-
-        except Exception:
-
-            current_app.logger.exception(
-                "USER DASHBOARD ENDPOINT NOT FOUND"
-            )
-
-            return url_for(
-                "auth.no_access"
-            )
-
-    # ------------------------------------------------------
-    # OTHER ADMINISTRATIVE ROLES
-    # ------------------------------------------------------
-
-    administrative_pages = [
-
-        (
-            "admin.dashboard.view",
-            "admin.dashboard"
-        ),
-
-        (
-            "users.view",
-            "admin_users.index"
-        ),
-
-        (
-            "roles.view",
-            "admin_roles.index"
-        ),
-
-        (
-            "permissions.view",
-            "admin.permissions"
-        ),
-
-        (
-            "audit.view",
-            "admin.audit_logs"
-        ),
-
-        (
-            "subscriptions.view",
-            "admin.subscriptions"
-        ),
-
-        (
-            "ai.view",
-            "admin.ai_settings"
-        ),
-
-        (
-            "settings.view",
-            "admin.settings"
-        ),
-
-    ]
+    administrative_pages = (
+        ("admin.dashboard.view", "admin.dashboard"),
+        ("users.view", "admin_users.index"),
+        ("roles.view", "admin_roles.index"),
+        ("permissions.view", "admin.permissions"),
+        ("audit.view", "admin.audit_logs"),
+        ("subscriptions.view", "admin.subscriptions"),
+        ("ai.view", "admin.ai_settings"),
+        ("settings.view", "admin.settings"),
+        ("communications.view", "admin_communications.index"),
+        ("analytics.view", "admin_analytics.index"),
+        ("documents.view", "admin_documents.index"),
+        ("feedback.view", "admin.feedback"),
+    )
 
     for permission_code, endpoint in administrative_pages:
-
         try:
-
-            if user.has_permission(
-                permission_code
-            ):
-
-                current_app.logger.warning(
-                    "ADMIN LANDING: %s -> %s",
-                    permission_code,
-                    endpoint
-                )
-
+            if user.has_permission(permission_code):
                 return url_for(endpoint)
-
         except Exception:
-
             current_app.logger.exception(
-                "RBAC CHECK FAILED: user=%s permission=%s",
-                user.email,
-                permission_code
+                "RBAC landing check failed: user=%s permission=%s",
+                getattr(user, "email", None),
+                permission_code,
             )
 
-    # ------------------------------------------------------
-    # GENERAL FINANCIAL PAGES
-    # ------------------------------------------------------
-
-    general_pages = [
-
-        (
-            "dashboard.view",
-            "dashboard.dashboard"
-        ),
-
-        (
-            "income.view",
-            "income.list_income"
-        ),
-
-        (
-            "expenses.view",
-            "expense.list_expense"
-        ),
-
-        (
-            "budgets.view",
-            "budget.list_budgets"
-        ),
-
-        (
-            "goals.view",
-            "goal.list_goals"
-        ),
-
-        (
-            "reports.view",
-            "reports.index"
-        ),
-
-    ]
-
-    for permission_code, endpoint in general_pages:
-
-        try:
-
-            if user.has_permission(
-                permission_code
-            ):
-
-                current_app.logger.warning(
-                    "GENERAL LANDING: %s -> %s",
-                    permission_code,
-                    endpoint
-                )
-
-                return url_for(endpoint)
-
-        except Exception:
-
-            current_app.logger.exception(
-                "GENERAL RBAC CHECK FAILED: "
-                "user=%s permission=%s",
-                user.email,
-                permission_code
-            )
-
-    # ------------------------------------------------------
-    # NO ACCESS
-    # ------------------------------------------------------
-
-    current_app.logger.warning(
-        "NO LANDING PAGE AVAILABLE FOR USER: %s",
-        user.email
-    )
-
-    return url_for(
-        "auth.no_access"
-    )
+    return url_for("auth.no_access")
 
 
 # ==========================================================
 # NO ACCESS
 # ==========================================================
+
 
 @auth_bp.route("/no-access")
 def no_access():

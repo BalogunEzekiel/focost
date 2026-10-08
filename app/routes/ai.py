@@ -20,7 +20,7 @@ ai_bp = Blueprint(
 @ai_bp.get("/")
 @login_required
 def coach():
-    if current_user.role_slug in {"admin", "super_admin"}:
+    if current_user.is_admin_group:
         from flask import abort
         abort(403)
 
@@ -37,7 +37,7 @@ def coach():
 @login_required
 @subscription_required("ai_chat")
 def chat():
-    if current_user.role_slug in {"admin", "super_admin"}:
+    if current_user.is_admin_group:
         return jsonify({"success": False, "message": "FOCOST AI is available only to normal users."}), 403
 
     data = request.get_json(
@@ -82,7 +82,7 @@ def chat():
 @ai_bp.get("/usage")
 @login_required
 def usage():
-    if current_user.role_slug in {"admin", "super_admin"}:
+    if current_user.is_admin_group:
         return jsonify({"success": False, "message": "FOCOST AI is available only to normal users."}), 403
 
 
@@ -101,7 +101,7 @@ def usage():
 @ai_bp.get("/forecast")
 @login_required
 def forecast():
-    if current_user.role_slug in {"admin", "super_admin"}:
+    if current_user.is_admin_group:
         return jsonify({"success": False, "message": "FOCOST AI is available only to normal users."}), 403
 
 
@@ -134,7 +134,7 @@ def forecast():
 @ai_bp.post("/clear")
 @login_required
 def clear_chat():
-    if current_user.role_slug in {"admin", "super_admin"}:
+    if current_user.is_admin_group:
         return jsonify({"success": False, "message": "FOCOST AI is available only to normal users."}), 403
 
 
@@ -152,7 +152,7 @@ def clear_chat():
 @ai_bp.get("/history")
 @login_required
 def history():
-    if current_user.role_slug in {"admin", "super_admin"}:
+    if current_user.is_admin_group:
         return jsonify({"success": False, "message": "FOCOST AI is available only to normal users."}), 403
 
     messages = session.get(

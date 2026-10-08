@@ -17,6 +17,7 @@ from app.extensions import db
 from app.services.dashboard_service import DashboardService
 from app.services.llm_service import LLMService
 from app.services.ai_usage_service import AIUsageService
+from app.services.ai_context_service import AIContextService
 
 
 class AIService:
@@ -30,9 +31,8 @@ class AIService:
     # Visible conversation history is retained for the current session.
     # The AI receives only a smaller recent window to control token usage.
     MAX_VISIBLE_HISTORY_MESSAGES = 100
-    MAX_AI_HISTORY_MESSAGES = 6
-    MAX_TRANSACTION_CONTEXT = 12
-    MAX_MONTHLY_HISTORY = 6
+    MAX_TRANSACTION_CONTEXT = 6
+    MAX_AI_HISTORY_MESSAGES = 2
 
     @staticmethod
     def _is_explanation_followup(message):
@@ -325,6 +325,104 @@ class AIService:
         """Deterministic intent routing; no second LLM call is required."""
         text = re.sub(r"\s+", " ", message.lower().strip())
 
+        # ----------------------------------------------------------
+        # FOCOST APPLICATION / ACCOUNT DOMAINS
+        # ----------------------------------------------------------
+        if any(x in text for x in (
+            "subscription", "plan", "free plan", "premium plan",
+            "trial", "entitlement", "upgrade", "downgrade",
+        )):
+            return "subscription"
+
+        if any(x in text for x in (
+            "billing", "bill", "payment", "paid", "pay for",
+            "payment history", "billing history", "renewal",
+            "cancel subscription", "cancel my plan",
+        )):
+            return "billing"
+
+        if any(x in text for x in (
+            "notification", "notifications", "alert", "alerts",
+            "reminder", "reminders",
+        )):
+            return "notifications"
+
+        if any(x in text for x in (
+            "feedback", "support request", "feedback i sent",
+        )):
+            return "feedback"
+
+        if any(x in text for x in (
+            "policy", "policies", "terms", "privacy", "consent",
+            "accepted the terms", "acceptance",
+        )):
+            return "compliance"
+
+        if any(x in text for x in (
+            "my profile", "profile information", "my account details",
+            "my name", "my email", "my phone", "my occupation",
+        )):
+            return "profile"
+
+        if any(x in text for x in (
+            "settings", "preferences", "preference", "notification settings",
+        )):
+            return "settings"
+
+        if any(x in text for x in (
+            "permission", "permissions", "what can i access",
+            "what am i allowed", "access rights",
+        )):
+            return "permissions"
+
+        if any(x in text for x in (
+            "ai usage", "ai usage limit", "ai requests", "ai token",
+            "how many ai", "remaining ai", "usage limit",
+        )):
+            return "ai_usage"
+
+        if any(x in text for x in (
+            "how do i", "where do i", "how can i", "where can i",
+            "workflow", "workflows", "feature", "features",
+            "how does focost", "can focost",
+        )):
+            return "workflows"
+
+        # Action questions about a financial feature are workflow questions,
+        # not requests to invent an operation from financial records.
+        if (
+            any(x in text for x in (
+                "can i", "create", "add", "edit", "delete", "remove",
+                "liquidate", "cancel", "contribute", "reverse",
+            ))
+            and any(x in text for x in (
+                "income", "expense", "budget", "goal", "investment",
+                "asset", "transaction", "report", "profile", "setting",
+            ))
+        ):
+            return "workflows"
+
+        # A direct question containing both income and expense facts is a
+        # combined financial summary, not an income-only or expense-only request.
+        # Advice/comparison questions are handled by their dedicated intents below.
+        has_income = any(x in text for x in (
+            "income", "earned", "earnings", "salary", "revenue",
+        ))
+        has_expenses = any(x in text for x in (
+            "expense", "expenses", "spent", "spending", "cost", "costs",
+            "purchase", "purchases",
+        ))
+        is_comparison_request = any(x in text for x in (
+            "compare", "comparison", "versus", " vs ", "trend",
+            "trends", "over time", "historical",
+        ))
+        is_advice_request = any(x in text for x in (
+            "advice", "advise", "improve", "recommend", "suggest",
+            "what should i do", "what can i do",
+        ))
+        if has_income and has_expenses and not is_comparison_request and not is_advice_request:
+            return "summary"
+
         if any(x in text for x in (
             "advice",
             "advise",
@@ -564,6 +662,7 @@ class AIService:
         previous_end = previous_context.get("end")
         previous_intent = previous_context.get("intent")
         previous_focus = previous_context.get("focus")
+        prior_intent = previous_intent
 
         # Recover previous context from the last user messages when possible.
         recent_user_messages = [
@@ -649,25 +748,16 @@ class AIService:
             if not focus:
                 focus = previous_focus
 
-        # A generic follow-up such as "how can I do better?" should retain
-        # the previous period but use the new advice intent.
-        if (
-            not explicit_period
-            and not month_only
-            and previous_start
-            and previous_end
-        ):
-            try:
-                start = date.fromisoformat(str(previous_start))
-                end = date.fromisoformat(str(previous_end))
-            except (TypeError, ValueError):
-                pass
+        # IMPORTANT: an explicit period always wins.
+        # For example, after discussing September, "What should I prioritize
+        # this month?" must use October rather than silently inheriting September.
 
         resolved_context = {
             "start": start.isoformat(),
             "end": end.isoformat(),
             "intent": current_intent,
             "focus": focus,
+            "previous_intent": prior_intent,
         }
 
         session["ai_context"] = resolved_context
@@ -676,229 +766,322 @@ class AIService:
         return start, end, current_intent, focus
 
     @staticmethod
+    def _application_intent(intent, message):
+        """Return whether the request is primarily about a FOCOST application domain."""
+        return intent in {
+            "subscription",
+            "billing",
+            "payments",
+            "notifications",
+            "feedback",
+            "compliance",
+            "profile",
+            "settings",
+            "permissions",
+            "ai_usage",
+            "workflows",
+        }
+
+    @staticmethod
+    def _financial_intent(intent):
+        return intent in {
+            "balance",
+            "savings",
+            "income",
+            "expenses",
+            "transactions",
+            "goals",
+            "budgets",
+            "investments",
+            "summary",
+            "comparison",
+            "forecast",
+            "health",
+            "advice",
+        }
+
+    @staticmethod
+    def _workflow_prompt_context(full_workflows, message):
+        """Return only workflow entries relevant to the current question."""
+        available = []
+        if isinstance(full_workflows, dict):
+            available = full_workflows.get("available_to_user", []) or []
+
+        text = (message or "").lower()
+        keyword_map = {
+            "dashboard": "dashboard",
+            "income": "income",
+            "expense": "expenses",
+            "spend": "expenses",
+            "budget": "budgets",
+            "goal": "goals",
+            "investment": "investments",
+            "liquidat": "investments",
+            "asset": "investments",
+            "transaction": "transactions_reports",
+            "report": "transactions_reports",
+            "profile": "profile",
+            "setting": "settings",
+            "notification": "notifications",
+            "alert": "notifications",
+            "subscription": "billing_subscription",
+            "billing": "billing_subscription",
+            "payment": "billing_subscription",
+            "account": "account",
+            "feedback": "feedback",
+            "category": "categories",
+            "ai": "focost_ai",
+        }
+
+        wanted = {
+            workflow_name
+            for keyword, workflow_name in keyword_map.items()
+            if keyword in text
+        }
+
+        if wanted:
+            filtered = [
+                item for item in available
+                if item.get("name") in wanted
+            ]
+        else:
+            filtered = available
+
+        return {
+            "available_to_user": filtered,
+            "operation_rule": full_workflows.get(
+                "operation_rule",
+                "The AI can explain workflows but must not claim an operation was executed.",
+            ) if isinstance(full_workflows, dict) else "The AI can explain workflows but must not claim an operation was executed.",
+        }
+
+    @staticmethod
+    def _prompt_context(
+        user_id,
+        message,
+        intent,
+        financial_context=None,
+    ):
+        """
+        Build the LLM-facing projection of the comprehensive FOCOST context.
+
+        IMPORTANT:
+            This is NOT a replacement for application context.
+            AIContextService.build() remains the complete safe context layer.
+
+            This projection exists only because sending every route, service
+            method, notification, payment, plan, preference and financial
+            record on every request wastes tokens and can exceed provider limits.
+
+            Financial requests receive the complete authoritative context for
+            the requested financial domain. Application requests receive the
+            relevant application domain. Nothing is character-truncated.
+        """
+        full = AIContextService.build(
+            user_id,
+            financial_context=financial_context,
+            include_extended=False,
+        )
+
+        profile = full.get("profile", {})
+        preferences = full.get("preferences", {})
+        permissions = full.get("permissions", [])
+        subscription = full.get("subscription", {})
+        ai_usage = full.get("ai_usage", {})
+        workflows = full.get("workflows", {})
+        rules = full.get("application_rules", {})
+
+        # These are deliberately small, stable application facts that help
+        # the model answer without dragging the complete application catalog
+        # into every financial request.
+        base = {
+            "profile": profile,
+            "preferences": preferences,
+            "currency": profile.get("currency", "NGN"),
+            "permissions": permissions,
+            "application_rules": rules,
+        }
+
+        if AIService._financial_intent(intent):
+            base["financial_authority"] = full.get(
+                "financial_authority", {}
+            )
+            base["financial_context"] = financial_context or {}
+
+            # Subscription state is intentionally not attached to ordinary
+            # financial prompts. It belongs to subscription/billing/usage
+            # questions and was a major source of unnecessary prompt growth.
+            return base
+
+        if intent == "subscription":
+            base.update({
+                "subscription": subscription,
+                "workflows": workflows,
+            })
+            return base
+
+        if intent in {"billing", "payments"}:
+            base["subscription"] = subscription
+            base["workflows"] = workflows
+            base["payments"] = AIContextService.application_context_for_message(
+                user_id, message
+            ).get("payments", [])
+            return base
+
+        if intent == "notifications":
+            base["notifications"] = AIContextService.application_context_for_message(
+                user_id, message
+            ).get("notifications", [])
+            return base
+
+        if intent == "feedback":
+            base["feedback"] = AIContextService.application_context_for_message(
+                user_id, message
+            ).get("feedback", [])
+            return base
+
+        if intent == "compliance":
+            base["compliance"] = AIContextService.application_context_for_message(
+                user_id, message
+            ).get("compliance", [])
+            return base
+
+        if intent == "profile":
+            return {
+                "profile": profile,
+                "preferences": preferences,
+                "permissions": permissions,
+                "application_rules": rules,
+            }
+
+        if intent == "settings":
+            return {
+                "profile": profile,
+                "preferences": preferences,
+                "application_rules": rules,
+                "workflows": workflows,
+            }
+
+        if intent == "permissions":
+            return {
+                "profile": profile,
+                "permissions": permissions,
+                "workflows": workflows,
+                "application_rules": rules,
+            }
+
+        if intent == "ai_usage":
+            return {
+                "profile": profile,
+                "subscription": subscription,
+                "ai_usage": ai_usage,
+                "workflows": workflows,
+                "application_rules": rules,
+            }
+
+        if intent == "workflows":
+            workflow_context = AIService._workflow_prompt_context(
+                workflows,
+                message,
+            )
+            broad_capability_question = any(
+                phrase in message.lower()
+                for phrase in (
+                    "what can i do",
+                    "what can focost",
+                    "all features",
+                    "all capabilities",
+                    "available features",
+                    "available capabilities",
+                )
+            )
+
+            result = {
+                "profile": profile,
+                "permissions": permissions,
+                "workflows": workflow_context,
+                "application_rules": rules,
+            }
+
+            if broad_capability_question:
+                result["registered_user_routes"] = full.get(
+                    "registered_user_routes", []
+                )
+                result["service_capabilities"] = full.get(
+                    "service_capabilities", {}
+                )
+
+            return result
+
+        # Unknown/application-general requests retain the broad safe metadata
+        # layer without attaching large user record collections.
+        return {
+            **base,
+            "subscription": subscription,
+            "ai_usage": ai_usage,
+            "workflows": workflows,
+            "data_catalog": full.get("data_catalog", {}),
+            "financial_authority": full.get("financial_authority", {}),
+        }
+
+    @staticmethod
     def build_system_prompt(user_id, message="", history=None):
         history = history or []
 
         if AIService._is_casual_message(message):
-            return (
-                "You are FOCOST AI.\n"
-                "Respond naturally and briefly. For greetings, thanks, "
-                "acknowledgements, or casual conversation, use one short "
-                "sentence. Do not discuss financial data unless asked."
-            )
+            return "You are FOCOST AI. Reply naturally in one short sentence."
 
         start, end, intent, focus = AIService._resolve_context(
-            message,
-            history,
+            message, history
         )
 
-        # DashboardService is the single authoritative financial-data source.
-        # All required financial context should be supplied here rather than
-        # being fetched again below.
-        context = DashboardService.financial_context(
-            user_id,
-            start,
-            end,
-            intent=intent,
-            focus=focus,
+        financial_context = None
+        if AIService._financial_intent(intent):
+            financial_context = DashboardService.financial_context(
+                user_id,
+                start,
+                end,
+                intent=intent,
+                focus=focus,
+                message=message,
+                transaction_limit=AIService.MAX_TRANSACTION_CONTEXT,
+            )
+
+            financial_context["today"] = today().isoformat()
+            financial_context["intent"] = intent
+
+            if focus:
+                financial_context["focus"] = focus
+
+        context = AIService._prompt_context(
+            user_id=user_id,
             message=message,
-            transaction_limit=AIService.MAX_TRANSACTION_CONTEXT,
+            intent=intent,
+            financial_context=financial_context,
         )
 
-        context["today"] = today().isoformat()
-        context["intent"] = intent
-
-        if focus:
-            context["focus"] = focus
-
-        return (
+        prompt = (
             "You are FOCOST AI, a concise but highly capable personal financial assistant.\n\n"
-
-            "CORE PRINCIPLE:\n"
-            "DashboardService is the authoritative financial calculation engine.\n"
-            "The supplied AUTHORITATIVE DATABASE CONTEXT and its "
-            "`calculation_context` are the source of truth.\n"
-            "You must explain DashboardService's calculations and records rather "
-            "than inventing your own figures or claiming that information is "
-            "unavailable when the supplied context contains it.\n\n"
-
-            "STRICT RESPONSE RULES:\n"
-
-            "- Answer the user's question directly.\n"
-
-            "- Use clear, simple Nigerian English and maintain a friendly, warm, "
-            "and approachable tone.\n"
-
-            "- Default to the shortest useful answer. For a simple lookup, answer "
-            "with one sentence whenever possible. Do not add explanations, methodology, "
-            "tables, classifications, or extra context unless the user asks for them.\n"
-
-            "- For simple lookups such as 'income', 'expenses', 'savings', 'balance', "
-            "or 'goals', give the requested figure/summary directly. Do not add a table, "
-            "methodology, raw records, or explanation unless the user asks for a breakdown.\n"
-
-            "- For a simple period summary such as 'last month', give only the requested "
-            "key figures. Do not automatically provide calculation methodology.\n"
-
-            "- Use tables only when the user explicitly asks for a table, detailed breakdown, "
-            "or when a table is clearly necessary to answer the request.\n"
-
-            "- Become more detailed only when the user asks 'how', 'why', 'breakdown', "
-            "'explain', 'where did this come from', 'how did you calculate', 'show me', "
-            "or asks for supporting details.\n"
-
-            "- Never repeat the user's question.\n"
-
-            "- Never invent financial figures, transactions, categories, merchants, "
-            "dates, balances, formulas, or account facts.\n"
-
-            "- Use only the supplied database-derived context.\n"
-
-            "- Treat `calculation_context` as the authoritative explanation of "
-            "how DashboardService-derived figures were calculated.\n"
-
-            "- When a figure is questioned, explain the exact calculation using "
-            "the supplied calculation_context.\n"
-
-            "- When the user asks for a breakdown, use the actual underlying "
-            "transaction records, categories, classifications, and calculation "
-            "details supplied in the context.\n"
-
-            "- For expense breakdowns, include Goal Contributions and Investment "
-            "Funding when they are recorded as expenses. Do not hide or merge "
-            "those transactions into a generic expense category.\n"
-
-            "- A Goal Contribution is a legitimate expense transaction for "
-            "financial reporting and expense analysis. If multiple Goal "
-            "Contributions make up a requested expense total, identify the "
-            "individual contribution amounts when those records are supplied.\n"
-
-            "- For example, if today's expense total is ₦50,000 and the supplied "
-            "records contain Goal Contributions of ₦45,000 and ₦5,000, answer "
-            "that the ₦50,000 consists of those two Goal Contributions. Do not "
-            "invent merchants or categories.\n"
-
-            "- Never respond that you do not have a category breakdown, transaction "
-            "breakdown, calculation explanation, or supporting information if the "
-            "supplied context contains those details.\n"
-
-            "- If a total can be reconciled from supplied records, explicitly "
-            "reconcile it.\n"
-
-            "- When explaining a total, show the relevant components and the "
-            "relationship between them.\n"
-
-            "- When appropriate, use a compact equation such as:\n"
-            "  Total expenses = Expense A + Expense B + Expense C\n"
-
-            "- If the user asks why two dashboard figures differ, explain the "
-            "different definitions, classifications, periods, or calculation "
-            "rules supplied in the context.\n"
-
-            "- Distinguish historical facts, calculated values, forecasts, "
-            "recommendations, and interpretations.\n"
-
-            "- Forecasts are estimates based on the supplied DashboardService "
-            "forecast methodology, not guarantees.\n"
-
-            "- When explaining a forecast, identify the current-period inputs, "
-            "calculation method, projected components, and resulting forecast "
-            "where those details are supplied.\n"
-
-            "- If a forecast contains projected income, projected expenses, and "
-            "projected savings, explain how the projected savings relates to the "
-            "projected income and projected expenses.\n"
-
-            "- If category forecasts are supplied, use them to explain the "
-            "category-level contribution to the forecast.\n"
-
-            "- Recommendations must be grounded in the user's actual financial "
-            "data and DashboardService rules.\n"
-
-            "- Do not introduce arbitrary financial thresholds, percentages, "
-            "ratios, savings targets, expense caps, or budgeting rules.\n"
-
-            "- Do not recommend a percentage-based target unless that percentage "
-            "is explicitly present in the supplied financial context or the user "
-            "explicitly asks for a general percentage-based guideline.\n"
-
-            "- Do not invent a weekly, monthly, or category spending limit.\n"
-
-            "- Prefer concrete actions derived directly from the user's actual "
-            "income, expenses, savings, goals, budgets, cash flow, and trends.\n"
-
-            "- Never promise or predict a specific financial outcome unless it "
-            "can be directly calculated from the supplied data.\n"
-
-            "- Distinguish operating expenses from investment funding, liquidation "
-            "proceeds, and goal contributions when "
-            "the context provides transaction_class or equivalent classification.\n"
-
-            "- Do not silently treat an investment funding transaction as an "
-            "ordinary operating expense when DashboardService identifies it as "
-            "investment funding.\n"
-
-            "- Do not silently treat investment liquidation proceeds as ordinary "
-            "operating income when the supplied classification identifies their "
-            "investment origin. Investment valuation gains/losses are non-cash "
-            "and are not income.\n"
-
-            "- Use the user's configured currency from the database-derived context.\n"
-
-            "- Treat the configured currency as authoritative.\n"
-
-            "- Never assume USD or use '$' unless the configured currency is USD.\n"
-
-            "- If the configured currency is NGN, display monetary amounts using '₦'.\n"
-
-            "- Never convert financial amounts between currencies unless the user "
-            "explicitly requests conversion.\n"
-
-            "- Never invent or substitute a currency symbol.\n"
-
-            "- Keep simple answers concise, but provide sufficient evidence and "
-            "calculation detail whenever the user asks for an explanation or "
-            "breakdown.\n\n"
-
-            "CONCISE RESPONSE STYLE:\n"
-
-            "For a direct metric request, prefer: 'Income for September: ₦270,000.' "
-            "If useful, add only the key components in one short sentence. Do not repeat "
-            "database classifications or internal service names unless the user asks why.\n"
-
-            "CALCULATION EXPLANATION PROTOCOL:\n"
-
-            "When the user asks how a DashboardService figure was obtained:\n"
-
-            "1. Identify the figure being discussed.\n"
-            "2. Identify its period or point-in-time definition.\n"
-            "3. Identify the source records or components supplied in context.\n"
-            "4. Identify the DashboardService formula or rule supplied in "
-            "calculation_context.\n"
-            "5. Show the calculation using the actual supplied numbers.\n"
-            "6. State the resulting figure.\n"
-            "7. If useful, explain what the result means for the user's finances.\n\n"
-
-            "BREAKDOWN PROTOCOL:\n"
-
-            "If the user asks for an expense, income, savings, balance, investment, "
-            "budget, goal, or forecast breakdown, do not merely repeat the total. "
-            "Break the figure into the relevant supplied components.\n\n"
-
-            "FORECAST EXPLANATION PROTOCOL:\n"
-
-            "If the user asks how a forecast was produced, explain the actual "
-            "DashboardService methodology supplied in calculation_context. "
-            "Do not replace that methodology with a generic forecasting method.\n\n"
-
-            "CONTEXT AVAILABILITY RULE:\n"
-
-            "If the requested information is genuinely absent from the supplied "
-            "context, say so briefly and specifically. Do not make a generic claim "
-            "that information is unavailable when related records or calculations "
-            "are present.\n\n"
-
-            "AUTHORITATIVE DATABASE CONTEXT:\n"
+            "AUTHORITATIVE SOURCES:\n"
+            "- DashboardService is the sole authority for financial facts, calculations, classifications, rules and forecasts.\n"
+            "- SubscriptionService is authoritative for plans, subscription state, entitlements and billing state.\n"
+            "- Use only the supplied context. Never invent figures, records, dates, categories, balances or capabilities.\n\n"
+            "RESPONSE RULES:\n"
+            "- Answer the exact question directly in the shortest complete form.\n"
+            "- Use the user's configured currency. For NGN, use ₦.\n"
+            "- Simple lookups: one concise sentence or a few bullets.\n"
+            "- Breakdowns: use the actual supplied categories/records; never say details are unavailable when they are supplied.\n"
+            "- If several financial domains are explicitly requested, answer all requested domains.\n"
+            "- Distinguish historical facts, calculated values, forecasts and advice.\n"
+            "- Never silently replace an explicit period with a previous conversation period.\n"
+            "- For health, clearly distinguish an overall health score from the requested period's income/expense summary when the context does so.\n"
+            "- For advice, ground recommendations in supplied financial facts and do not invent arbitrary targets or thresholds.\n"
+            "- For investment liquidation, explain the actual FOCOST workflow supplied in context; never claim an action was executed.\n"
+            "- Never claim that a payment, update, deletion, liquidation or other operation was completed unless FOCOST confirms it.\n"
+            "- Do not repeat the question. Do not add methodology unless asked.\n"
+            "- A response must finish completely. Prefer 2-4 compact bullets for complex requests rather than starting a long answer that may be truncated.\n\n"
+            f"Requested period: {start.isoformat()} to {end.isoformat()}. Intent: {intent}.\n\n"
+            "CONTEXT:\n"
             + json.dumps(
                 context,
                 ensure_ascii=False,
@@ -906,11 +1089,13 @@ class AIService:
             )
         )
 
+        return prompt
+
     @staticmethod
     def chat(user_id, message):
         from app.models.user import User
         user = db.session.get(User, user_id)
-        if user and user.role_slug in {"admin", "super_admin"}:
+        if user and user.is_admin_group:
             return {
                 "success": False,
                 "code": "AI_ADMIN_FORBIDDEN",
@@ -922,9 +1107,15 @@ class AIService:
 
         # Only a small recent window is sent to the LLM
         # to control token usage.
-        ai_history = AIService._get_session_history(
-            limit=AIService.MAX_AI_HISTORY_MESSAGES
-        )
+        ai_history = [
+            {
+                "role": item.get("role"),
+                "content": str(item.get("content", ""))[:500],
+            }
+            for item in AIService._get_session_history(
+                limit=AIService.MAX_AI_HISTORY_MESSAGES
+            )
+        ]
 
         # Casual messages do not consume AI usage.
         if AIService._is_casual_message(message):
@@ -1002,18 +1193,16 @@ class AIService:
         request_id = uuid.uuid4().hex
         started = time.perf_counter()
 
+        lower_message = message.lower()
         detailed_request = (
             AIService._is_explanation_followup(message)
             or any(
-                phrase in message.lower()
+                phrase in lower_message
                 for phrase in (
-                    "breakdown",
-                    "break it down",
-                    "show me",
-                    "explain",
-                    "how did",
-                    "why did",
-                    "calculate",
+                    "breakdown", "break it down", "show me", "explain",
+                    "how did", "why did", "calculate", "complete",
+                    "advice", "advise", "what should i do",
+                    "what are my biggest", "trend", "compare",
                 )
             )
         )
@@ -1028,9 +1217,9 @@ class AIService:
             # Short responses by default.
             # More room only when the user explicitly requests detail.
             max_tokens=(
-                320
+                200
                 if detailed_request
-                else 120
+                else 150
             ),
         )
 
