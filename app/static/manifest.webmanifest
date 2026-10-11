@@ -1,4 +1,3 @@
-
 {
   "id": "/",
   "name": "FOCOST - Your Financial Coach",
@@ -22,6 +21,27 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
+    },
+    {
+      "src": "/static/images/pwa-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/static/images/pwa-screenshot-desktop.png",
+      "sizes": "1440x1000",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "FOCOST desktop overview"
+    },
+    {
+      "src": "/static/images/pwa-screenshot-mobile.png",
+      "sizes": "390x844",
+      "type": "image/png",
+      "label": "FOCOST mobile overview"
     }
   ]
 }
