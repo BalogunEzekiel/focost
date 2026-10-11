@@ -181,10 +181,7 @@ def register_context_processors(app):
             "user_plan": user_plan,
             "role_group": current_user.role_group,
             "active_announcements": announcements,
-            "can_customize_categories": (
-                current_user.is_normal_user
-                and SubscriptionGate.has_paid_plan(current_user.id, {"plus", "pro"})
-            ),
+            "can_customize_categories": current_user.is_normal_user,
 
             # ==================================================
             # RBAC Helpers

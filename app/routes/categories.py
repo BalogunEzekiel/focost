@@ -1,5 +1,17 @@
-from flask import Blueprint, render_template, redirect, url_for, flash
-from flask_login import login_required, current_user
+
+from flask import (
+    Blueprint,
+    render_template,
+    redirect,
+    url_for,
+    flash,
+    abort,
+)
+
+from flask_login import (
+    login_required,
+    current_user,
+)
 
 from app.forms.category_forms import CategoryForm
 from app.services.category_service import CategoryService
@@ -13,12 +25,19 @@ categories_bp = Blueprint(
 )
 
 
+# ==========================================================
+# USER PLAN
+# ==========================================================
 
 def get_user_plan(user_id):
+    """Return the user's canonical or displayed subscription plan."""
     entitlements = SubscriptionService.entitlements(user_id) or {}
 
     # Prefer the canonical plan slug.
-    slug = str(entitlements.get("plan_slug") or "").strip().lower()
+    slug = str(
+        entitlements.get("plan_slug") or ""
+    ).strip().lower()
+
     if slug in {"plus", "pro"}:
         return slug
 
@@ -36,17 +55,22 @@ def get_user_plan(user_id):
 
     return name
 
-def can_manage_personal_categories(user_id):
-    """Use the same subscription rule as CategoryService."""
-    return CategoryService.can_customize(user_id)
+
+# ==========================================================
+# AUTHENTICATION AND USER-TYPE PROTECTION
+# ==========================================================
 
 @categories_bp.before_request
 @login_required
 def protect():
+    """Restrict the Categories module to authenticated normal users."""
     if not current_user.is_normal_user:
-        from flask import abort
         abort(403)
 
+
+# ==========================================================
+# CATEGORY LIST
+# ==========================================================
 
 @categories_bp.get("/")
 def index():
@@ -55,32 +79,33 @@ def index():
     return render_template(
         "category/index.html",
         income_categories=CategoryService.list_for_user(
-            current_user.id, "income"
+            current_user.id,
+            "income",
         ),
         expense_categories=CategoryService.list_for_user(
-            current_user.id, "expense"
+            current_user.id,
+            "expense",
         ),
         plan=plan,
-        can_manage_categories=can_manage_personal_categories(
+        can_manage_categories=CategoryService.can_customize(
             current_user.id
         ),
     )
 
 
+# ==========================================================
+# CREATE PERSONAL CATEGORY
+# ==========================================================
+
 @categories_bp.post("/create")
 def create():
-    if not can_manage_personal_categories(current_user.id):
-        flash(
-            "Personal categories are available on Plus and Pro plans. "
-            "Please check your subscription.",
-            "warning",
-        )
-        return redirect(url_for("categories.index"))
-
     form = CategoryForm()
 
     if not form.validate_on_submit():
-        flash("Please provide a valid category name.", "danger")
+        flash(
+            "Please provide a valid category name.",
+            "danger",
+        )
         return redirect(url_for("categories.index"))
 
     try:
@@ -90,7 +115,11 @@ def create():
             form.name.data,
             form.description.data,
         )
-        flash("Personal category created successfully.", "success")
+
+        flash(
+            "Personal category created successfully.",
+            "success",
+        )
 
     except (ValueError, PermissionError) as exc:
         flash(str(exc), "warning")
@@ -98,19 +127,19 @@ def create():
     return redirect(url_for("categories.index"))
 
 
+# ==========================================================
+# UPDATE PERSONAL CATEGORY
+# ==========================================================
+
 @categories_bp.post("/<int:category_id>/update")
 def update(category_id):
-    if not can_manage_personal_categories(current_user.id):
-        flash(
-            "Personal category management requires a Plus or Pro plan.",
-            "warning",
-        )
-        return redirect(url_for("categories.index"))
-
     form = CategoryForm()
 
     if not form.validate_on_submit():
-        flash("Please provide a valid category name.", "danger")
+        flash(
+            "Please provide a valid category name.",
+            "danger",
+        )
         return redirect(url_for("categories.index"))
 
     try:
@@ -120,7 +149,11 @@ def update(category_id):
             form.name.data,
             form.description.data,
         )
-        flash("Category updated successfully.", "success")
+
+        flash(
+            "Category updated successfully.",
+            "success",
+        )
 
     except (ValueError, PermissionError) as exc:
         flash(str(exc), "warning")
@@ -128,20 +161,18 @@ def update(category_id):
     return redirect(url_for("categories.index"))
 
 
+# ==========================================================
+# ARCHIVE PERSONAL CATEGORY
+# ==========================================================
+
 @categories_bp.post("/<int:category_id>/archive")
 def archive(category_id):
-    if not can_manage_personal_categories(current_user.id):
-        flash(
-            "Personal category management requires a Plus or Pro plan.",
-            "warning",
-        )
-        return redirect(url_for("categories.index"))
-
     try:
         CategoryService.archive_personal(
             current_user.id,
             category_id,
         )
+
         flash(
             "Category archived. Existing transactions remain unchanged.",
             "success",

@@ -885,6 +885,25 @@
 
                 {% endif %}
 
+                {% if focost_can_manage_modules %}
+                    <div class="mb-2">
+                        <a
+                            href="{{ url_for('admin.integration_governance') }}"
+                            class="nav-link px-3 py-2
+                                {% if request.endpoint == 'admin.integration_governance' %}
+                                    active
+                                {% else %}
+                                    text-white
+                                {% endif %}"
+                            {% if request.endpoint == 'admin.integration_governance' %}
+                                aria-current="page"
+                            {% endif %}
+                        >
+                            <i class="bi bi-sliders me-2"></i>
+                            Module Governance
+                        </a>
+                    </div>
+                {% endif %}
 
             {% endif %}
 
@@ -1205,7 +1224,6 @@
 
                 {% endif %}
 
-
             {% endif %}
 
         </nav>
@@ -1305,11 +1323,6 @@
             </div>
 
         </div>
-
-
-        {% if focost_can_manage_modules %}
-        <div class="mb-2"><a class="nav-link text-white" href="{{ url_for('admin.integration_governance') }}"><i class="bi bi-sliders me-2"></i>Module governance</a></div>
-        {% endif %}
 
         <!-- ==================================================
              LOGOUT

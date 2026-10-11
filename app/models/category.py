@@ -6,7 +6,7 @@ class FinancialCategory(BaseModel):
     """Authoritative income/expense category registry.
 
     System categories have user_id NULL and are available to every normal user.
-    Personal categories belong to one user and require Plus/Pro access.
+    Personal categories belong to one user.
     """
 
     __tablename__ = "financial_categories"

@@ -15,10 +15,10 @@
 
   {% if not can_manage_categories %}
   <div class="alert alert-info border-0 shadow-sm" role="status">
-    <div class="d-flex gap-3"><i class="bi bi-info-circle fs-4"></i><div><strong>Personal categories are available on Plus and Pro.</strong><div class="mt-1">You can continue using the standard FOCOST categories. Upgrade your plan to create and manage personal categories.</div><a class="alert-link" href="{{ url_for('billing.index') if 'billing.index' in current_app.view_functions else '/billing/' }}">View plans</a></div></div>
+    <div class="d-flex gap-3"><i class="bi bi-info-circle fs-4"></i><div><strong>Personal categories are available on higher subscription plans.</strong><div class="mt-1">You can continue using the standard FOCOST categories. Upgrade your plan to create and manage personal categories.</div><a class="alert-link" href="{{ url_for('billing.index') if 'billing.index' in current_app.view_functions else '/billing/' }}">View plans</a></div></div>
   </div>
   {% else %}
-  <div class="alert alert-light border shadow-sm" role="note"><i class="bi bi-link-45deg text-primary me-2"></i><strong>One category registry:</strong> income and expense categories are managed here and reused by the relevant financial tools. Archiving a category does not change existing transactions.</div>
+  <div class="alert alert-light border shadow-sm" role="note"><i class="bi bi-link-45deg text-primary me-2"></i><strong>One category registry:</strong> Income and expense categories are managed here and reused by the relevant financial tools. You can create, edit and archive your own categories. Archiving a category does not change existing transactions.</div>
   {% endif %}
 
   <div class="row g-4">
