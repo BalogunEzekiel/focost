@@ -38,6 +38,16 @@ def create_app(config_override=None):
     csrf.init_app(app)
 
     # ---------------------------------------------------------
+    # Progressive Web App (PWA) service worker
+    # ---------------------------------------------------------
+    @app.get("/service-worker.js")
+    def service_worker():
+        response = app.send_static_file("service-worker.js")
+        response.headers["Cache-Control"] = "no-cache"
+        response.headers["Service-Worker-Allowed"] = "/"
+        return response
+
+    # ---------------------------------------------------------
     # Request correlation + security headers
     # ---------------------------------------------------------
     @app.before_request
@@ -66,6 +76,7 @@ def create_app(config_override=None):
                 and not request.endpoint.startswith("auth.")
                 and not request.endpoint.startswith("compliance.")
                 and not request.endpoint.startswith("static")
+                and not request.endpoint.startswith("service_worker")
                 and not app.config.get("TESTING")
             ):
                 from .services.compliance_service import ComplianceService

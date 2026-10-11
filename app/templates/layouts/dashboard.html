@@ -10,6 +10,22 @@
         name="viewport"
         content="width=device-width, initial-scale=1.0">
 
+    <!-- Theme and Progressive Web App (PWA) Metadata -->
+    <meta name="theme-color" content="#0d6efd">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="FOCOST">
+
+    <!-- PWA Manifest -->
+    <link
+        rel="manifest"
+        href="{{ url_for('static', filename='manifest.webmanifest') }}">
+
+    <!-- Apple Touch Icon -->
+    <link
+        rel="apple-touch-icon"
+        href="{{ url_for('static', filename='images/pwa-192.png') }}">
+
     <title>
         {% block title %}FOCOST Dashboard{% endblock %}
     </title>
@@ -298,6 +314,7 @@ document.addEventListener("DOMContentLoaded", function () {
 {% block scripts %}
 {% endblock %}
 
+    <script src="{{ url_for('static', filename='js/pwa-register.js') }}"></script>
 </body>
 
 </html>
