@@ -1,69 +1,89 @@
 {% extends "layouts/dashboard.html" %}
 {% block title %}Category Management | FOCOST{% endblock %}
 {% block content %}
-<div class="container-fluid py-3">
-  <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
-    <div>
-      <h2 class="fw-bold mb-1">Personal Categories</h2>
-      <p class="text-muted mb-0">Create categories tailored to your finances. Plus and Pro only.</p>
+<div class="container-fluid py-4">
+  <div class="row align-items-center justify-content-between g-3 mb-4">
+    <div class="col">
+      <div class="text-uppercase small fw-semibold text-primary mb-1">Financial setup</div>
+      <h1 class="h2 fw-bold mb-1">Category management</h1>
+      <p class="text-secondary mb-0">Organise income and expenses with categories that match your financial life.</p>
     </div>
-    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#categoryModal">
-      <i class="bi bi-plus-lg me-1"></i> New Category
-    </button>
+    {% if can_manage_categories %}
+    <div class="col-auto"><button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#categoryModal"><i class="bi bi-plus-lg me-2"></i>Create category</button></div>
+    {% endif %}
   </div>
-  <div class="alert alert-primary border-0 shadow-sm">
-    <strong>Single category source:</strong> system and personal expense categories are automatically available to Budgets.
+
+  {% if not can_manage_categories %}
+  <div class="alert alert-info border-0 shadow-sm" role="status">
+    <div class="d-flex gap-3"><i class="bi bi-info-circle fs-4"></i><div><strong>Personal categories are available on Plus and Pro.</strong><div class="mt-1">You can continue using the standard FOCOST categories. Upgrade your plan to create and manage personal categories.</div><a class="alert-link" href="{{ url_for('billing.index') if 'billing.index' in current_app.view_functions else '/billing/' }}">View plans</a></div></div>
   </div>
+  {% else %}
+  <div class="alert alert-light border shadow-sm" role="note"><i class="bi bi-link-45deg text-primary me-2"></i><strong>One category registry:</strong> income and expense categories are managed here and reused by the relevant financial tools. Archiving a category does not change existing transactions.</div>
+  {% endif %}
+
   <div class="row g-4">
-    {% for title, items, icon in [
-      ("Income Categories", income_categories, "bi-arrow-down-circle"),
-      ("Expense Categories", expense_categories, "bi-arrow-up-circle")
+    {% for title, items, icon, kind in [
+      ('Income categories', income_categories, 'bi-arrow-down-circle', 'income'),
+      ('Expense categories', expense_categories, 'bi-arrow-up-circle', 'expense')
     ] %}
-    <div class="col-xl-6">
-      <div class="card border-0 shadow-sm h-100">
-        <div class="card-header bg-white py-3"><h5 class="mb-0"><i class="bi {{ icon }} me-2"></i>{{ title }}</h5></div>
+    <div class="col-12 col-xl-6">
+      <section class="card border-0 shadow-sm h-100">
+        <div class="card-header bg-body border-bottom py-3 d-flex justify-content-between align-items-center">
+          <h2 class="h5 mb-0"><i class="bi {{ icon }} text-primary me-2"></i>{{ title }}</h2>
+          <span class="badge text-bg-light">{{ items|length }} categories</span>
+        </div>
         <div class="list-group list-group-flush">
           {% for item in items %}
-          <div class="list-group-item d-flex justify-content-between align-items-center gap-3">
-            <div><div class="fw-semibold">{{ item.name }}</div><small class="text-muted">{{ item.description or ("System category" if item.is_system else "Personal category") }}</small></div>
-            {% if not item.is_system %}
-            <div class="d-flex gap-1">
-              <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#edit{{ item.id }}"><i class="bi bi-pencil"></i></button>
+          <div class="list-group-item py-3 d-flex justify-content-between align-items-center gap-3">
+            <div class="min-w-0">
+              <div class="fw-semibold text-break">{{ item.name }}</div>
+              <div class="small text-secondary text-break">{{ item.description or ('Standard FOCOST category' if item.is_system else 'Personal category') }}</div>
+            </div>
+            {% if not item.is_system and can_manage_categories %}
+            <div class="d-flex gap-2 flex-shrink-0">
+              <button class="btn btn-sm btn-outline-primary" type="button" data-bs-toggle="modal" data-bs-target="#editCategory{{ item.id }}" aria-label="Edit {{ item.name }}"><i class="bi bi-pencil"></i></button>
               <form method="post" action="{{ url_for('categories.archive', category_id=item.id) }}" onsubmit="return confirm('Archive this category? Existing transactions will remain unchanged.');">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn btn-sm btn-outline-danger"><i class="bi bi-archive"></i></button>
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button class="btn btn-sm btn-outline-secondary" type="submit" aria-label="Archive {{ item.name }}"><i class="bi bi-archive"></i></button>
               </form>
             </div>
-            <div class="modal fade" id="edit{{ item.id }}" tabindex="-1"><div class="modal-dialog"><div class="modal-content">
-              <form method="post" action="{{ url_for('categories.update', category_id=item.id) }}">
-                <div class="modal-header"><h5 class="modal-title">Edit Category</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
-                <div class="modal-body">
-                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                  <input type="hidden" name="category_type" value="{{ item.category_type }}">
-                  <label class="form-label">Name</label><input name="name" class="form-control mb-3" maxlength="100" value="{{ item.name }}" required>
-                  <label class="form-label">Description</label><textarea name="description" class="form-control" maxlength="255">{{ item.description or '' }}</textarea>
-                </div>
-                <div class="modal-footer"><button class="btn btn-primary">Save changes</button></div>
-              </form>
-            </div></div></div>
-            {% endif %}
+            <div class="modal fade" id="editCategory{{ item.id }}" tabindex="-1" aria-labelledby="editCategoryLabel{{ item.id }}" aria-hidden="true">
+              <div class="modal-dialog modal-dialog-centered"><div class="modal-content border-0 shadow">
+                <form method="post" action="{{ url_for('categories.update', category_id=item.id) }}">
+                  <div class="modal-header"><h2 class="modal-title h5" id="editCategoryLabel{{ item.id }}">Edit category</h2><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div>
+                  <div class="modal-body">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="category_type" value="{{ item.category_type }}">
+                    <div class="mb-3"><label class="form-label" for="categoryName{{ item.id }}">Category name</label><input id="categoryName{{ item.id }}" name="name" class="form-control" maxlength="100" value="{{ item.name }}" required></div>
+                    <div><label class="form-label" for="categoryDescription{{ item.id }}">Description <span class="text-secondary fw-normal">(optional)</span></label><textarea id="categoryDescription{{ item.id }}" name="description" class="form-control" maxlength="255" rows="3">{{ item.description or '' }}</textarea></div>
+                  </div>
+                  <div class="modal-footer"><button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button><button type="submit" class="btn btn-primary">Save changes</button></div>
+                </form>
+              </div></div>
+            </div>
+            {% else %}<span class="badge rounded-pill text-bg-light border">Standard</span>{% endif %}
           </div>
-          {% else %}<div class="list-group-item text-muted">No categories available.</div>{% endfor %}
+          {% else %}<div class="list-group-item py-5 text-center text-secondary"><i class="bi bi-inbox fs-3 d-block mb-2"></i>No {{ kind }} categories are available.</div>{% endfor %}
         </div>
-      </div>
+      </section>
     </div>
     {% endfor %}
   </div>
 </div>
-<div class="modal fade" id="categoryModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content">
-<form method="post" action="{{ url_for('categories.create') }}">
-  <div class="modal-header"><h5 class="modal-title">Create Personal Category</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
-  <div class="modal-body">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <label class="form-label">Category Type</label><select name="category_type" class="form-select mb-3" required><option value="income">Income</option><option value="expense">Expense</option></select>
-    <label class="form-label">Name</label><input name="name" class="form-control mb-3" maxlength="100" required>
-    <label class="form-label">Description</label><textarea name="description" class="form-control" maxlength="255"></textarea>
-  </div>
-  <div class="modal-footer"><button class="btn btn-primary">Create Category</button></div>
-</form>
-</div></div></div>
+
+{% if can_manage_categories %}
+<div class="modal fade" id="categoryModal" tabindex="-1" aria-labelledby="categoryModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered"><div class="modal-content border-0 shadow">
+    <form method="post" action="{{ url_for('categories.create') }}">
+      <div class="modal-header"><div><h2 class="modal-title h5 mb-1" id="categoryModalLabel">Create a personal category</h2><p class="small text-secondary mb-0">Choose whether this category tracks income or expenses.</p></div><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div>
+      <div class="modal-body">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="mb-3"><label class="form-label" for="newCategoryType">Category type</label><select id="newCategoryType" name="category_type" class="form-select" required><option value="income">Income</option><option value="expense">Expense</option></select></div>
+        <div class="mb-3"><label class="form-label" for="newCategoryName">Category name</label><input id="newCategoryName" name="name" class="form-control" maxlength="100" autocomplete="off" required></div>
+        <div><label class="form-label" for="newCategoryDescription">Description <span class="text-secondary fw-normal">(optional)</span></label><textarea id="newCategoryDescription" name="description" class="form-control" maxlength="255" rows="3"></textarea></div>
+      </div>
+      <div class="modal-footer"><button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button><button type="submit" class="btn btn-primary"><i class="bi bi-check2 me-1"></i>Create category</button></div>
+    </form>
+  </div></div>
+</div>
+{% endif %}
 {% endblock %}

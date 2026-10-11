@@ -658,3 +658,272 @@ background:#f7f7f7;
     font-size:11px;
     color:#777;
 }
+/* ==========================================================
+   FOCOST AI — Voice / Accessibility / Page Chat Enhancements
+========================================================== */
+
+.ai-header-subtitle{
+    font-size:10px;
+    font-weight:500;
+    opacity:.78;
+    line-height:1.2;
+}
+
+.ai-voice-toolbar,
+.ai-page-voice-toolbar{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:8px;
+    min-height:38px;
+    padding:6px 10px;
+    border-bottom:1px solid rgba(0,0,0,.08);
+    background:#fff;
+}
+
+.ai-page-voice-toolbar{
+    border:1px solid #e9ecef;
+    border-radius:10px;
+    margin-bottom:10px;
+}
+
+.ai-voice-actions{
+    display:flex;
+    align-items:center;
+    gap:5px;
+    margin-left:auto;
+}
+
+.ai-voice-status{
+    min-height:18px;
+    font-size:11px;
+    color:#6c757d;
+    font-weight:600;
+}
+
+.ai-voice-button{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    min-width:34px;
+    min-height:32px;
+    border-radius:8px;
+    transition:all .15s ease;
+}
+
+.ai-voice-button.is-listening,
+.ai-voice-button.active{
+    box-shadow:0 0 0 3px rgba(13,110,253,.12);
+}
+
+.ai-voice-button.is-listening{
+    color:#dc3545;
+    border-color:#dc3545;
+    animation:focostPulse 1.25s infinite;
+}
+
+.ai-voice-button:disabled{
+    opacity:.55;
+    cursor:not-allowed;
+}
+
+.ai-page-status{
+    display:inline-flex;
+    align-items:center;
+    gap:7px;
+    padding:5px 9px;
+    border:1px solid #e9ecef;
+    border-radius:999px;
+    color:#198754;
+    font-size:12px;
+    font-weight:600;
+    background:#fff;
+}
+
+.ai-status-dot{
+    width:7px;
+    height:7px;
+    border-radius:50%;
+    background:#198754;
+    box-shadow:0 0 0 3px rgba(25,135,84,.12);
+}
+
+.ai-page-chat{
+    min-height:480px;
+    max-height:65vh;
+    overflow-y:auto;
+    overflow-x:hidden;
+    padding:14px;
+    background:#f5f7fb;
+}
+
+.ai-typing{
+    display:inline-block;
+    padding:8px 11px;
+    margin:4px 0 8px;
+    border-radius:12px 12px 12px 4px;
+    background:#fff;
+    color:#6c757d;
+    font-size:12px;
+    box-shadow:0 1px 4px rgba(0,0,0,.06);
+    animation:focostTypingPulse 1.2s infinite ease-in-out;
+}
+
+.ai-message-tools{
+    display:flex;
+    justify-content:flex-end;
+    margin-top:5px;
+}
+
+.ai-speak-message{
+    width:28px;
+    height:26px;
+    padding:0;
+    border:0;
+    border-radius:6px;
+    background:transparent;
+    color:#6c757d;
+    cursor:pointer;
+}
+
+.ai-speak-message:hover,
+.ai-speak-message:focus-visible{
+    color:#0d6efd;
+    background:#eef4ff;
+    outline:none;
+}
+
+#aiCoachWindow button:focus-visible,
+.ai-page-voice-toolbar button:focus-visible,
+.chat-footer input:focus-visible,
+.ai-page-chat + * input:focus-visible{
+    outline:3px solid rgba(13,110,253,.2);
+    outline-offset:1px;
+}
+
+#aiCoachWindow .chat-footer{
+    gap:8px;
+}
+
+#aiCoachWindow .chat-footer input{
+    min-width:0;
+}
+
+@keyframes focostPulse{
+    0%,100%{box-shadow:0 0 0 0 rgba(220,53,69,.16);}
+    50%{box-shadow:0 0 0 5px rgba(220,53,69,.08);}
+}
+
+@keyframes focostTypingPulse{
+    0%,100%{opacity:.55;}
+    50%{opacity:1;}
+}
+
+@media (max-width:767.98px){
+    #aiCoachWindow{
+        width:calc(100vw - 20px) !important;
+        max-width:calc(100vw - 20px);
+        min-width:0;
+        right:10px;
+        bottom:80px;
+        max-height:calc(100vh - 100px);
+    }
+
+    .ai-page-chat{
+        min-height:420px;
+        max-height:none;
+    }
+
+    .ai-page-voice-toolbar{
+        align-items:flex-start;
+        flex-direction:column;
+    }
+
+    .ai-page-voice-toolbar .ai-voice-actions{
+        width:100%;
+        justify-content:flex-end;
+    }
+}
+
+@media (prefers-reduced-motion:reduce){
+    .ai-voice-button,
+    #aiCoachButton{
+        transition:none;
+    }
+
+    .ai-voice-button.is-listening,
+    .ai-typing{
+        animation:none;
+    }
+}
+
+
+/* ==========================================================
+   FOCOST AI — Final Responsive Chat Input Fix
+   Keep the message input wide and the send button compact.
+========================================================== */
+
+#aiCoachWindow .chat-footer {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    gap: 8px !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    padding: 10px !important;
+    box-sizing: border-box !important;
+}
+
+#aiCoachWindow .chat-footer #chatInput {
+    display: block !important;
+    flex: 1 1 0% !important;
+    width: 0 !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    height: 44px !important;
+    margin: 0 !important;
+    padding: 10px 12px !important;
+    box-sizing: border-box !important;
+    font-size: 16px !important;
+}
+
+#aiCoachWindow .chat-footer #sendAI {
+    display: inline-flex !important;
+    flex: 0 0 44px !important;
+    width: 44px !important;
+    min-width: 44px !important;
+    max-width: 44px !important;
+    height: 44px !important;
+    align-items: center !important;
+    justify-content: center !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    box-sizing: border-box !important;
+}
+
+#aiCoachWindow .chat-footer #sendAI i {
+    font-size: 16px !important;
+}
+
+/* Small screens */
+@media (max-width: 480px) {
+    #aiCoachWindow .chat-footer {
+        gap: 6px !important;
+        padding: 8px !important;
+    }
+
+    #aiCoachWindow .chat-footer #chatInput {
+        flex: 1 1 0% !important;
+        width: 0 !important;
+        min-width: 0 !important;
+        padding: 10px !important;
+    }
+
+    #aiCoachWindow .chat-footer #sendAI {
+        flex: 0 0 42px !important;
+        width: 42px !important;
+        min-width: 42px !important;
+        max-width: 42px !important;
+        height: 42px !important;
+    }
+}

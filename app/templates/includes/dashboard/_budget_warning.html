@@ -198,18 +198,37 @@
 
             {% endfor %}
 
-
         {% else %}
 
-            <div class="alert alert-success py-2 px-3 mb-0 small">
+            {% if dashboard.active_budgets|default(0)|int == 0 %}
 
-                <i class="bi bi-check-circle-fill me-1"></i>
+                <div class="alert alert-light border py-3 px-3 mb-0 small">
 
-                <strong>Excellent!</strong>
+                    <i class="bi bi-info-circle text-primary me-1"></i>
 
-                No budget risks detected. All budgets are on track.
+                    <strong>No budgets available.</strong>
 
-            </div>
+                    <div class="mt-1">
+                        Create your first budget to monitor spending,
+                        track remaining funds, and receive personalized
+                        budget alerts.
+                    </div>
+
+                </div>
+
+            {% else %}
+
+                <div class="alert alert-success py-2 px-3 mb-0 small">
+
+                    <i class="bi bi-check-circle-fill me-1"></i>
+
+                    <strong>All budgets are on track!</strong>
+
+                    No budget risks detected.
+
+                </div>
+
+            {% endif %}
 
         {% endif %}
 

@@ -8,79 +8,105 @@
 
         <div class="col-12 col-xl-10">
 
-            <div class="d-flex align-items-center mb-3">
+            <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+                <div>
+                    <h2 class="h3 h-md-2 fw-bold mb-1">🤖 Ask FOCOST AI</h2>
+                    <p class="text-muted mb-0">
+                        Evidence-based financial intelligence, guidance and decision support.
+                    </p>
+                </div>
 
-                <h2 class="h3 h-md-2 fw-bold mb-0">
-
-                    🤖 Ask FOCOST AI
-
-                </h2>
-
+                <div class="ai-page-status">
+                    <span class="ai-status-dot" aria-hidden="true"></span>
+                    <span>FOCOST AI Online</span>
+                </div>
             </div>
 
             <div class="card shadow-sm border-0">
-
                 <div class="card-body p-2 p-md-4">
 
-                    <!-- Chat Window -->
+                    <div id="chatWindow"
+                         class="ai-page-chat border rounded mb-3"
+                         role="log"
+                         aria-live="polite"
+                         aria-relevant="additions">
 
-                    <div
-                        id="chatWindow"
-                        class="border rounded bg-light p-3 mb-3">
-
-                        <div class="mb-3">
-
-                            <strong>
-
-                                FOCOST AI
-
-                            </strong>
-
-                            <div class="mt-1">
-
-                                Hello {{ current_user.first_name }}.
-
-                                Ask me anything about your finances.
-
+                        <div class="message assistant">
+                            <div class="ai-message">
+                                <div class="message-sender"><strong>FOCOST AI</strong></div>
+                                <div class="message-body">
+                                    Hello {{ current_user.first_name }} 👋<br>
+                                    Ask me anything about your income, expenses, budgets, goals,
+                                    investments, forecasts or financial health.
+                                </div>
                             </div>
-
                         </div>
 
                     </div>
 
-                    <!-- Chat Input -->
+                    <div class="ai-page-voice-toolbar">
+                        <span id="voiceStatusPageAI"
+                              class="ai-voice-status"
+                              aria-live="polite"></span>
+
+                        <div class="ai-voice-actions">
+                            <button id="voicePageAI"
+                                    type="button"
+                                    class="btn btn-outline-secondary ai-voice-button"
+                                    aria-label="Start voice input"
+                                    aria-pressed="false"
+                                    title="Speak to FOCOST AI">
+                                <i class="bi bi-mic" aria-hidden="true"></i>
+                                <span class="d-none d-sm-inline ms-1">Voice input</span>
+                            </button>
+
+                            <button id="speakPageAI"
+                                    type="button"
+                                    class="btn btn-outline-secondary ai-voice-button"
+                                    aria-label="Toggle automatic voice responses"
+                                    aria-pressed="true"
+                                    title="Voice responses enabled">
+                                <i class="bi bi-volume-up-fill" aria-hidden="true"></i>
+                                <span class="d-none d-sm-inline ms-1">Voice output</span>
+                            </button>
+
+                            <button id="stopPageAI"
+                                    type="button"
+                                    class="btn btn-outline-secondary ai-voice-button"
+                                    aria-label="Stop voice response"
+                                    title="Stop speaking">
+                                <i class="bi bi-stop-fill" aria-hidden="true"></i>
+                                <span class="d-none d-sm-inline ms-1">Stop</span>
+                            </button>
+                        </div>
+                    </div>
 
                     <div class="row g-2">
-
                         <div class="col-12 col-md">
-
-                            <input
-                                id="question"
-                                type="text"
-                                class="form-control"
-                                placeholder="Ask anything..."
-                                autocomplete="off">
-
+                            <label class="visually-hidden" for="question">Ask FOCOST AI</label>
+                            <input id="question"
+                                   type="text"
+                                   class="form-control"
+                                   placeholder="Ask anything about your finances…"
+                                   autocomplete="off">
                         </div>
 
                         <div class="col-12 col-md-auto">
-
-                            <button
-                                id="sendBtn"
-                                class="btn btn-primary w-100 px-4">
-
-                                <i class="bi bi-send-fill me-1"></i>
-
+                            <button id="sendBtn"
+                                    class="btn btn-primary w-100 px-4"
+                                    type="button">
+                                <i class="bi bi-send-fill me-1" aria-hidden="true"></i>
                                 Send
-
                             </button>
-
                         </div>
+                    </div>
 
+                    <div class="small text-muted mt-3">
+                        FOCOST AI provides decision support from your FOCOST data. It does not
+                        independently execute financial actions or replace your judgment.
                     </div>
 
                 </div>
-
             </div>
 
         </div>
@@ -88,11 +114,5 @@
     </div>
 
 </div>
-
-{% endblock %}
-
-{% block scripts %}
-
-<script src="{{ url_for('static', filename='js/ai_chat.js') }}"></script>
 
 {% endblock %}

@@ -1,19 +1,27 @@
 {% extends "layouts/public.html" %}
-{% block title %}{{ policy.title if policy else 'FOCOST Policy' }}{% endblock %}
+{% block title %}{{ policy.title if policy else 'FOCOST Policy' }} | FOCOST{% endblock %}
 {% block content %}
-<div class="container pb-5" style="max-width:960px; margin-top:-12rem;">
+<div class="container py-4 py-lg-5" style="max-width: 1040px;">
   {% if policy %}
-  <div class="card border-0 shadow-sm rounded-4">
+  <article class="card border-0 shadow-sm rounded-4 overflow-hidden">
     <div class="card-body p-4 p-md-5">
-      <span class="badge bg-success-subtle text-success">Version {{ policy.version }}</span>
-      <h1 class="fw-bold mt-3">{{ policy.title }}</h1>
-      <p class="text-muted">Effective {{ policy.effective_at.strftime('%d %B %Y') }}</p>
-      <hr>
-      <div class="legal-content">{{ policy.content_html|safe }}</div>
+      <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+        <span class="badge rounded-pill text-bg-primary-subtle border">Version {{ policy.version }}</span>
+        <span class="small text-secondary">Effective {{ policy.effective_at.strftime('%d %B %Y') if policy.effective_at else 'Date not specified' }}</span>
+      </div>
+      <h1 class="display-6 fw-bold mb-3">{{ policy.title }}</h1>
+      {% if policy.summary %}<p class="lead text-secondary">{{ policy.summary }}</p>{% endif %}
+      <hr class="my-4">
+      <div class="legal-content lh-lg">{{ policy.content_html|safe }}</div>
+      <hr class="my-4">
+      <p class="small text-secondary mb-0">Policy version {{ policy.version }}{% if policy.content_hash %} · Content fingerprint: <code>{{ policy.content_hash }}</code>{% endif %}</p>
     </div>
-  </div>
+  </article>
   {% else %}
-  <div class="alert alert-warning">This policy is not currently available.</div>
+  <div class="card border-0 shadow-sm rounded-4"><div class="card-body p-5 text-center">
+    <i class="bi bi-file-earmark-lock fs-1 text-secondary"></i><h1 class="h3 fw-bold mt-3">Policy currently unavailable</h1>
+    <p class="text-secondary mb-0">This document has not been published or is temporarily unavailable. Please try again later.</p>
+  </div></div>
   {% endif %}
 </div>
 {% endblock %}

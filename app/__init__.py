@@ -121,6 +121,41 @@ def create_app(config_override=None):
 
         return None
 
+    @app.before_request
+    def enforce_central_module_entitlements():
+        # Apply shared module/plan/operation rules to existing financial routes.
+        # Existing route decorators and RBAC checks remain additional safeguards.
+        if not current_user.is_authenticated or not current_user.is_normal_user:
+            return None
+        endpoint = request.endpoint or ""
+        mapping = (
+            ("dashboard.", "dashboard"), ("income.", "income"),
+            ("expense.", "expenses"), ("budget.", "budgets"),
+            ("goal.", "goals"), ("reports.", "reports"),
+            ("ai.", "ai_chat"), ("assets.", "assets"),
+            ("categories.", "categories"),
+        )
+        module = next((key for prefix, key in mapping if endpoint.startswith(prefix)), None)
+        if not module:
+            return None
+        from .services.feature_access_service import FeatureAccessService
+        lowered = endpoint.lower()
+        if any(word in lowered for word in ("delete", "archive", "remove", "clear")):
+            operation = "delete"
+        elif any(word in lowered for word in ("update", "edit", "patch")):
+            operation = "edit"
+        elif "export" in lowered or "download" in lowered:
+            operation = "export"
+        elif request.method == "POST":
+            operation = "create"
+        else:
+            operation = "view"
+        if not FeatureAccessService.allowed_existing_module(current_user, module, operation):
+            if request.path.startswith("/api") or request.is_json:
+                return jsonify({"success": False, "code": "MODULE_ENTITLEMENT_DENIED", "message": "This module is disabled or is not included in your active subscription."}), 403
+            return render_template("errors/403.html"), 403
+        return None
+
     @app.after_request
     def harden_response(response):
         response.headers["X-Request-ID"] = g.get("request_id", "")
@@ -128,7 +163,7 @@ def create_app(config_override=None):
         response.headers["X-Frame-Options"] = "SAMEORIGIN"
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
         response.headers["Permissions-Policy"] = (
-            "camera=(), microphone=(), geolocation=(), payment=()"
+            "camera=(), microphone=(self), geolocation=(), payment=()"
         )
         response.headers["Cross-Origin-Opener-Policy"] = "same-origin-allow-popups"
 
@@ -274,6 +309,8 @@ def create_app(config_override=None):
     from .routes.admin_communications import admin_communications_bp
     from .routes.feedback import feedback_bp
     from .routes.communications import communications_bp
+    from .routes.integrations import integrations_bp
+    from .routes.language import language_bp
 
 
     app.register_blueprint(dashboard_bp)
@@ -301,10 +338,35 @@ def create_app(config_override=None):
     app.register_blueprint(admin_communications_bp)
     app.register_blueprint(feedback_bp)
     app.register_blueprint(communications_bp)
+    app.register_blueprint(integrations_bp)
+    app.register_blueprint(language_bp)
 
 
     RBACMiddleware.init_app(app)
     register_context_processors(app)
+
+    @app.context_processor
+    def integration_context():
+        from flask_login import current_user
+        from app.services.language_service import LanguageService, LANGUAGES
+        from app.services.feature_access_service import FeatureAccessService
+        try:
+            code = LanguageService.get(current_user.id if current_user.is_authenticated else None)
+            
+            enabled = bool(
+                current_user.is_authenticated
+                and FeatureAccessService.allowed(
+                    current_user,
+                    "multilingual",
+                    "configure",
+                )
+            )
+
+            can_manage_modules = bool(current_user.is_authenticated and current_user.is_admin_group and any(FeatureAccessService.can_manage(current_user, key) for key in ("multilingual", "privilege_management", "bank_readonly", "receipt_ocr", "statement_intelligence")))
+        except Exception:
+            code, enabled, can_manage_modules = "en", False, False
+        speech = {"en": "en-NG", "yo": "yo-NG", "ha": "ha-NG", "fr": "fr-FR", "es": "es-ES", "pt": "pt-PT"}
+        return {"focost_language": code, "focost_languages": LanguageService.available(), "focost_language_enabled": enabled, "focost_speech_language": speech.get(code, "en-NG"), "focost_can_manage_modules": can_manage_modules, "focost_t": lambda key: LanguageService.translate(code, key)}
 
     from .seeds.rbac_seed import RBACSeed
     from .seeds.compliance_seed import seed_policies
@@ -325,6 +387,20 @@ def create_app(config_override=None):
     @click.argument("name")
     def seed_command(name):
         SeedManager.run(name)
+
+    @app.cli.command("purge-integration-imports")
+    def purge_integration_imports():
+        """Delete old private receipt/statement uploads according to retention policy."""
+        from datetime import datetime, timedelta
+        from app.models.integration import DocumentImport
+        retention_days = app.config.get("INTEGRATION_UPLOAD_RETENTION_DAYS", 365)
+        cutoff = datetime.utcnow() - timedelta(days=retention_days)
+        records = DocumentImport.query.filter(DocumentImport.created_at < cutoff).all()
+        count = len(records)
+        for record in records:
+            db.session.delete(record)
+        db.session.commit()
+        print(f"Purged {count} private import(s) older than {retention_days} days.")
 
     @app.cli.command("create-paystack-plans")
     def create_paystack_plans():

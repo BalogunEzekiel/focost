@@ -9,7 +9,7 @@ def test_security_headers_present(client):
             "strict-origin-when-cross-origin"
         ),
         "Permissions-Policy": (
-            "camera=(), microphone=(), "
+            "camera=(), microphone=(self), "
             "geolocation=(), payment=()"
         ),
         "Cross-Origin-Opener-Policy": (

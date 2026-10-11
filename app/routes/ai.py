@@ -48,6 +48,14 @@ def chat():
         data.get("message", "")
     ).strip()
 
+    # Keep chat requests bounded so the AI endpoint cannot be used to
+    # submit unexpectedly large prompts or exhaust provider resources.
+    if len(message) > 4000:
+        return jsonify({
+            "success": False,
+            "message": "Please keep your FOCOST AI message within 4,000 characters."
+        }), 400
+
     if not message:
 
         return jsonify({

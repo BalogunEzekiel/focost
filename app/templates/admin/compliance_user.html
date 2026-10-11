@@ -1,10 +1,15 @@
 {% extends "layouts/dashboard.html" %}
-{% block title %}Compliance History | FOCOST{% endblock %}
+{% block title %}Compliance Evidence | FOCOST Administration{% endblock %}
 {% block content %}
 <div class="container-fluid py-4">
-<div class="d-flex justify-content-between align-items-center mb-4"><div><h2 class="fw-bold">Compliance Evidence</h2><p class="text-muted mb-0">{{ user.first_name }} {{ user.last_name }} · {{ user.email }}</p></div></div>
-<div class="card border-0 shadow-sm"><div class="table-responsive"><table class="table align-middle mb-0"><thead><tr><th>Document</th><th>Version</th><th>Action</th><th>Timestamp UTC</th><th>IP</th><th>User Agent / Request</th><th>Hash</th></tr></thead><tbody>
-{% for item in history %}<tr><td>{{item.policy.title}}</td><td>{{item.policy_version}}</td><td>{{item.action}}</td><td>{{item.accepted_at.strftime('%Y-%m-%d %H:%M:%S') if item.accepted_at else '—'}}</td><td>{{item.ip_address or '—'}}</td><td class="small">{{item.user_agent or '—'}}<br>Request: {{item.request_id or '—'}}</td><td class="small text-break">{{item.content_hash or item.policy.content_hash or '—'}}</td></tr>
-{% else %}<tr><td colspan="7" class="text-center py-5 text-muted">No compliance history found.</td></tr>{% endfor %}
-</tbody></table></div></div></div>
+  <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
+    <div><div class="text-uppercase small fw-semibold text-primary mb-1">Administrative compliance</div><h1 class="h2 fw-bold mb-2">User compliance evidence</h1><p class="text-secondary mb-0">Recorded policy acknowledgements for this account.</p></div>
+    <a class="btn btn-outline-secondary" href="{{ url_for('admin.dashboard') }}"><i class="bi bi-arrow-left me-2"></i>Admin dashboard</a>
+  </div>
+  <section class="card border-0 shadow-sm mb-4"><div class="card-body p-4"><div class="d-flex align-items-center gap-3"><div class="rounded-circle bg-primary-subtle text-primary d-flex align-items-center justify-content-center" style="width:3rem;height:3rem"><i class="bi bi-person-check fs-4"></i></div><div><h2 class="h5 mb-1">{{ user.first_name }} {{ user.last_name }}</h2><div class="text-secondary">{{ user.email }}</div><div class="small text-secondary">Account reference: {{ user.public_id }}</div></div></div></div></section>
+  <section class="card border-0 shadow-sm"><div class="card-header bg-body py-3"><h2 class="h5 mb-0">Acknowledgement timeline</h2></div><div class="table-responsive"><table class="table table-hover align-middle mb-0"><thead class="table-light"><tr><th>Policy</th><th>Version</th><th>Action</th><th>Timestamp (UTC)</th><th>IP address</th><th>Request metadata</th><th>Content hash</th></tr></thead><tbody>
+  {% for item in history %}<tr><td class="fw-semibold">{{ item.policy.title if item.policy else 'Policy document' }}</td><td>{{ item.policy_version or '—' }}</td><td>{{ item.action|replace('_', ' ')|title if item.action else '—' }}</td><td class="text-nowrap">{{ item.accepted_at.strftime('%d %b %Y, %H:%M:%S') if item.accepted_at else '—' }}</td><td>{{ item.ip_address or 'Not recorded' }}</td><td class="small"><div class="text-break">{{ item.user_agent or 'User agent not recorded' }}</div><div class="text-secondary mt-1">Request ID: {{ item.request_id or '—' }}</div></td><td><code class="small text-break">{{ item.content_hash or (item.policy.content_hash if item.policy else None) or 'Not recorded' }}</code></td></tr>
+  {% else %}<tr><td colspan="7" class="text-center py-5"><i class="bi bi-journal-check fs-2 text-secondary d-block mb-2"></i><div class="fw-semibold">No compliance history found</div><p class="text-secondary mb-0">This account has no recorded policy acknowledgements.</p></td></tr>{% endfor %}
+  </tbody></table></div></section>
+</div>
 {% endblock %}

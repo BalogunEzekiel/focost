@@ -1093,25 +1093,43 @@ class DashboardService:
             else "No savings opportunity detected."
         )
 
+    
         # -------------------------------------------------------
         # Cash Flow
         # -------------------------------------------------------
 
-        if summary["income"] > summary["expenses"]:
-            dashboard["cashflow_trend"] = "Positive"
+        income = summary["income"]
+        expenses = summary["expenses"]
+
+        # No financial activity: cash flow cannot be assessed.
+        if income == 0 and expenses == 0:
+            dashboard["has_cashflow_data"] = False
+            dashboard["cashflow_trend"] = "Not Enough Data"
             dashboard["cashflow_message"] = (
-                "Income exceeds expenses."
+                "Record income or expenses to begin tracking cash flow."
             )
-        elif summary["income"] < summary["expenses"]:
-            dashboard["cashflow_trend"] = "Negative"
-            dashboard["cashflow_message"] = (
-                "Expenses exceed income."
-            )
+
+        # Financial activity exists: calculate cash-flow status.
         else:
-            dashboard["cashflow_trend"] = "Balanced"
-            dashboard["cashflow_message"] = (
-                "Income equals expenses."
-            )
+            dashboard["has_cashflow_data"] = True
+
+            if income > expenses:
+                dashboard["cashflow_trend"] = "Positive"
+                dashboard["cashflow_message"] = (
+                    "Income exceeds expenses."
+                )
+
+            elif income < expenses:
+                dashboard["cashflow_trend"] = "Negative"
+                dashboard["cashflow_message"] = (
+                    "Expenses exceed income."
+                )
+
+            else:
+                dashboard["cashflow_trend"] = "Balanced"
+                dashboard["cashflow_message"] = (
+                    "Income equals expenses."
+                )
 
         return dashboard
 
@@ -2398,51 +2416,72 @@ class DashboardService:
         expenses = DashboardService.monthly_expense(user_id)
         savings = income - expenses
 
-        if income == 0:
-            score = 100
-        else:
-            ratio = expenses / income
+        # ------------------------------------------------------
+        # 1. NO FINANCIAL ACTIVITY
+        # ------------------------------------------------------
+        # No income and no expenses means there is insufficient
+        # data to calculate a meaningful financial health score.
+        if income == 0 and expenses == 0:
+            score = 0
+            status = "Not Enough Data"
+            color = "secondary"
 
-            if ratio <= 0.50:
-                score = 95
-            elif ratio <= 0.70:
-                score = 85
-            elif ratio <= 0.90:
-                score = 70
+            message = (
+                "Add your first income or expense record to "
+                "begin your financial health assessment."
+            )
+
+        # ------------------------------------------------------
+        # 2. FINANCIAL ACTIVITY EXISTS
+        # ------------------------------------------------------
+        else:
+            # Expenses without income should not receive a
+            # perfect score.
+            if income <= 0:
+                score = 0
+
             else:
-                score = 55
+                ratio = expenses / income
 
-        if score >= 90:
-            grade = "A"
-            status = "Excellent"
-            color = "success"
+                if ratio <= 0.50:
+                    score = 95
+                elif ratio <= 0.70:
+                    score = 85
+                elif ratio <= 0.90:
+                    score = 70
+                else:
+                    score = 55
 
-        elif score >= 80:
-            grade = "B"
-            status = "Good"
-            color = "primary"
+            # Determine status from the calculated score.
+            if score >= 90:
+                status = "Excellent"
+                color = "success"
 
-        elif score >= 70:
-            grade = "C"
-            status = "Fair"
-            color = "warning"
+            elif score >= 80:
+                status = "Good"
+                color = "primary"
 
-        else:
-            grade = "D"
-            status = "Needs Attention"
-            color = "danger"
+            elif score >= 70:
+                status = "Fair"
+                color = "warning"
+
+            else:
+                status = "Needs Attention"
+                color = "danger"
+
+            message = DashboardService.health_message(score)
 
         return {
             "score": score,
-            "grade": grade,
             "status": status,
             "color": color,
-            "message": DashboardService.health_message(score),
+            "message": message,
             "income": income,
             "expenses": expenses,
             "savings": savings,
             "balance": savings,
         }
+
 
     # ==========================================================
     # AI RECOMMENDATIONS

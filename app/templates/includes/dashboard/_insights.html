@@ -284,14 +284,15 @@
 
                     <h6 class="fw-bold text-primary mb-2">
 
-                        {{ dashboard.cashflow_trend|default("Stable") }}
+                        {{ dashboard.cashflow_trend|default("Not Enough Data", true) }}
 
                     </h6>
 
                     <small class="text-muted">
 
                         {{ dashboard.cashflow_message|default(
-                            "Your cash flow is currently stable."
+                            "Record income or expenses to begin tracking cash flow.",
+                            true
                         ) }}
 
                     </small>

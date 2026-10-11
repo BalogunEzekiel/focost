@@ -87,9 +87,12 @@ class Config:
     )
 
     OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+    # Read-only Mono Open Banking Connect. Private keys are environment-only.
+    MONO_PUBLIC_KEY = os.getenv("MONO_PUBLIC_KEY", "").strip()
+    MONO_SECRET_KEY = os.getenv("MONO_SECRET_KEY", "").strip()
 
     APP_NAME = "FOCOST"
-    APP_VERSION = os.getenv("APP_VERSION", "2.0.0")
+    APP_VERSION = os.getenv("APP_VERSION", "2.2.0")
     APP_ENV = os.getenv("FLASK_ENV", "production")
 
     APP_BASE_URL = os.getenv(
@@ -171,6 +174,13 @@ class Config:
         "DOCUMENT_ARCHIVE_DIR",
         str(INSTANCE_DIR / "document_archive")
     )
+
+    INTEGRATION_UPLOAD_DIR = os.getenv(
+        "INTEGRATION_UPLOAD_DIR",
+        str(INSTANCE_DIR / "private_imports")
+    )
+
+    INTEGRATION_UPLOAD_RETENTION_DAYS = max(1, int(os.getenv("INTEGRATION_UPLOAD_RETENTION_DAYS", "365")))
 
     # ---------------------------------------------------------
     # FOCOST Contact / Compliance Emails

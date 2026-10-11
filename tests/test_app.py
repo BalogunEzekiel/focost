@@ -54,9 +54,9 @@ def test_security_headers(client):
     assert response.headers["Referrer-Policy"] == (
         "strict-origin-when-cross-origin"
     )
-
+    
     assert response.headers["Permissions-Policy"] == (
-        "camera=(), microphone=(), geolocation=(), payment=()"
+        "camera=(), microphone=(self), geolocation=(), payment=()"
     )
 
     assert response.headers["Cross-Origin-Opener-Policy"] == (

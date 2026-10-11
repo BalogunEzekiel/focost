@@ -1,103 +1,104 @@
-<!-- ================================
-     Floating AI Button
-================================ -->
+<!-- =========================================================
+     FOCOST AI — Global Floating Coach
+========================================================= -->
 
 <div id="aiCoachButton"
-     aria-label="Open AI Coach"
+     role="button"
+     tabindex="0"
+     aria-label="Open FOCOST AI financial coach"
      title="FOCOST AI">
-
-    <i class="bi bi-robot"></i>
-
+    <i class="bi bi-robot" aria-hidden="true"></i>
 </div>
 
-<!-- ================================
-     Floating Chat Window
-================================ -->
-
-<div id="aiCoachWindow">
-
-    <!-- Header -->
+<div id="aiCoachWindow"
+     role="dialog"
+     aria-modal="false"
+     aria-label="FOCOST AI financial coach">
 
     <div class="chat-header" id="chatHeader">
-
         <div class="d-flex align-items-center gap-2">
-
-            <i class="bi bi-robot"></i>
-
-            <strong>FOCOST AI</strong>
-
+            <i class="bi bi-robot" aria-hidden="true"></i>
+            <div>
+                <strong>FOCOST AI</strong>
+                <div class="ai-header-subtitle">Financial intelligence & decision support</div>
+            </div>
         </div>
 
         <div class="header-actions">
-
-            <button
-                id="minimizeAI"
-                type="button"
-                title="Minimize">
-
-                <i class="bi bi-dash-lg"></i>
-
+            <button id="minimizeAI" type="button" title="Minimize" aria-label="Minimize FOCOST AI">
+                <i class="bi bi-dash-lg" aria-hidden="true"></i>
             </button>
-
-            <button
-                id="maximizeAI"
-                type="button"
-                title="Maximize">
-
-                <i class="bi bi-square"></i>
-
+            <button id="maximizeAI" type="button" title="Maximize" aria-label="Maximize FOCOST AI">
+                <i class="bi bi-square" aria-hidden="true"></i>
             </button>
-
-            <button
-                id="closeAI"
-                type="button"
-                title="Close">
-
-                <i class="bi bi-x-lg"></i>
-
+            <button id="closeAI" type="button" title="Close" aria-label="Close FOCOST AI">
+                <i class="bi bi-x-lg" aria-hidden="true"></i>
             </button>
-
         </div>
-
     </div>
 
-    <!-- Messages -->
+    <div class="ai-voice-toolbar" aria-label="FOCOST AI voice controls">
+        <span id="voiceStatusAI" class="ai-voice-status" aria-live="polite"></span>
 
-    <div id="chatMessages">
+        <div class="ai-voice-actions">
+            <button id="voiceAI"
+                    type="button"
+                    class="ai-voice-button"
+                    aria-label="Start voice input"
+                    aria-pressed="false"
+                    title="Speak to FOCOST AI">
+                <i class="bi bi-mic" aria-hidden="true"></i>
+            </button>
 
-        <div class="message">
+            <button id="speakAI"
+                    type="button"
+                    class="ai-voice-button"
+                    aria-label="Toggle automatic voice responses"
+                    aria-pressed="true"
+                    title="Voice responses enabled">
+                <i class="bi bi-volume-up-fill" aria-hidden="true"></i>
+            </button>
 
-            <strong>FOCOST AI</strong>
+            <button id="stopAI"
+                    type="button"
+                    class="ai-voice-button"
+                    aria-label="Stop voice response"
+                    title="Stop speaking">
+                <i class="bi bi-stop-fill" aria-hidden="true"></i>
+            </button>
+        </div>
+    </div>
 
+    <div id="chatMessages"
+         role="log"
+         aria-live="polite"
+         aria-relevant="additions">
+        <div class="message assistant">
             <div class="ai-message">
-
-                Hello {{ current_user.first_name }}, I'm your personal financial coach.
-                How can I help you with your finances?
+                <div class="message-sender"><strong>FOCOST AI</strong></div>
+                <div class="message-body">
+                    Hello {{ current_user.first_name }} 👋<br>
+                    <strong>I'm your financial coach.</strong><br>
+                    How can I help you with your finances today?
+                </div>
             </div>
-
         </div>
-
     </div>
-
-    <!-- Footer -->
 
     <div class="chat-footer">
+        <label class="visually-hidden" for="chatInput">Message FOCOST AI</label>
 
-        <input
-            id="chatInput"
-            type="text"
-            autocomplete="off"
-            placeholder="Ask FOCOST AI..." />
+        <input id="chatInput"
+               type="text"
+               autocomplete="off"
+               placeholder="Ask FOCOST AI about your finances…"
+               aria-label="Message FOCOST AI">
 
-        <button
-            id="sendAI"
-            class="btn btn-primary"
-            type="button">
-
-            <i class="bi bi-send-fill"></i>
-
+        <button id="sendAI"
+                class="btn btn-primary"
+                type="button"
+                aria-label="Send message">
+            <i class="bi bi-send-fill" aria-hidden="true"></i>
         </button>
-
     </div>
-
 </div>

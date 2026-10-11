@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{ focost_speech_language|default('en-NG') }}" data-language-code="{{ focost_language|default('en') }}">
 
 <head>
 
@@ -36,7 +36,7 @@
 
     <link
         rel="stylesheet"
-        href="{{ url_for('static', filename='css/style.css') }}?v=2">
+        href="{{ url_for('static', filename='css/style.css') }}?v=3"
 
     <!-- AI Widget CSS -->
 
@@ -56,10 +56,42 @@
     {% include "includes/dashboard_sidebar.html" %}
 
     <div class="flex-grow-1 overflow-hidden" style="min-width:0;">    
-
+        
         {% include "includes/dashboard_topbar.html" %}
 
         <main class="p-4">
+            
+            <div class="focost-language-row">
+                <form
+                    method="post"
+                    action="{{ url_for('language.set_language') }}"
+                    class="focost-language-form"
+                    aria-label="Language preference"
+                >
+                    <input
+                        type="hidden"
+                        name="csrf_token"
+                        value="{{ csrf_token() }}"
+                    >
+
+                    <label for="focostLanguage">Language</label>
+
+                    <select
+                        id="focostLanguage"
+                        name="language"
+                        onchange="this.form.submit()"
+                    >
+                        {% for code, language in (focost_languages or {}).items() %}
+                            <option
+                                value="{{ code }}"
+                                {% if code == (focost_language|default('en', true)) %}selected{% endif %}
+                            >
+                                {{ language.native }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </form>
+            </div>
 
             {% with messages = get_flashed_messages(with_categories=true) %}
 

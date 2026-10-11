@@ -1,0 +1,429 @@
+{% extends "layouts/dashboard.html" %}
+
+{% block title %}Review Import | FOCOST{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-3 py-lg-4">
+  <a href="{{ url_for('integrations.index') }}" class="small text-decoration-none">
+    <i class="bi bi-arrow-left me-1"></i>All integrations
+  </a>
+
+  <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mt-3 mb-4">
+    <div>
+      <div class="small text-uppercase fw-semibold text-primary mb-1">Review before posting</div>
+      <h1 class="h2 fw-bold">
+        {{ 'Receipt' if record.import_type == 'receipt' else 'Statement' }} review
+      </h1>
+      <p class="text-secondary mb-0">
+        {{ record.original_name }} · {{ rows|length }} transaction(s) detected.
+        Verify every field; nothing is posted until confirmed.
+      </p>
+    </div>
+    <span class="badge text-bg-light border py-2 px-3">{{ record.status|title }}</span>
+  </div>
+
+  {% if not rows %}
+    <div class="alert alert-warning" role="alert">
+      No transaction rows were extracted. Delete this import and try a clearer
+      document or a supported CSV format.
+    </div>
+  {% endif %}
+
+  {% if record.import_type == 'statement' %}
+    <div class="row g-3 mb-3">
+      <div class="col-6 col-xl-3">
+        <div class="card border-0 shadow-sm h-100">
+          <div class="card-body">
+            <div class="small text-secondary">Credits detected</div>
+            <div class="h5 mb-0">
+              {{ '%.2f'|format(rows|selectattr('amount', 'gt', 0)|sum(attribute='amount')) }}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-6 col-xl-3">
+        <div class="card border-0 shadow-sm h-100">
+          <div class="card-body">
+            <div class="small text-secondary">Debits detected</div>
+            <div class="h5 mb-0">
+              {{ '%.2f'|format((rows|selectattr('amount', 'lt', 0)|sum(attribute='amount'))|abs) }}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-6 col-xl-3">
+        <div class="card border-0 shadow-sm h-100">
+          <div class="card-body">
+            <div class="small text-secondary">Net cash flow</div>
+            <div class="h5 mb-0">
+              {{ '%.2f'|format(rows|sum(attribute='amount')) }}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-6 col-xl-3">
+        <div class="card border-0 shadow-sm h-100">
+          <div class="card-body">
+            <div class="small text-secondary">Potential duplicates</div>
+            <div class="h5 mb-0">
+              {{ rows|selectattr('possible_duplicate')|list|length }}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {% set balance_flags = rows|selectattr('reconciliation_warning')|list|length %}
+    {% set unusual_flags = rows|selectattr('unusual_activity')|list|length %}
+    {% set review_flags = rows|selectattr('needs_review')|list|length %}
+
+    <div class="alert alert-warning small" role="alert">
+      <strong>Review carefully.</strong>
+      These are extracted estimates, not a bank reconciliation certification.
+      {{ balance_flags }} running-balance mismatch(es),
+      {{ unusual_flags }} unusually large transaction(s), and
+      {{ review_flags }} transaction(s) requiring additional review were
+      flagged where data was available. Flags are advisory. Confirm the
+      statement period, opening/closing balances, transaction descriptions,
+      debit/credit direction and potential duplicates before importing.
+    </div>
+
+    {% if review_flags %}
+      <div class="alert alert-danger" role="alert">
+        <div class="fw-semibold mb-1">
+          <i class="bi bi-exclamation-triangle-fill me-1"></i>
+          Additional review required
+        </div>
+        At least one transaction appears to be a reversal or refund. A bank
+        credit is not always earned income. Check the original transaction and
+        select the appropriate accounting treatment before confirming it.
+      </div>
+    {% endif %}
+  {% endif %}
+
+  <div class="row g-3">
+    {% for row in rows %}
+      <div class="col-12">
+        <section class="card border-0 shadow-sm">
+          <div class="card-header bg-body d-flex flex-wrap justify-content-between align-items-center gap-2">
+            <strong>Transaction {{ loop.index }}</strong>
+
+            <div class="d-flex flex-wrap gap-2">
+              {% if row.confirmed %}
+                <span class="badge text-bg-success">Imported</span>
+              {% elif row.possible_duplicate %}
+                <span class="badge text-bg-warning">Possible duplicate</span>
+              {% else %}
+                <span class="badge text-bg-light border">Pending review</span>
+              {% endif %}
+
+              {% if row.needs_review %}
+                <span class="badge text-bg-danger">Review reversal/refund</span>
+              {% endif %}
+
+              {% if row.reconciliation_warning %}
+                <span class="badge text-bg-danger">Balance mismatch</span>
+              {% endif %}
+
+              {% if row.unusual_activity %}
+                <span class="badge text-bg-warning">Unusual amount</span>
+              {% endif %}
+
+              {% if row.duplicate_override and row.duplicate_override.certified_not_duplicate %}
+                <span class="badge text-bg-info">Duplicate override certified</span>
+              {% endif %}
+            </div>
+          </div>
+
+          <div class="card-body">
+            {% if row.needs_review %}
+              <div class="alert alert-danger py-2 small" role="alert">
+                <i class="bi bi-exclamation-triangle-fill me-1"></i>
+                <strong>Verify before importing.</strong>
+                {{ row.review_note or 'This transaction may be a reversal or refund. Do not assume it is ordinary income.' }}
+              </div>
+            {% endif %}
+
+            {% if row.reconciliation_warning %}
+              <div class="alert alert-warning py-2 small" role="alert">
+                The extracted amount does not align with the available
+                running-balance comparison. Check the source statement.
+              </div>
+            {% endif %}
+
+            {% if row.receipt_details %}
+              <div class="row g-3 mb-3">
+                <div class="col-6 col-md-3">
+                  <div class="small text-secondary">Subtotal extracted</div>
+                  <div class="fw-semibold">
+                    {{ row.receipt_details.subtotal if row.receipt_details.subtotal is not none else 'Not detected' }}
+                  </div>
+                </div>
+
+                <div class="col-6 col-md-3">
+                  <div class="small text-secondary">Tax / VAT extracted</div>
+                  <div class="fw-semibold">
+                    {{ row.receipt_details.tax if row.receipt_details.tax is not none else 'Not detected' }}
+                  </div>
+                </div>
+
+                <div class="col-6 col-md-3">
+                  <div class="small text-secondary">Payment method</div>
+                  <div class="fw-semibold">
+                    {{ row.receipt_details.payment_method or 'Not detected' }}
+                  </div>
+                </div>
+
+                <div class="col-6 col-md-3">
+                  <div class="small text-secondary">Items detected</div>
+                  <div class="fw-semibold">
+                    {{ row.receipt_details.items|length }}
+                  </div>
+                </div>
+              </div>
+
+              {% if row.receipt_details.items %}
+                <div class="table-responsive mb-3">
+                  <table class="table table-sm">
+                    <thead>
+                      <tr>
+                        <th>Item</th>
+                        <th>Qty</th>
+                        <th class="text-end">Line total</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {% for item in row.receipt_details.items %}
+                        <tr>
+                          <td>{{ item.description }}</td>
+                          <td>{{ item.quantity }}</td>
+                          <td class="text-end">
+                            {{ item.line_total if item.line_total is not none else '—' }}
+                          </td>
+                        </tr>
+                      {% endfor %}
+                    </tbody>
+                  </table>
+                </div>
+              {% endif %}
+
+              <div class="alert alert-light border small">
+                OCR may misread item lines and taxes. Use the fields below to
+                confirm the actual transaction total, date and category.
+              </div>
+            {% endif %}
+
+            <form
+              method="post"
+              action="{{ url_for('integrations.confirm', import_id=record.id, index=loop.index0) }}"
+            >
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+              <fieldset {% if row.confirmed %}disabled{% endif %}>
+                <div class="row g-3">
+                  <div class="col-12 col-md-3">
+                    <label class="form-label" for="date{{ loop.index }}">
+                      Transaction date
+                    </label>
+                    <input
+                      class="form-control"
+                      id="date{{ loop.index }}"
+                      name="date"
+                      type="date"
+                      value="{{ row.date }}"
+                      required
+                    >
+                  </div>
+
+                  <div class="col-12 col-md-5">
+                    <label class="form-label" for="desc{{ loop.index }}">
+                      Merchant / description
+                    </label>
+                    <input
+                      class="form-control"
+                      id="desc{{ loop.index }}"
+                      name="description"
+                      maxlength="255"
+                      value="{{ row.description }}"
+                      required
+                    >
+                  </div>
+
+                  <div class="col-12 col-md-2">
+                    <label class="form-label" for="amount{{ loop.index }}">
+                      Amount
+                    </label>
+                    <input
+                      class="form-control"
+                      id="amount{{ loop.index }}"
+                      name="amount"
+                      type="number"
+                      min="0.01"
+                      step="0.01"
+                      value="{{ (row.amount|float)|abs }}"
+                      required
+                    >
+                  </div>
+
+                  <div class="col-12 col-md-2">
+                    <label class="form-label" for="kind{{ loop.index }}">
+                      Type
+                    </label>
+                    <select
+                      class="form-select"
+                      id="kind{{ loop.index }}"
+                      name="kind"
+                      required
+                    >
+                      <option value="expense" {% if row.kind == 'expense' %}selected{% endif %}>
+                        Expense
+                      </option>
+                      <option value="income" {% if row.kind == 'income' %}selected{% endif %}>
+                        Income
+                      </option>
+                    </select>
+
+                    {% if row.needs_review %}
+                      <div class="form-text text-danger">
+                        Check this type carefully; a reversal/refund may offset
+                        a previous expense rather than represent income.
+                      </div>
+                    {% endif %}
+                  </div>
+
+                  <div class="col-12 col-md-4">
+                    <label class="form-label" for="category{{ loop.index }}">
+                      Category
+                    </label>
+                    <input
+                      class="form-control"
+                      id="category{{ loop.index }}"
+                      name="category"
+                      maxlength="100"
+                      value="{{ row.category or 'Other' }}"
+                      required
+                    >
+                    <div class="form-text">
+                      Must match an active FOCOST category; unsupported names
+                      fall back to Other.
+                    </div>
+                  </div>
+                </div>
+
+                {% if row.possible_duplicate and not row.confirmed %}
+                  <hr class="my-4">
+
+                  <div class="alert alert-warning mb-0" role="alert">
+                    <div class="fw-semibold mb-2">
+                      <i class="bi bi-exclamation-triangle-fill me-1"></i>
+                      A matching transaction may already exist
+                    </div>
+
+                    <p class="small mb-3">
+                      FOCOST has flagged this transaction for review. Compare
+                      its date, description and amount with the existing
+                      transaction before proceeding. Two legitimate transactions
+                      can have identical details.
+                    </p>
+
+                    <div class="form-check mb-3">
+                      <input
+                        class="form-check-input duplicate-certification"
+                        type="checkbox"
+                        id="certifyDuplicate{{ loop.index }}"
+                        name="certify_not_duplicate"
+                        value="true"
+                        data-reason-id="duplicateReason{{ loop.index }}"
+                      >
+                      <label
+                        class="form-check-label fw-semibold"
+                        for="certifyDuplicate{{ loop.index }}"
+                      >
+                        I have checked the existing record and certify that
+                        this is a separate, legitimate transaction.
+                      </label>
+                    </div>
+
+                    <div>
+                      <label
+                        class="form-label"
+                        for="duplicateReason{{ loop.index }}"
+                      >
+                        Reason for certifying this transaction
+                      </label>
+                      <textarea
+                        class="form-control"
+                        id="duplicateReason{{ loop.index }}"
+                        name="duplicate_override_reason"
+                        rows="3"
+                        maxlength="500"
+                        placeholder="For example: The statement shows two separate stamp-duty charges on the same date."
+                        disabled
+                      ></textarea>
+                      <div class="form-text">
+                        Tick the certification checkbox and provide a reason
+                        only after checking the existing record.
+                      </div>
+                    </div>
+                  </div>
+                {% endif %}
+              </fieldset>
+
+              <div class="d-flex flex-wrap justify-content-end gap-2 mt-3">
+                {% if not row.confirmed %}
+                  <button class="btn btn-primary" type="submit">
+                    <i class="bi bi-check2-circle me-1"></i>
+                    Confirm and import
+                  </button>
+                {% endif %}
+              </div>
+            </form>
+          </div>
+        </section>
+      </div>
+    {% endfor %}
+  </div>
+
+  <div class="d-flex justify-content-end mt-4">
+    <form
+      method="post"
+      action="{{ url_for('integrations.delete_import', import_id=record.id) }}"
+      onsubmit="return confirm('Delete the stored source document and its review data? Already imported financial records will not be deleted.');"
+    >
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button class="btn btn-outline-danger" type="submit">
+        <i class="bi bi-trash me-1"></i>
+        Delete source and review
+      </button>
+    </form>
+  </div>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  document.querySelectorAll(".duplicate-certification").forEach(function (checkbox) {
+    const reasonId = checkbox.dataset.reasonId;
+    const reasonField = document.getElementById(reasonId);
+
+    if (!reasonField) {
+      return;
+    }
+
+    function updateReasonField() {
+      reasonField.disabled = !checkbox.checked;
+      reasonField.required = checkbox.checked;
+
+      if (!checkbox.checked) {
+        reasonField.value = "";
+      }
+    }
+
+    checkbox.addEventListener("change", updateReasonField);
+    updateReasonField();
+  });
+});
+</script>
+{% endblock %}

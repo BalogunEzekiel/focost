@@ -66,3 +66,7 @@ Do not place Gmail App Passwords or other credentials in source files. Keep them
 ## Legal/compliance note
 
 The policy wording is operationally structured for FOCOST's current feature set and Nigerian deployment context. Final publication should still be reviewed against the actual FOCOST operating entity, processor contracts, data flows, retention schedule, regulatory registration/filing status and any additional jurisdictions that apply.
+
+## Integration upgrade (language, documents, read-only banking)
+
+See [`docs/FOCOST_INTEGRATION_UPGRADE.md`](docs/FOCOST_INTEGRATION_UPGRADE.md) for the module architecture, migration, Mono provider setup, OCR dependencies, privacy controls, test commands, and known production-readiness limits. After applying migrations, Super Admin configures modules at `/admin/integrations`; eligible users access receipts, statements and read-only bank accounts at `/integrations/`.

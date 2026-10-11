@@ -466,6 +466,25 @@ def feedback_update(public_id):
     )
 
 
+@admin_bp.route("/compliance/history")
+@permission_required("compliance.view")
+def legal_history():
+    """Show the system-wide immutable policy acknowledgement register."""
+    from app.models.compliance import PolicyAcceptance
+
+    page = max(request.args.get("page", 1, type=int), 1)
+    pagination = (
+        PolicyAcceptance.query
+        .order_by(PolicyAcceptance.accepted_at.desc(), PolicyAcceptance.id.desc())
+        .paginate(page=page, per_page=50, error_out=False)
+    )
+    return render_template(
+        "admin/legal_history.html",
+        history=pagination.items,
+        pagination=pagination,
+    )
+
+
 @admin_bp.route("/compliance/users/<public_id>")
 @permission_required("compliance.view")
 def compliance_user(public_id):
@@ -480,3 +499,66 @@ def compliance_user(public_id):
         user=user,
         history=history,
     )
+
+# Central module governance. Super Admin controls the policy catalogue; Admins
+# can modify only modules explicitly delegated to their role.
+@admin_bp.route("/integrations", methods=["GET", "POST"])
+@login_required
+def integration_governance():
+    if not current_user.is_admin_group:
+        abort(403)
+    import json
+    from app.models.integration import FeaturePolicy
+    from app.services.feature_access_service import FeatureAccessService
+    FeatureAccessService.ensure_defaults()
+    policies = FeaturePolicy.query.order_by(FeaturePolicy.module_key.asc()).all()
+    from app.models.role import Role
+    roles = Role.query.order_by(Role.group_slug.asc(), Role.name.asc()).all()
+    if request.method == "POST":
+        key = (request.form.get("module_key") or "").strip()
+        policy = FeaturePolicy.query.filter_by(module_key=key).first()
+        if not policy or not FeatureAccessService.can_manage(current_user, key):
+            abort(403)
+        # A delegated Admin may only toggle the module explicitly delegated to
+        # them. Role, plan, operation and onward-delegation assignments remain
+        # Super Admin-only to prevent privilege escalation.
+        policy.enabled = request.form.get("enabled") == "on"
+        if current_user.is_super_admin:
+            roles_selected = sorted(set(request.form.getlist("allowed_roles")))
+            plans_selected = sorted(set(request.form.getlist("allowed_plans")))
+            operations_selected = sorted(set(request.form.getlist("operations")))
+            allowed_plans = {"free trial", "basic", "plus", "pro", "admin"}
+            allowed_operations = {"view", "create", "edit", "delete", "export", "configure", "manage", "sync", "import"}
+            valid_roles = {r.slug for r in Role.query.all()}
+            if not roles_selected or set(roles_selected) - valid_roles or set(plans_selected) - allowed_plans or not operations_selected or set(operations_selected) - allowed_operations:
+                abort(400)
+            policy.allowed_roles_json = json.dumps(roles_selected)
+            policy.allowed_plans_json = json.dumps(plans_selected)
+            policy.operations_json = json.dumps(operations_selected)
+            delegated = sorted(set(request.form.getlist("delegated_roles")))
+            valid_admin_roles = {r.slug for r in Role.query.filter_by(group_slug="admin").all() if r.slug != "super_admin"}
+            if set(delegated) - valid_admin_roles:
+                abort(400)
+            policy.delegated_roles_json = json.dumps(delegated)
+            config = policy.config()
+            if key == "multilingual":
+                selected = sorted(set(request.form.getlist("supported_languages")) & {"en", "yo", "ha", "fr", "es", "pt"})
+                if "en" not in selected: selected.insert(0, "en")
+                config["supported_languages"] = selected
+            elif key == "bank_readonly":
+                config["providers"] = sorted(set(request.form.getlist("providers")) & {"mono"})
+            elif key == "statement_intelligence":
+                config["formats"] = sorted(set(request.form.getlist("formats")) & {"csv", "xlsx", "xlsm", "pdf", "png", "jpg", "jpeg", "webp", "tif", "tiff"})
+            policy.config_json = json.dumps(config)
+        db.session.commit()
+        try:
+            from app.audit.service import AuditService
+            AuditService.log(action="integration.policy.updated", category="ADMIN", description=f"Updated module policy: {key}")
+        except Exception:
+            current_app.logger.exception("Could not audit integration policy update")
+        flash("Module policy saved.", "success")
+        return redirect(url_for("admin.integration_governance"))
+    manageable = {p.module_key for p in policies if FeatureAccessService.can_manage(current_user, p.module_key)}
+    if not current_user.is_super_admin and not manageable:
+        abort(403)
+    return render_template("admin/integration_governance.html", policies=policies, manageable=manageable, roles=roles)

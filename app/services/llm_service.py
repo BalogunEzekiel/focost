@@ -386,6 +386,11 @@ class LLMService:
                                 or ""
                             ).strip()
 
+                        if not content:
+                            raise ValueError(
+                                "FOCOST AI provider returned an empty response."
+                            )
+
                         usage = getattr(
                             response,
                             "usage",
@@ -519,5 +524,4 @@ class LLMService:
                 "Please try again shortly."
             ),
             "error_code": "LLM_UNAVAILABLE",
-            "provider_errors": provider_errors,
         }

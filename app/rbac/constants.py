@@ -679,6 +679,9 @@ DEFAULT_USER_PERMISSION_CODES = {
     "goals.edit",
     "goals.delete",
 
+    # Category registry
+    "categories.view",
+
     # Reports
     "reports.view",
 

@@ -3009,3 +3009,71 @@ body.density-spacious
     }
 
 }
+
+
+
+/* FOCOST language selector — below the topbar */
+.focost-language-row {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    width: 100%;
+    margin: 0 0 12px;
+    margin-top: -1rem;
+    padding: 12px 24px 0;
+    box-sizing: border-box;
+}
+
+.focost-language-form {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+    max-width: 100%;
+    padding: 8px 12px;
+    background: #fff;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.focost-language-form label {
+    margin: 0;
+    color: #495057;
+    font-size: 13px;
+    white-space: nowrap;
+}
+
+.focost-language-form select {
+    display: block;
+    width: 160px;
+    max-width: 100%;
+    min-height: 36px;
+    padding: 6px 10px;
+    color: #212529;
+    background: #fff;
+    border: 1px solid #ced4da;
+    border-radius: 6px;
+}
+
+@media (max-width: 576px) {
+    .focost-language-row {
+        justify-content: flex-start;
+        padding-right: 16px;
+        padding-left: 16px;
+    }
+
+    .focost-language-form {
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    .focost-language-form select {
+        width: auto;
+        min-width: 0;
+        flex: 1;
+    }
+}
