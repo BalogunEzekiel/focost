@@ -13,43 +13,44 @@ document.addEventListener("DOMContentLoaded", () => {
     const csrfToken =
         document.querySelector('meta[name="csrf-token"]')?.content || "";
 
+
     //----------------------------------------------------------
-    // Update Notification Count
+    // Update In-App Badges and Supported App Icon Badge
     //----------------------------------------------------------
 
     function updateBadge(count) {
+        const unreadCount = Math.max(0, Number(count) || 0);
 
         if (badge) {
-
-            if (count > 0) {
-
-                badge.textContent = count;
-                badge.classList.remove("d-none");
-
-            } else {
-
-                badge.classList.add("d-none");
-
-            }
-
+            badge.textContent = unreadCount;
+            badge.classList.toggle("d-none", unreadCount === 0);
         }
 
         if (headerBadge) {
-
-            if (count > 0) {
-
-                headerBadge.textContent = count;
-                headerBadge.classList.remove("d-none");
-
-            } else {
-
-                headerBadge.classList.add("d-none");
-
-            }
-
+            headerBadge.textContent = unreadCount;
+            headerBadge.classList.toggle("d-none", unreadCount === 0);
         }
 
+        // Supported installed PWAs may display a badge on the app icon.
+        if ("setAppBadge" in navigator) {
+            const badgePromise = unreadCount > 0
+                ? navigator.setAppBadge(unreadCount)
+                : (
+                    "clearAppBadge" in navigator
+                        ? navigator.clearAppBadge()
+                        : Promise.resolve()
+                );
+
+            Promise.resolve(badgePromise).catch((error) => {
+                console.debug("FOCOST app icon badge is unavailable:", error);
+            });
+        }
     }
+
+    // Initialize from the unread count rendered by Flask.
+    const initialBadge = badge?.textContent?.trim();
+    updateBadge(initialBadge || 0);
+
 
     //----------------------------------------------------------
     // Generic POST Helper

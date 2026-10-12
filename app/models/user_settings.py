@@ -81,7 +81,8 @@ class UserSettings(db.Model):
             "subscription_alerts": True,
             "ai_usage_alerts": True,
             "insights": True,
-            "email": False
+            "email": False,
+            "push": False
         },
 
         "privacy": {

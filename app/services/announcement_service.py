@@ -151,7 +151,7 @@ class AnnouncementService:
             results.append(item)
 
         return results
-    
+
     @staticmethod
     def is_dismissed(announcement_id, user_id):
         state = AnnouncementUserState.query.filter_by(
@@ -186,6 +186,7 @@ class AnnouncementService:
 
         return state
 
+
     @staticmethod
     def publish(announcement, published_by_id):
         if announcement.announcement_type not in AnnouncementService.TYPES:
@@ -194,18 +195,40 @@ class AnnouncementService:
             raise ValueError("Invalid audience.")
 
         # Advertising is intentionally restricted to Free Trial/Basic targeting.
-        if announcement.announcement_type == "advertisement" and announcement.audience not in {"free_trial", "basic"}:
-            raise ValueError("Advertising can only target Free Trial or Basic users.")
+        if (
+            announcement.announcement_type == "advertisement"
+            and announcement.audience not in {"free_trial", "basic"}
+        ):
+            raise ValueError(
+                "Advertising can only target Free Trial or Basic users."
+            )
 
         announcement.status = "published"
         announcement.published_at = utc_now()
         announcement.published_by_id = published_by_id
         db.session.commit()
 
+        # Email remains an independent delivery channel.
         if announcement.email:
             AnnouncementService.dispatch_email(announcement)
 
+        # Push delivery is best-effort: it must never undo publication
+        # or interfere with email if the push provider fails.
+        if announcement.push and announcement.is_live:
+            try:
+                from app.services.web_push_service import WebPushService
+
+                WebPushService.send_announcement(announcement)
+            except Exception:
+                import logging
+
+                logging.getLogger(__name__).exception(
+                    "Web Push dispatch failed for announcement %s",
+                    announcement.public_id,
+                )
+
         return announcement
+
 
     @staticmethod
     def create(**data):

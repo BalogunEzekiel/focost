@@ -37,3 +37,5 @@ from .push_device import PushDevice
 from .announcement_user_state import AnnouncementUserState
 
 from .integration import FeaturePolicy, DocumentImport, BankConnection, BankSyncRecord
+
+from .web_push_subscription import WebPushSubscription

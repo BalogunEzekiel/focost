@@ -241,12 +241,12 @@ class NotificationService:
 
     @staticmethod
     def get_unread_count(user_id):
-
         return (
             Notification.query
             .filter_by(
                 user_id=user_id,
                 is_read=False,
+                is_deleted=False,
             )
             .count()
         )

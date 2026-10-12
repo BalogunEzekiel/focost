@@ -100,6 +100,21 @@ class Config:
         "http://127.0.0.1:5000"
     ).rstrip("/")
 
+    # Web Push notifications
+    WEB_PUSH_ENABLED = (
+        os.getenv("WEB_PUSH_ENABLED", "false").strip().lower() == "true"
+    )
+    WEB_PUSH_VAPID_PUBLIC_KEY = os.getenv(
+        "WEB_PUSH_VAPID_PUBLIC_KEY", ""
+    ).strip()
+    WEB_PUSH_VAPID_PRIVATE_KEY = os.getenv(
+        "WEB_PUSH_VAPID_PRIVATE_KEY", ""
+    ).strip()
+    WEB_PUSH_VAPID_CLAIMS_SUB = os.getenv(
+        "WEB_PUSH_VAPID_CLAIMS_SUB",
+        "mailto:focostsecurity@gmail.com"
+    ).strip()
+
     AUTH_EMAIL_VERIFICATION_REQUIRED = (
         os.getenv(
             "AUTH_EMAIL_VERIFICATION_REQUIRED",
