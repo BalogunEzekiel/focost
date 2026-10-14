@@ -708,12 +708,21 @@
                 {% endif %}
 
 
-                <!-- =================================================
+                                <!-- =================================================
                      SECURITY & COMPLIANCE
                 ================================================== -->
 
                 {% if current_group == "super_admin"
                       or has_permission("audit.view") %}
+
+                    {% set security_active =
+                        request.endpoint in [
+                            "admin.audit_logs",
+                            "admin.legal_history",
+                            "admin.compliance_users",
+                            "admin.compliance_user"
+                        ]
+                    %}
 
                     <div class="mt-2">
 
@@ -750,7 +759,6 @@
 
                         </button>
 
-
                         <div
                             id="adminSecurity"
                             class="collapse
@@ -766,18 +774,20 @@
                                        border-secondary"
                             >
 
+                                <!-- Audit Logs -->
+
                                 <a
                                     href="{{ url_for('admin.audit_logs') }}"
                                     class="nav-link
                                            text-start
                                            small
                                            rounded
-                                           {% if security_active %}
+                                           {% if request.endpoint == 'admin.audit_logs' %}
                                                active
                                            {% else %}
                                                text-white
                                            {% endif %}"
-                                    {% if security_active %}
+                                    {% if request.endpoint == 'admin.audit_logs' %}
                                         aria-current="page"
                                     {% endif %}
                                 >
@@ -787,6 +797,65 @@
                                     Audit Logs
 
                                 </a>
+
+                                <!-- Privacy & Legal History -->
+
+                                {% if current_group == "super_admin"
+                                      or has_permission("audit.view") %}
+
+                                    <a
+                                        href="{{ url_for('admin.legal_history') }}"
+                                        class="nav-link
+                                               text-start
+                                               small
+                                               rounded
+                                               {% if request.endpoint == 'admin.legal_history' %}
+                                                   active
+                                               {% else %}
+                                                   text-white
+                                               {% endif %}"
+                                        {% if request.endpoint == 'admin.legal_history' %}
+                                            aria-current="page"
+                                        {% endif %}
+                                    >
+
+                                        <i class="bi bi-shield-check me-2"></i>
+
+                                        Privacy &amp; Legal History
+
+                                    </a>
+
+                                {% endif %}
+
+                                <!-- Compliance Evidence: Super Admin only -->
+
+                                {% if current_group == "super_admin" %}
+
+                                    <a
+                                        href="{{ url_for('admin.compliance_users') }}"
+                                        class="nav-link
+                                            text-start
+                                            small
+                                            rounded
+                                            {% if request.endpoint in
+                                                'admin.compliance_users' %}
+                                                active
+                                            {% else %}
+                                                text-white
+                                            {% endif %}"
+                                        {% if request.endpoint in
+                                            'admin.compliance_users' %}
+                                            aria-current="page"
+                                        {% endif %}
+                                    >
+
+                                        <i class="bi bi-file-earmark-lock me-2"></i>
+
+                                        Compliance Evidence
+
+                                    </a>
+
+                                {% endif %}
 
                             </div>
 
@@ -1106,35 +1175,6 @@
 
                 {% endif %}
 
-
-                <!-- Plan & Billing -->
-
-                <a
-                    href="{{ url_for('billing.index') }}"
-                    class="nav-link
-                           text-start
-                           rounded
-                           px-3
-                           py-2
-                           {% if request.endpoint
-                                 and request.endpoint.startswith('billing.') %}
-                               active
-                           {% else %}
-                               text-white
-                           {% endif %}"
-                    {% if request.endpoint
-                          and request.endpoint.startswith('billing.') %}
-                        aria-current="page"
-                    {% endif %}
-                >
-
-                    <i class="bi bi-credit-card-2-front me-2"></i>
-
-                    Plan & Billing
-
-                </a>
-
-
                 <!-- Investments -->
 
                 {% if has_permission("investments.view") %}
@@ -1164,33 +1204,6 @@
 
                     </a>
 
-                {% endif %}
-
-                
-                <!-- Receipts & Statements -->
-
-                {% if current_user.is_normal_user %}
-                    <a
-                        href="{{ url_for('integrations.index') }}"
-                        class="nav-link
-                            text-start
-                            rounded
-                            px-3
-                            py-2
-                            {% if request.endpoint
-                                    and request.endpoint.startswith('integrations.') %}
-                                active
-                            {% else %}
-                                text-white
-                            {% endif %}"
-                        {% if request.endpoint
-                            and request.endpoint.startswith('integrations.') %}
-                            aria-current="page"
-                        {% endif %}
-                    >
-                        <i class="bi bi-file-earmark-arrow-up me-2"></i>
-                        Receipts &amp; Statements
-                    </a>
                 {% endif %}
 
                 <!-- Reports -->
@@ -1223,6 +1236,89 @@
                     </a>
 
                 {% endif %}
+
+                
+                <!-- Receipts & Statements -->
+
+                {% if current_user.is_normal_user %}
+                    <a
+                        href="{{ url_for('integrations.index') }}"
+                        class="nav-link
+                            text-start
+                            rounded
+                            px-3
+                            py-2
+                            {% if request.endpoint
+                                    and request.endpoint.startswith('integrations.') %}
+                                active
+                            {% else %}
+                                text-white
+                            {% endif %}"
+                        {% if request.endpoint
+                            and request.endpoint.startswith('integrations.') %}
+                            aria-current="page"
+                        {% endif %}
+                    >
+                        <i class="bi bi-file-earmark-arrow-up me-2"></i>
+                        Receipts &amp; Statements
+                    </a>
+
+                <!-- Plan & Billing -->
+
+                <a
+                    href="{{ url_for('billing.index') }}"
+                    class="nav-link
+                           text-start
+                           rounded
+                           px-3
+                           py-2
+                           {% if request.endpoint
+                                 and request.endpoint.startswith('billing.') %}
+                               active
+                           {% else %}
+                               text-white
+                           {% endif %}"
+                    {% if request.endpoint
+                          and request.endpoint.startswith('billing.') %}
+                        aria-current="page"
+                    {% endif %}
+                >
+
+                    <i class="bi bi-credit-card-2-front me-2"></i>
+
+                    Plan & Billing
+
+                </a>
+
+                <!-- User's own Privacy & Legal History -->
+
+                <a
+                    href="{{ url_for('compliance.history') }}"
+                    class="nav-link
+                           text-start
+                           rounded
+                           px-3
+                           py-2
+                           {% if request.endpoint
+                                 and request.endpoint.startswith('compliance.history') %}
+                               active
+                           {% else %}
+                               text-white
+                           {% endif %}"
+                    {% if request.endpoint
+                          and request.endpoint.startswith('compliance.history') %}
+                        aria-current="page"
+                    {% endif %}
+                >
+
+                    <i class="bi bi-shield-check me-2"></i>
+
+                    Your Legal History
+
+                </a>
+
+                {% endif %}
+
 
             {% endif %}
 

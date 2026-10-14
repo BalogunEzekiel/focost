@@ -4,7 +4,6 @@
 <div class="container-fluid py-4">
   <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
     <div><div class="text-uppercase small fw-semibold text-primary mb-1">Administrative compliance</div><h1 class="h2 fw-bold mb-2">User compliance evidence</h1><p class="text-secondary mb-0">Recorded policy acknowledgements for this account.</p></div>
-    <a class="btn btn-outline-secondary" href="{{ url_for('admin.dashboard') }}"><i class="bi bi-arrow-left me-2"></i>Admin dashboard</a>
   </div>
   <section class="card border-0 shadow-sm mb-4"><div class="card-body p-4"><div class="d-flex align-items-center gap-3"><div class="rounded-circle bg-primary-subtle text-primary d-flex align-items-center justify-content-center" style="width:3rem;height:3rem"><i class="bi bi-person-check fs-4"></i></div><div><h2 class="h5 mb-1">{{ user.first_name }} {{ user.last_name }}</h2><div class="text-secondary">{{ user.email }}</div><div class="small text-secondary">Account reference: {{ user.public_id }}</div></div></div></div></section>
   <section class="card border-0 shadow-sm"><div class="card-header bg-body py-3"><h2 class="h5 mb-0">Acknowledgement timeline</h2></div><div class="table-responsive"><table class="table table-hover align-middle mb-0"><thead class="table-light"><tr><th>Policy</th><th>Version</th><th>Action</th><th>Timestamp (UTC)</th><th>IP address</th><th>Request metadata</th><th>Content hash</th></tr></thead><tbody>

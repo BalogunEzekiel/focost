@@ -484,6 +484,43 @@ def legal_history():
         pagination=pagination,
     )
 
+# ==========================================================
+# Compliance Evidence — User Directory
+# Super Admin only
+# ==========================================================
+
+@admin_bp.route("/compliance/users")
+@permission_required("compliance.view")
+def compliance_users():
+    """List users so the Super Admin can open their compliance evidence."""
+
+    if not current_user.is_super_admin:
+        abort(403)
+
+    from app.models.user import User
+
+    page = max(request.args.get("page", 1, type=int), 1)
+
+    users_pagination = (
+        User.query
+        .order_by(
+            User.last_name.asc(),
+            User.first_name.asc(),
+            User.id.asc(),
+        )
+        .paginate(
+            page=page,
+            per_page=50,
+            error_out=False,
+        )
+    )
+
+    return render_template(
+        "admin/compliance_users.html",
+        users=users_pagination.items,
+        pagination=users_pagination,
+    )
+
 
 @admin_bp.route("/compliance/users/<public_id>")
 @permission_required("compliance.view")

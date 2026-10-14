@@ -434,6 +434,7 @@ def create_app(config_override=None):
 
         return render_template("errors/401.html"), 401
 
+
     @app.errorhandler(403)
     def forbidden(error):
         if request.path.startswith("/api"):

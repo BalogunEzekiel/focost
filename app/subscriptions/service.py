@@ -313,18 +313,8 @@ class SubscriptionService:
                 "active": sub.is_active_access,
                 "status": "trial",
                 "plan_name": "Free Trial",
-                "ai_token_limit": int(
-                    os.getenv(
-                        "FOCOST_TRIAL_AI_TOKEN_LIMIT",
-                        "40000",
-                    )
-                ),
-                "ai_request_limit": int(
-                    os.getenv(
-                        "FOCOST_TRIAL_AI_REQUEST_LIMIT",
-                        "200",
-                    )
-                ),
+                "ai_token_limit": int(os.environ["FOCOST_TRIAL_AI_TOKEN_LIMIT"]),
+                "ai_request_limit": int(os.environ["FOCOST_TRIAL_AI_REQUEST_LIMIT"]),
             }
 
         plan = sub.plan

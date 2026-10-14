@@ -1,5 +1,6 @@
 import os
 from pathlib import Path
+from datetime import timedelta
 
 from dotenv import load_dotenv
 
@@ -65,16 +66,34 @@ class Config:
     SQLALCHEMY_DATABASE_URI = SQLALCHEMY_DATABASE_URI
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
+    # ---------------------------------------------------------
+    # PERMANENT LOGIN SESSION
+    # ---------------------------------------------------------
+
+    # A permanent session expires after 30 days.
+    PERMANENT_SESSION_LIFETIME = timedelta(days=30)
+
+    # Refresh the permanent session cookie during activity.
+    SESSION_REFRESH_EACH_REQUEST = True
+
+    # Keep authentication cookies secure.
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = "Lax"
+
+    # Set SESSION_COOKIE_SECURE=true in production when using HTTPS.
     SESSION_COOKIE_SECURE = (
-        os.getenv("SESSION_COOKIE_SECURE", "false").lower() == "true"
+        os.getenv("SESSION_COOKIE_SECURE", "false").strip().lower()
+        == "true"
     )
 
+    # Flask-Login remember-me cookie settings.
+    # The login route can use this duration if remember-me is enabled.
+    REMEMBER_COOKIE_DURATION = timedelta(days=30)
     REMEMBER_COOKIE_HTTPONLY = True
     REMEMBER_COOKIE_SAMESITE = "Lax"
     REMEMBER_COOKIE_SECURE = (
-        os.getenv("SESSION_COOKIE_SECURE", "false").lower() == "true"
+        os.getenv("SESSION_COOKIE_SECURE", "false").strip().lower()
+        == "true"
     )
 
     MAX_CONTENT_LENGTH = int(
@@ -87,6 +106,7 @@ class Config:
     )
 
     OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+
     # Read-only Mono Open Banking Connect. Private keys are environment-only.
     MONO_PUBLIC_KEY = os.getenv("MONO_PUBLIC_KEY", "").strip()
     MONO_SECRET_KEY = os.getenv("MONO_SECRET_KEY", "").strip()
@@ -100,26 +120,37 @@ class Config:
         "http://127.0.0.1:5000"
     ).rstrip("/")
 
-    # Web Push notifications
+    # ---------------------------------------------------------
+    # WEB PUSH NOTIFICATIONS
+    # ---------------------------------------------------------
+
     WEB_PUSH_ENABLED = (
-        os.getenv("WEB_PUSH_ENABLED", "false").strip().lower() == "true"
+        os.getenv("WEB_PUSH_ENABLED", "false").strip().lower()
+        == "true"
     )
+
     WEB_PUSH_VAPID_PUBLIC_KEY = os.getenv(
         "WEB_PUSH_VAPID_PUBLIC_KEY", ""
     ).strip()
+
     WEB_PUSH_VAPID_PRIVATE_KEY = os.getenv(
         "WEB_PUSH_VAPID_PRIVATE_KEY", ""
     ).strip()
+
     WEB_PUSH_VAPID_CLAIMS_SUB = os.getenv(
         "WEB_PUSH_VAPID_CLAIMS_SUB",
         "mailto:focostsecurity@gmail.com"
     ).strip()
 
+    # ---------------------------------------------------------
+    # EMAIL VERIFICATION
+    # ---------------------------------------------------------
+
     AUTH_EMAIL_VERIFICATION_REQUIRED = (
         os.getenv(
             "AUTH_EMAIL_VERIFICATION_REQUIRED",
             "true"
-        ).lower() == "true"
+        ).strip().lower() == "true"
     )
 
     AUTH_EMAIL_VERIFICATION_TTL_MINUTES = int(
@@ -129,12 +160,20 @@ class Config:
         )
     )
 
+    # ---------------------------------------------------------
+    # PASSWORD RECOVERY
+    # ---------------------------------------------------------
+
     AUTH_PASSWORD_RESET_TTL_MINUTES = int(
         os.getenv(
             "AUTH_PASSWORD_RESET_TTL_MINUTES",
             "60"
         )
     )
+
+    # ---------------------------------------------------------
+    # LOGIN RATE LIMITING
+    # ---------------------------------------------------------
 
     AUTH_LOGIN_LIMIT = int(
         os.getenv(
@@ -157,6 +196,10 @@ class Config:
         )
     )
 
+    # ---------------------------------------------------------
+    # PASSWORD RESET RATE LIMITING
+    # ---------------------------------------------------------
+
     AUTH_PASSWORD_RESET_LIMIT = int(
         os.getenv(
             "AUTH_PASSWORD_RESET_LIMIT",
@@ -178,6 +221,10 @@ class Config:
         )
     )
 
+    # ---------------------------------------------------------
+    # DOCUMENT AND INTEGRATION UPLOADS
+    # ---------------------------------------------------------
+
     AUTH_DOCUMENT_MAX_BYTES = int(
         os.getenv(
             "AUTH_DOCUMENT_MAX_BYTES",
@@ -195,14 +242,17 @@ class Config:
         str(INSTANCE_DIR / "private_imports")
     )
 
-    INTEGRATION_UPLOAD_RETENTION_DAYS = max(1, int(os.getenv("INTEGRATION_UPLOAD_RETENTION_DAYS", "365")))
+    INTEGRATION_UPLOAD_RETENTION_DAYS = max(
+        1,
+        int(os.getenv("INTEGRATION_UPLOAD_RETENTION_DAYS", "365"))
+    )
 
     # ---------------------------------------------------------
-    # FOCOST Contact / Compliance Emails
+    # FOCOST CONTACT / COMPLIANCE EMAILS
     # ---------------------------------------------------------
     # Environment variables take precedence.
-    # The defaults below are used only when the corresponding
-    # variable is not defined in .env.
+    # Defaults apply only when the corresponding variable is absent.
+
     FOCOST_SUPPORT_EMAIL = os.getenv(
         "FOCOST_SUPPORT_EMAIL",
         "focostsupport@gmail.com"

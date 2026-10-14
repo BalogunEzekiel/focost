@@ -1,7 +1,7 @@
 from app.extensions import db
 from app.services.compliance_service import ComplianceService
 
-POLICY_VERSION = "1.1"
+POLICY_VERSION = "1.0"
 
 POLICIES = {
     "terms": {
@@ -127,7 +127,7 @@ def seed_policies():
         - the new version is created as current
 
     To publish a future version, deliberately change POLICY_VERSION,
-    e.g. from 1.1 to 1.2, only after the policy content has actually
+    e.g. from 1.0 to 1.1, only after the policy content has actually
     been reviewed and approved.
     """
     for slug, data in POLICIES.items():

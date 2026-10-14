@@ -1,127 +1,286 @@
-{% extends "layouts/dashboard.html" %}
+ {% extends "layouts/dashboard.html" %}
 {% block title %}Plan & Billing{% endblock %}
-{% block content %}
 
+{% block content %}
 <div class="container-fluid py-4">
+
+  <!-- Page heading -->
   <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
-    <div><h2 class="fw-bold mb-1">Plan & Billing</h2><p class="text-muted mb-0">Manage your FOCOST subscription and AI access.</p></div>
-    <div class="badge bg-primary-subtle text-primary fs-6 px-3 py-2">{{ entitlements.get('plan_name', 'Free Trial') }}</div>
+    <div>
+      <h2 class="fw-bold mb-1">Plan & Billing</h2>
+      <p class="text-muted mb-0">
+        Manage your FOCOST subscription and AI access.
+      </p>
+    </div>
+
+    <div class="badge bg-primary-subtle text-primary fs-6 px-3 py-2">
+      {{ entitlements.get('plan_name', 'Free Trial') }}
+    </div>
   </div>
 
+  <!-- Subscription status -->
   <div class="alert alert-info border-0 shadow-sm">
     {% if subscription and subscription.is_trial %}
-    Your 30-day free trial ends <strong>{{ subscription.trial_ends_at.strftime('%d %b %Y') if subscription.trial_ends_at else 'soon' }}</strong>. Choose a paid plan before it expires to retain paid AI capabilities.
+      Your 30-day free trial ends
+      <strong>
+        {{ subscription.trial_ends_at.strftime('%d %b %Y') if subscription.trial_ends_at else 'soon' }}
+      </strong>.
+      Choose a paid plan before it expires to retain paid AI capabilities.
+
     {% elif subscription and subscription.is_active_access %}
-    Your subscription is active through <strong>{{ subscription.current_period_end.strftime('%d %b %Y') if subscription.current_period_end else 'the current period' }}</strong>.
+      Your subscription is active through
+      <strong>
+        {{ subscription.current_period_end.strftime('%d %b %Y') if subscription.current_period_end else 'the current period' }}
+      </strong>.
+
     {% else %}
-    Your paid access is inactive. Choose a plan to continue.
+      Your paid access is inactive. Choose a plan to continue.
     {% endif %}
   </div>
 
+  <!-- Current Free Trial allowance -->
+  {% if subscription and subscription.is_trial %}
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-body p-4">
+      <h4 class="fw-bold mb-2">Your Free Trial</h4>
+      <p class="text-muted mb-4">
+        Your AI allowances are loaded from your current subscription entitlements.
+      </p>
+
+      <div class="row g-3">
+        <div class="col-md-6">
+          <div class="border rounded p-3 h-100">
+            <div class="text-muted small mb-1">AI token allowance</div>
+            <div class="fs-3 fw-bold">
+              {% if entitlements.get('ai_token_limit') is not none %}
+                {{ '{:,}'.format(entitlements.get('ai_token_limit')) }}
+              {% else %}
+                Unlimited
+              {% endif %}
+            </div>
+            <div class="small text-muted">For your trial period</div>
+          </div>
+        </div>
+
+        <div class="col-md-6">
+          <div class="border rounded p-3 h-100">
+            <div class="text-muted small mb-1">AI request allowance</div>
+            <div class="fs-3 fw-bold">
+              {% if entitlements.get('ai_request_limit') is not none %}
+                {{ '{:,}'.format(entitlements.get('ai_request_limit')) }}
+              {% else %}
+                Unlimited
+              {% endif %}
+            </div>
+            <div class="small text-muted">For your trial period</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Available paid plans -->
   <div class="row g-4">
     {% for plan in plans %}
     <div class="col-lg-4">
       <div class="card h-100 border-0 shadow-sm">
         <div class="card-body p-4 d-flex flex-column">
+
           <h4 class="fw-bold">{{ plan.name }}</h4>
           <p class="text-muted">{{ plan.description }}</p>
 
+          <div class="display-6 fw-bold mb-3">
+            ₦{{ '{:,.0f}'.format(plan.amount) }}
+            <small class="fs-6 text-muted">/month</small>
+          </div>
 
-      <div class="display-6 fw-bold mb-3">
-        ₦{{ '{:,.0f}'.format(plan.amount) }}
-        <small class="fs-6 text-muted">/month</small>
+          <ul class="list-unstyled small mb-4">
+            <li class="mb-2">
+              <i class="bi bi-check-circle text-success me-2"></i>
+              {{ '{:,}'.format(plan.ai_token_limit) }} AI tokens
+            </li>
+
+            <li class="mb-2">
+              <i class="bi bi-check-circle text-success me-2"></i>
+              {{ '{:,}'.format(plan.ai_request_limit) }} AI requests
+            </li>
+
+            {% if plan.transaction_limit %}
+            <li class="mb-2">
+              <i class="bi bi-check-circle text-success me-2"></i>
+              Up to {{ '{:,}'.format(plan.transaction_limit) }} tracked transactions
+            </li>
+            {% endif %}
+
+            {% for key, enabled in plan.entitlements().items() if enabled %}
+            <li class="mb-2">
+              <i class="bi bi-check-circle text-success me-2"></i>
+              {{ key|replace('_', ' ')|title }}
+            </li>
+            {% endfor %}
+          </ul>
+
+          <button
+            type="button"
+            class="btn btn-primary mt-auto subscribe-btn"
+            data-plan="{{ plan.slug }}"
+          >
+            Subscribe
+          </button>
+
+        </div>
       </div>
-
-      <ul class="list-unstyled small mb-4">
-        <li class="mb-2">
-          <i class="bi bi-check-circle text-success me-2"></i>
-          {{ '{:,}'.format(plan.ai_token_limit) }} AI tokens/month
-        </li>
-        <li class="mb-2">
-          <i class="bi bi-check-circle text-success me-2"></i>
-          {{ '{:,}'.format(plan.ai_request_limit) }} AI requests/month
-        </li>
-
-        {% if plan.transaction_limit %}
-        <li class="mb-2">
-          <i class="bi bi-check-circle text-success me-2"></i>
-          Up to {{ '{:,}'.format(plan.transaction_limit) }} tracked transactions
-        </li>
-        {% endif %}
-
-        {% for key, enabled in plan.entitlements().items() if enabled %}
-        <li class="mb-2">
-          <i class="bi bi-check-circle text-success me-2"></i>
-          {{ key|replace('_',' ')|title }}
-        </li>
-        {% endfor %}
-      </ul>
-
-      <button class="btn btn-primary mt-auto subscribe-btn" data-plan="{{ plan.slug }}">
-        Subscribe
-      </button>
     </div>
-  </div>
-</div>
-{% endfor %}
-
-
+    {% endfor %}
   </div>
 
+  <!-- Current AI usage -->
   <div class="card border-0 shadow-sm mt-4">
-    <div class="card-body">
-      <h5 class="fw-bold">Current AI usage</h5>
-      <div id="usagePanel" class="text-muted">
-        Usage is enforced server-side against your active entitlement.
+    <div class="card-body p-4">
+      <h5 class="fw-bold mb-2">Current AI usage</h5>
+      <p class="text-muted small mb-3">
+        Usage is tracked server-side against your active subscription or trial allowance.
+      </p>
+
+      <div
+        id="usagePanel"
+        class="text-muted"
+        role="status"
+        aria-live="polite"
+      >
+        Loading AI usage…
       </div>
     </div>
   </div>
+
 </div>
 {% endblock %}
 
-{% block scripts %} <meta name="csrf-token" content="{{ csrf_token() }}">
+{% block scripts %}
+<meta name="csrf-token" content="{{ csrf_token() }}">
 
 <script>
-fetch('/ai/usage').then(r => r.json()).then(d => {
-  const u = d.usage || {};
-  const panel = document.getElementById('usagePanel');
+(() => {
+  const usagePanel = document.getElementById('usagePanel');
 
-  if (panel) {
-    panel.innerHTML = `${Number(u.total_tokens || 0).toLocaleString()} tokens used / ${u.token_limit == null ? 'unlimited' : Number(u.token_limit).toLocaleString()} allowed · ${Number(u.requests || 0).toLocaleString()} requests used / ${u.request_limit == null ? 'unlimited' : Number(u.request_limit).toLocaleString()} allowed`;
-  }
-}).catch(() => {});
+  // Load current AI usage from the server.
+  fetch('{{ url_for("ai.usage") }}', {
+    headers: {
+      'Accept': 'application/json'
+    },
+    credentials: 'same-origin'
+  })
+    .then(response => {
+      if (!response.ok) {
+        throw new Error('Unable to load AI usage.');
+      }
+      return response.json();
+    })
+    .then(data => {
+      const usage = data.usage || {};
 
-document.querySelectorAll('.subscribe-btn').forEach(btn => btn.addEventListener('click', async () => {
-  btn.disabled = true;
-  btn.textContent = 'Connecting…';
+      const tokensUsed = Number(usage.total_tokens || 0);
+      const requestsUsed = Number(usage.requests || 0);
 
-  try {
-    const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+      const tokenLimit = usage.token_limit;
+      const requestLimit = usage.request_limit;
 
-    const r = await fetch('{{ url_for("billing.initialize") }}', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-CSRFToken': csrfToken
-      },
-      body: JSON.stringify({
-        plan: btn.dataset.plan
-      })
+      const formatNumber = value =>
+        Number(value).toLocaleString();
+
+      const formatLimit = value =>
+        value == null ? 'Unlimited' : formatNumber(value);
+
+      const tokenExceeded = Boolean(usage.token_exceeded);
+      const requestExceeded = Boolean(usage.request_exceeded);
+
+      const statusClass =
+        tokenExceeded || requestExceeded
+          ? 'text-danger'
+          : 'text-success';
+
+      usagePanel.replaceChildren();
+
+      const summary = document.createElement('p');
+      summary.className = 'mb-3';
+      summary.textContent =
+        `${formatNumber(tokensUsed)} tokens used / ` +
+        `${formatLimit(tokenLimit)} allowed · ` +
+        `${formatNumber(requestsUsed)} requests used / ` +
+        `${formatLimit(requestLimit)} allowed`;
+
+      usagePanel.appendChild(summary);
+
+      const status = document.createElement('p');
+      status.className = `${statusClass} small mb-0`;
+
+      if (tokenExceeded || requestExceeded) {
+        status.textContent =
+          'You have reached your AI usage allowance for this billing period.';
+      } else {
+        status.textContent = 'Your AI usage is within the current allowance.';
+      }
+
+      usagePanel.appendChild(status);
+    })
+    .catch(() => {
+      usagePanel.textContent =
+        'AI usage is temporarily unavailable. Please refresh the page or try again later.';
     });
 
-    const d = await r.json();
+  // Initialize a paid subscription through the existing billing endpoint.
+  document.querySelectorAll('.subscribe-btn').forEach(button => {
+    button.addEventListener('click', async () => {
+      const originalText = button.textContent;
+      button.disabled = true;
+      button.textContent = 'Connecting…';
 
-    if (!d.success) {
-      throw new Error(d.message || 'Payment initialization failed');
-    }
+      try {
+        const csrfElement = document.querySelector(
+          'meta[name="csrf-token"]'
+        );
 
-    window.location.href = d.authorization_url;
-  } catch (e) {
-    alert(e.message);
-    btn.disabled = false;
-    btn.textContent = 'Subscribe';
-  }
-}));
+        if (!csrfElement) {
+          throw new Error('Security token is missing. Refresh the page and try again.');
+        }
+
+        const response = await fetch(
+          '{{ url_for("billing.initialize") }}',
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-CSRFToken': csrfElement.content,
+              'Accept': 'application/json'
+            },
+            credentials: 'same-origin',
+            body: JSON.stringify({
+              plan: button.dataset.plan
+            })
+          }
+        );
+
+        const result = await response.json();
+
+        if (!response.ok || !result.success) {
+          throw new Error(
+            result.message || 'Payment initialization failed.'
+          );
+        }
+
+        if (!result.authorization_url) {
+          throw new Error('The payment provider did not return a checkout URL.');
+        }
+
+        window.location.assign(result.authorization_url);
+      } catch (error) {
+        alert(error.message || 'Unable to initialize your subscription.');
+        button.disabled = false;
+        button.textContent = originalText;
+      }
+    });
+  });
+})();
 </script>
-
 {% endblock %}

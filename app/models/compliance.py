@@ -11,16 +11,16 @@ class PolicyDocument(BaseModel):
     Each published policy version is a separate database row.
 
     Example:
+        terms 1.0
         terms 1.1
         terms 1.2
-        terms 1.3
 
     Historical policy content and identity must never be overwritten.
 
     The only mutable field on an existing policy document is
     ``is_current``. This is required when a newer version is published:
-        1.1 -> historical
-        1.2 -> current
+        1.0 -> historical
+        1.1 -> current
     """
 
     __tablename__ = "policy_documents"
@@ -105,8 +105,8 @@ def _prevent_policy_document_mutation(mapper, connection, target):
 
     This permits the legitimate publication transition:
 
-        old 1.1: is_current=True  -> False
-        new 1.2: is_current=False -> True
+        old 1.0: is_current=True  -> False
+        new 1.1: is_current=False -> True
 
     while preventing changes to:
         slug
