@@ -4,6 +4,14 @@
 Dashboard
 {% endblock %}
 
+{% block styles %}
+<style>
+.focost-announcement-soft .card-body{background:linear-gradient(135deg,#f5faff,#eaf4fb)}
+.focost-announcement-brand .card-body{background:linear-gradient(135deg,#102b46,#174b65);color:#fff}
+.focost-announcement-brand .card-body .text-muted{color:#d2e1ec!important}
+.focost-announcement-soft blockquote,.focost-announcement-plain blockquote{border-left:4px solid #159b83;background:#edf7f5;border-radius:8px;padding:14px 16px;margin:14px 0}.focost-announcement-brand blockquote{border-left:4px solid #68d6bf;background:#174b65;border-radius:8px;padding:14px 16px;margin:14px 0}
+</style>
+{% endblock %}
 {% block content %}
 
 <div class="container-fluid px-2 px-md-3 px-lg-4">
@@ -22,7 +30,7 @@ Dashboard
         >
 
             <div
-                class="card border-0 shadow-sm h-100 overflow-hidden position-relative"
+                class="card border-0 shadow-sm h-100 overflow-hidden position-relative focost-announcement-{{ announcement.message_background or 'plain' }}"
             >
 
                 <button
@@ -55,7 +63,7 @@ Dashboard
                     </h5>
 
                     <p class="text-muted small">
-                        {{ announcement.message }}
+                        {{ announcement.message|sanitize_html|safe }}
                     </p>
 
                     {% if announcement.action_url %}

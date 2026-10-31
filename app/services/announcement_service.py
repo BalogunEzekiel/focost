@@ -5,6 +5,11 @@ from app.services.subscription_gate import SubscriptionGate
 from app.utils.timezone import utc_now
 from app.services.email_service import EmailService
 from app.models.announcement_user_state import AnnouncementUserState
+import json
+import re
+import bleach
+from urllib.parse import urlparse
+from markupsafe import escape
 
 class AnnouncementService:
     """Authoritative communications/announcement service."""
@@ -19,10 +24,11 @@ class AnnouncementService:
         "basic",
         "plus",
         "pro",
+        "subscription_expired",
     )
 
     AUDIENCE_LABELS = {
-        "all": "All",
+        "all": "All Audiences",
         "super_admin": "Super Admin",
         "admin": "Admin",
         "user": "User",
@@ -30,9 +36,53 @@ class AnnouncementService:
         "basic": "Basic",
         "plus": "Plus",
         "pro": "Pro",
+        "subscription_expired": "Subscription Expired",
     }
 
     PRIORITIES = ("low", "normal", "high", "urgent")
+    ALLOWED_TAGS = set(bleach.sanitizer.ALLOWED_TAGS) | {
+        "p", "br", "div", "span", "strong", "b", "em", "i", "u",
+        "s", "ul", "ol", "li", "blockquote", "h2", "h3", "h4",
+        "hr", "a", "table", "thead", "tbody", "tr", "th", "td"
+    }
+    ALLOWED_ATTRIBUTES = {
+        "a": ["href", "title", "target", "rel"],
+        "div": ["class"], "span": ["class"], "p": ["class"]
+    }
+
+    @classmethod
+    def sanitize_message(cls, value):
+        return bleach.clean(
+            value or "", tags=cls.ALLOWED_TAGS,
+            attributes=cls.ALLOWED_ATTRIBUTES,
+            protocols={"http", "https", "mailto"}, strip=True
+        )
+
+    @staticmethod
+    def plain_text(value):
+        return re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", value or "")).strip()
+
+    @staticmethod
+    def validate_url(value, field_name):
+        if not value:
+            return None
+        parsed = urlparse(value.strip())
+        if parsed.scheme not in {"https", "http"} or not parsed.netloc:
+            raise ValueError(f"{field_name} must be a valid http:// or https:// URL.")
+        return value.strip()
+
+    @classmethod
+    def normalize_audiences(cls, values):
+        raw_values = list(values or [])
+        invalid = sorted(set(raw_values) - set(cls.AUDIENCES))
+        if invalid:
+            raise ValueError("Invalid audience group: " + ", ".join(invalid))
+        values = list(dict.fromkeys(raw_values))
+        if not values:
+            values = ["all"]
+        if "all" in values and len(values) > 1:
+            raise ValueError("All Audiences cannot be combined with other audience groups.")
+        return values
 
     @classmethod
     def audience_options(cls):
@@ -54,28 +104,64 @@ class AnnouncementService:
         if item.announcement_type == "advertisement" and not SubscriptionGate.ads_allowed(user_id):
             return False
 
-        audience = item.audience
+        audiences = item.audiences
         role_group = user.role_group
-
-        if audience == "all":
+        if "all" in audiences:
             return True
 
-        if audience == "super_admin":
-            return role_group == "super_admin"
+        if role_group == "user" and "subscription_expired" in audiences:
+            if AnnouncementService.has_expired_subscription(user_id):
+                return True
 
-        if audience == "admin":
-            return role_group == "admin"
+        plan_slug = SubscriptionGate.current_plan_slug(user_id)
+        return any(
+            (audience == "super_admin" and role_group == "super_admin")
+            or (audience == "admin" and role_group == "admin")
+            or (audience == "user" and role_group == "user")
+            or (audience in {"free_trial", "basic", "plus", "pro"}
+                and role_group == "user" and plan_slug == audience)
+            for audience in audiences
+        )
 
-        if audience == "user":
-            return role_group == "user"
+    @staticmethod
+    def has_expired_subscription(user_id):
+        """Identify normal users whose latest trial/paid subscription has expired.
 
-        if audience in {"free_trial", "basic", "plus", "pro"}:
-            return (
-                role_group == "user"
-                and SubscriptionGate.current_plan_slug(user_id) == audience
-            )
+        This deliberately reads the latest subscription directly instead of
+        calling SubscriptionService.current(), which can create a new trial
+        or mutate subscription status as a side effect.
+        """
+        from app.models.user import User
+        from app.models.subscription import UserSubscription
+        from app.utils.timezone import as_utc, utc_now
 
-        return False
+        user = db.session.get(User, user_id)
+        if not user or user.role_group != "user":
+            return False
+
+        subscription = (
+            UserSubscription.query
+            .filter_by(user_id=user_id)
+            .order_by(UserSubscription.created_at.desc())
+            .first()
+        )
+        if not subscription:
+            return False
+
+        status = (subscription.status or "").lower()
+        if status in {"expired", "canceled", "cancelled"}:
+            return True
+
+        expiry = (
+            subscription.trial_ends_at if subscription.is_trial
+            else subscription.current_period_end
+        )
+        if expiry:
+            expiry = as_utc(expiry)
+            return expiry <= utc_now()
+
+        return status not in {"trial", "active", "past_due"}
+
 
     @staticmethod
     def can_receive(announcement, user_id):
@@ -191,18 +277,24 @@ class AnnouncementService:
     def publish(announcement, published_by_id):
         if announcement.announcement_type not in AnnouncementService.TYPES:
             raise ValueError("Invalid communication type.")
-        if announcement.audience not in AnnouncementService.AUDIENCES:
-            raise ValueError("Invalid audience.")
+        audiences = announcement.audiences
+        AnnouncementService.normalize_audiences(audiences)
 
-        # Advertising is intentionally restricted to Free Trial/Basic targeting.
+        # Advertising remains restricted to Free Trial/Basic targeting.
         if (
             announcement.announcement_type == "advertisement"
-            and announcement.audience not in {"free_trial", "basic"}
+            and not set(audiences).issubset({"free_trial", "basic"})
         ):
             raise ValueError(
                 "Advertising can only target Free Trial or Basic users."
             )
 
+        announcement.message = AnnouncementService.sanitize_message(announcement.message)
+        if not announcement.title or not AnnouncementService.plain_text(announcement.message):
+            raise ValueError("A title and message are required.")
+        announcement.action_url = AnnouncementService.validate_url(announcement.action_url, "Action URL")
+        announcement.image_url = AnnouncementService.validate_url(announcement.image_url, "Image/Flyer URL")
+        announcement.email_signature = AnnouncementService.sanitize_message(announcement.email_signature or "")
         announcement.status = "published"
         announcement.published_at = utc_now()
         announcement.published_by_id = published_by_id
@@ -232,36 +324,79 @@ class AnnouncementService:
 
     @staticmethod
     def create(**data):
-        audience = data.get("audience", "all")
-        if audience not in AnnouncementService.AUDIENCES:
-            raise ValueError("Invalid audience.")
-
+        audiences = AnnouncementService.normalize_audiences(
+            data.pop("audience_groups", [data.get("audience", "all")])
+        )
+        data["audience"] = audiences[0]
+        data["audience_groups"] = json.dumps(audiences)
+        data["message"] = AnnouncementService.sanitize_message(data.get("message", ""))
+        if not data.get("title") or not AnnouncementService.plain_text(data["message"]):
+            raise ValueError("A title and message are required.")
+        data["action_url"] = AnnouncementService.validate_url(data.get("action_url"), "Action URL")
+        data["image_url"] = AnnouncementService.validate_url(data.get("image_url"), "Image/Flyer URL")
+        data["email_signature"] = AnnouncementService.sanitize_message(data.get("email_signature", ""))
         announcement = Announcement(**data)
         db.session.add(announcement)
         db.session.commit()
         return announcement
 
     @staticmethod
+    def email_html(announcement, recipient=None, greeting="Hello,"):
+        from flask import render_template, url_for
+        logo_url = url_for("static", filename="images/pwa-512.png", _external=True)
+        return render_template(
+            "emails/announcement.html",
+            announcement=announcement,
+            recipient=recipient,
+            greeting=greeting,
+            logo_url=logo_url,
+            signature=(
+                AnnouncementService.sanitize_message(announcement.email_signature or "")
+                if announcement.email_signature_enabled and announcement.email_signature
+                else ""
+            ),
+        )
+
+    @staticmethod
     def dispatch_email(announcement):
         if not announcement.email or not EmailService.enabled():
             return 0
         from app.models.user import User
-        users = User.query.filter_by(is_active=True).all()
+        users = User.query.filter_by(is_active=True).order_by(User.id.asc()).all()
         sent = 0
         for user in users:
-            if not AnnouncementService._matches_user(announcement, user.id):
+            if not user.email or not AnnouncementService._matches_user(announcement, user.id):
                 continue
             try:
+                first_name = (user.first_name or "").strip()
+                last_name = (user.last_name or "").strip()
+                full_name = " ".join(part for part in (first_name, last_name) if part)
+                greeting = f"Dear {full_name}," if full_name else "Hello,"
+                html_body = AnnouncementService.email_html(
+                    announcement,
+                    recipient=user,
+                    greeting=greeting,
+                )
+                text_body = "\n\n".join((
+                    greeting,
+                    AnnouncementService.plain_text(announcement.message),
+                    "\nVisit FOCOST: https://focost.pythonanywhere.com",
+                    "Support: focostsupport@gmail.com",
+                ))
                 if EmailService.send(
                     user.email,
                     announcement.title,
-                    announcement.message,
-                    f"<p>{announcement.message.replace(chr(10), '<br>')}</p>",
+                    text_body,
+                    html_body,
                 ):
                     sent += 1
             except Exception:
                 # Email is a secondary channel; failure must not roll back the
                 # published announcement or in-app delivery.
+                import logging
+                logging.getLogger(__name__).exception(
+                    "Announcement email failed for recipient %s", user.id
+                )
                 continue
         return sent
 
@@ -278,7 +413,7 @@ class AnnouncementService:
             db.session.add(Notification(
                 user_id=user_id,
                 title=item.title,
-                message=item.message,
+                message=AnnouncementService.plain_text(item.message),
                 notification_type="announcement",
                 source="FOCOST",
                 priority=item.priority,

@@ -747,7 +747,7 @@
                     appendMessage(
                         surface,
                         "FOCOST AI",
-                        `Hello **${firstName}** 👋\n**_I'm your financial coach._**\nHow can I help you with your finances today?`,
+                        `Hello **${firstName}** \n**_I'm your financial coach._**\nHow can I help you with your finances today?`,
                         "assistant"
                     );
                     return;

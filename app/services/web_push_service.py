@@ -162,7 +162,7 @@ class WebPushService:
                 if WebPushService.send_subscription(
                     subscription=subscription,
                     title=announcement.title,
-                    body=announcement.message,
+                    body=AnnouncementService.plain_text(announcement.message),
                     action_url=announcement.action_url,
                     tag=f"announcement-{announcement.public_id}",
                 ):

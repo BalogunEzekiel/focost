@@ -155,7 +155,7 @@
                             </strong>
 
                             <div>
-                                {{ announcement.message }}
+                                {{ announcement.message|sanitize_html|safe }}
                             </div>
 
                             {% if announcement.action_url %}

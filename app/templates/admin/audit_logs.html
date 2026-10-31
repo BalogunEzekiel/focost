@@ -455,6 +455,7 @@ Audit Logs
                                 class="btn btn-sm btn-outline-primary audit-details-btn"
                                 data-bs-toggle="modal"
                                 data-bs-target="#auditDetailsModal"
+                                data-log-id="{{ log.id }}"
 
                                 data-action="{{ log.action|e }}"
                                 data-category="{{ log.category|e }}"
@@ -679,5 +680,66 @@ Audit Logs
     </div>
 
 </div>
+
+
+<!-- Audit event details modal -->
+<div class="modal fade" id="auditDetailsModal" tabindex="-1" aria-labelledby="auditDetailsTitle" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable modal-dialog-centered">
+    <div class="modal-content border-0 shadow">
+      <div class="modal-header" style="background:#102b70;color:#fff;">
+        <div><div class="small text-uppercase" style="letter-spacing:1.5px;color:#b9d8ff;">FOCOST · SECURITY &amp; GOVERNANCE</div><h5 class="modal-title fw-bold" id="auditDetailsTitle">Audit event details</h5></div>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body p-4">
+        <div id="auditDetailsLoading" class="text-center py-5"><div class="spinner-border text-primary" role="status"></div><div class="small text-muted mt-2">Loading event details…</div></div>
+        <div id="auditDetailsError" class="alert alert-danger d-none" role="alert"></div>
+        <div id="auditDetailsContent" class="d-none">
+          <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3"><div><div class="small text-muted">ACTION</div><div class="h5 fw-bold mb-0" id="audit-detail-action"></div></div><span class="badge rounded-pill" id="audit-detail-status"></span></div>
+          <div class="row g-3">
+            {% for label,key in [('Category','category'),('Date / time','created_at'),('User','user'),('Email','email'),('Resource','resource'),('Resource ID','resource_id'),('IP address','ip_address'),('HTTP method','http_method'),('Request path','request_path'),('Endpoint','endpoint'),('Session ID','session_id')] %}
+            <div class="col-md-6"><div class="border rounded-3 p-3 h-100"><div class="small text-muted mb-1">{{label}}</div><div class="fw-semibold text-break" id="audit-detail-{{key}}">—</div></div></div>
+            {% endfor %}
+            <div class="col-12"><div class="border rounded-3 p-3"><div class="small text-muted mb-1">Description</div><div class="text-break" id="audit-detail-description"></div></div></div>
+            <div class="col-12"><div class="border rounded-3 p-3"><div class="small text-muted mb-1">User agent</div><div class="small text-break" id="audit-detail-user_agent"></div></div></div>
+            <div class="col-12"><div class="border rounded-3 p-3"><div class="small text-muted mb-2">Additional metadata</div><pre id="audit-detail-extra_data" class="small mb-0 text-wrap" style="white-space:pre-wrap;overflow-wrap:anywhere;"></pre></div></div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer bg-light"><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button></div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  const modal = document.getElementById('auditDetailsModal');
+  if (!modal) return;
+  const loading = document.getElementById('auditDetailsLoading');
+  const errorBox = document.getElementById('auditDetailsError');
+  const content = document.getElementById('auditDetailsContent');
+  const setText = (id, value) => { const el = document.getElementById(id); if (el) el.textContent = value == null || value === '' ? '—' : String(value); };
+  modal.addEventListener('show.bs.modal', async function (event) {
+    const trigger = event.relatedTarget;
+    const logId = trigger && trigger.getAttribute('data-log-id');
+    loading.classList.remove('d-none'); errorBox.classList.add('d-none'); content.classList.add('d-none');
+    if (!logId) { loading.classList.add('d-none'); errorBox.textContent = 'This audit row does not have a valid event identifier.'; errorBox.classList.remove('d-none'); return; }
+    try {
+      const response = await fetch('{{ url_for("admin.audit_log_details", log_id=0) }}'.replace('/0/details', '/' + encodeURIComponent(logId) + '/details'), {headers:{'Accept':'application/json'}, credentials:'same-origin'});
+      const payload = await response.json();
+      if (!response.ok || !payload.success) throw new Error(payload.message || 'Unable to load this audit event.');
+      const item = payload.event;
+      setText('audit-detail-action', item.action); setText('audit-detail-category', item.category); setText('audit-detail-created_at', item.created_at);
+      setText('audit-detail-user', item.user); setText('audit-detail-email', item.email); setText('audit-detail-resource', item.resource);
+      setText('audit-detail-resource_id', item.resource_id); setText('audit-detail-ip_address', item.ip_address); setText('audit-detail-http_method', item.http_method);
+      setText('audit-detail-request_path', item.request_path); setText('audit-detail-endpoint', item.endpoint); setText('audit-detail-session_id', item.session_id);
+      setText('audit-detail-description', item.description); setText('audit-detail-user_agent', item.user_agent);
+      document.getElementById('audit-detail-extra_data').textContent = JSON.stringify(item.extra_data, null, 2);
+      const badge = document.getElementById('audit-detail-status'); badge.textContent = item.status; badge.className = 'badge rounded-pill ' + (item.status === 'success' ? 'text-bg-success' : item.status === 'failed' ? 'text-bg-danger' : 'text-bg-secondary');
+      content.classList.remove('d-none');
+    } catch (err) { errorBox.textContent = err.message || 'Unable to load audit details.'; errorBox.classList.remove('d-none'); }
+    finally { loading.classList.add('d-none'); }
+  });
+})();
+</script>
 
 {% endblock %}

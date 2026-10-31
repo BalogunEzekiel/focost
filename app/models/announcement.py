@@ -1,6 +1,7 @@
 from app.extensions import db
 from app.models.base import BaseModel
 from app.utils.timezone import utc_now
+import json
 
 
 class Announcement(BaseModel):
@@ -16,6 +17,11 @@ class Announcement(BaseModel):
 
     # Targeting: all, super_admin, admin, user, free_trial, basic, plus, pro.
     audience = db.Column(db.String(30), nullable=False, default="all", index=True)
+    # JSON array of audience slugs; audience remains as a legacy fallback.
+    audience_groups = db.Column(db.Text, nullable=True)
+    email_signature_enabled = db.Column(db.Boolean, nullable=False, default=True)
+    email_signature = db.Column(db.Text, nullable=True)
+    message_background = db.Column(db.String(30), nullable=False, default="plain")
     target_user_id = db.Column(db.Integer, db.ForeignKey("users.id", ondelete="CASCADE"), nullable=True)
 
     # Channels are explicit so essential notices can remain independent of ads.
@@ -26,6 +32,7 @@ class Announcement(BaseModel):
     push = db.Column(db.Boolean, nullable=False, default=False)
 
     action_url = db.Column(db.String(500))
+    action_label = db.Column(db.String(60), nullable=True)
     image_url = db.Column(db.String(500))
 
     starts_at = db.Column(db.DateTime, nullable=True, index=True)
@@ -36,6 +43,14 @@ class Announcement(BaseModel):
 
     target_user = db.relationship("User", foreign_keys=[target_user_id])
     published_by = db.relationship("User", foreign_keys=[published_by_id])
+
+    @property
+    def audiences(self):
+        try:
+            values = json.loads(self.audience_groups or "[]")
+            return values if isinstance(values, list) and values else [self.audience or "all"]
+        except (TypeError, ValueError):
+            return [self.audience or "all"]
 
     @property
     def is_live(self):

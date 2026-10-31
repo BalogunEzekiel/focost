@@ -1,6 +1,7 @@
 import statistics
 from app.models.permission import Permission
 from app.extensions import db
+from app.models.audit_log import AuditLog
 
 from flask import (
     Blueprint,
@@ -11,6 +12,7 @@ from flask import (
     flash,
     redirect,
     url_for,
+    jsonify,
 )
 
 from flask_login import (
@@ -149,6 +151,45 @@ def audit_logs():
         category=category,
         status=status
     )
+
+@admin_bp.get("/audit/<int:log_id>/details")
+@permission_required("audit.view")
+def audit_log_details(log_id):
+    """Return one audit event for the authorized audit-details modal."""
+    log = db.session.get(AuditLog, log_id)
+    if log is None:
+        return jsonify({"success": False, "message": "Audit event not found."}), 404
+
+    user = log.user
+    extra = log.extra_data
+    return jsonify({
+        "success": True,
+        "event": {
+            "id": log.public_id,
+            "action": log.action or "—",
+            "category": log.category or "—",
+            "status": log.status or "—",
+            "description": log.description or "",
+            "resource": log.resource or "—",
+            "resource_id": log.resource_id or "—",
+            "user": (
+                " ".join(part for part in (
+                    (user.first_name or "").strip(),
+                    (user.last_name or "").strip(),
+                ) if part) if user else "System"
+            ),
+            "email": user.email if user else "",
+            "ip_address": log.ip_address or "—",
+            "user_agent": log.user_agent or "—",
+            "request_path": log.request_path or "—",
+            "http_method": log.http_method or log.method or "—",
+            "endpoint": log.endpoint or "—",
+            "session_id": log.session_id or "—",
+            "created_at": log.created_at.isoformat() if log.created_at else "—",
+            "extra_data": extra if isinstance(extra, (dict, list, str, int, float, bool)) or extra is None else str(extra),
+        }
+    })
+
 
 @admin_bp.post("/subscriptions/plan/<int:plan_id>/paystack-code")
 @permission_required("subscriptions.edit")

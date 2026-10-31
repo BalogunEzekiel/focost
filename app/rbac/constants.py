@@ -687,6 +687,7 @@ DEFAULT_USER_PERMISSION_CODES = {
 
     # Investments
     "investments.view",
+    "investments.manage",
 
     # AI
     "ai.chat",

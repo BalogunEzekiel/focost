@@ -14,6 +14,15 @@ def create_app(config_override=None):
     app = Flask(__name__)
     app.config.from_object(Config)
 
+    # Sanitize stored rich announcement HTML at every rendering boundary,
+    # including legacy records created before the rich-text editor existed.
+    import bleach
+    app.jinja_env.filters["sanitize_html"] = lambda value: bleach.clean(
+        value or "", tags={"p", "br", "div", "span", "strong", "b", "em", "i", "u", "s", "ul", "ol", "li", "blockquote", "h2", "h3", "h4", "hr", "a", "table", "thead", "tbody", "tr", "th", "td"},
+        attributes={"a": ["href", "title", "target", "rel"], "div": ["class"], "span": ["class"], "p": ["class"]},
+        protocols={"http", "https", "mailto"}, strip=True
+    )
+
     if config_override:
         app.config.update(config_override)
 

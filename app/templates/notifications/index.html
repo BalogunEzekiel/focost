@@ -267,19 +267,6 @@ Notifications
 
                                 <div class="mt-2">
 
-                                    {% if notification.action_url %}
-
-                                    <a
-                                        href="{{ url_for('notifications.open_notification',
-                                                         notification_id=notification.id) }}"
-                                        class="btn btn-sm btn-primary">
-
-                                        Open
-
-                                    </a>
-
-                                    {% endif %}
-
                                     {% if not notification.is_read %}
 
                                     <button

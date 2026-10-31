@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="x-apple-disable-message-reformatting">
+  <title>{{ announcement.title }}</title>
+</head>
+<body style="margin:0;padding:0;background:#f3f6fb;font-family:Arial,Helvetica,sans-serif;color:#24344b;">
+  <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;">
+    {{ announcement.title }} · FOCOST
+  </div>
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#f3f6fb;width:100%;">
+    <tr><td align="center" style="padding:24px 10px;">
+      <table role="presentation" width="620" cellspacing="0" cellpadding="0" border="0" style="width:100%;max-width:620px;background:#ffffff;border-radius:18px;overflow:hidden;box-shadow:0 8px 30px rgba(16,43,70,.08);">
+        <tr><td style="padding:25px 30px;background:#ffffff;border-bottom:1px solid #e8eff8;">
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0"><tr>
+            <td width="88" valign="middle" style="width:88px;">
+              <a href="https://focost.pythonanywhere.com" target="_blank" rel="noopener" style="text-decoration:none;">
+                <img src="{{ logo_url }}" width="76" height="76" alt="FOCOST" style="display:block;width:76px;height:76px;max-width:76px;object-fit:contain;border:0;outline:none;text-decoration:none;">
+              </a>
+            </td>
+            <td valign="middle" style="padding-left:15px;">
+              <div style="font-size:25px;line-height:1.15;font-weight:800;letter-spacing:-.6px;color:#102b70;">FOCOST</div>
+              <div style="font-size:13px;line-height:1.5;color:#536985;margin-top:5px;">AI-Powered Personal Financial Coach</div>
+            </td>
+          </tr></table>
+        </td></tr>
+        <tr><td style="padding:30px 30px 12px;">
+          <div style="font-size:11px;line-height:1.4;text-transform:uppercase;letter-spacing:1.8px;color:#0878ee;font-weight:700;">{{ announcement.announcement_type|replace('_',' ')|title }}</div>
+          <h1 style="font-size:25px;line-height:1.3;color:#102b70;margin:9px 0 17px;font-weight:750;">{{ announcement.title }}</h1>
+          <p style="font-size:15px;line-height:1.6;color:#344963;margin:0 0 18px;">{{ greeting }}</p>
+          {% if announcement.image_url %}
+            <img src="{{ announcement.image_url }}" alt="{{ announcement.title }}" width="560" style="display:block;width:100%;max-width:560px;height:auto;border:0;border-radius:12px;margin:0 0 20px;">
+          {% endif %}
+          <div style="font-size:15px;line-height:1.75;color:#354a64;padding:20px;border-radius:12px;{% if announcement.message_background=='soft' %}background:#edf5ff;{% elif announcement.message_background=='brand' %}background:#102b70;color:#ffffff;{% else %}background:#fbfcff;border:1px solid #e9eff7;{% endif %}">
+            {{ announcement.message|safe }}
+          </div>
+          {% if announcement.action_url %}
+            <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin:24px 0 12px;"><tr><td bgcolor="#0878ee" style="border-radius:8px;">
+              <a href="{{ announcement.action_url }}" target="_blank" rel="noopener" style="display:inline-block;padding:13px 22px;color:#ffffff;text-decoration:none;font-size:14px;font-weight:700;border-radius:8px;">{{ announcement.action_label or 'Learn more' }}</a>
+            </td></tr></table>
+          {% endif %}
+        </td></tr>
+        {% if announcement.email_signature_enabled %}
+        <tr><td style="padding:22px 30px 28px;">
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="border-top:1px solid #e6edf7;">
+            <tr><td style="padding-top:22px;">
+              <div style="font-size:16px;line-height:1.35;font-weight:800;color:#102b70;">The FOCOST Team</div>
+              <div style="font-size:12px;line-height:1.6;color:#647891;margin-top:3px;">AI-Powered Personal Financial Coach</div>
+              <div style="font-size:13px;line-height:1.8;margin-top:12px;">
+                <a href="https://focost.pythonanywhere.com" target="_blank" rel="noopener" style="color:#0878ee;text-decoration:none;font-weight:700;">Visit FOCOST</a>
+                <span style="color:#9aabc0;">&nbsp;|&nbsp;</span>
+                <a href="mailto:focostsupport@gmail.com" style="color:#0878ee;text-decoration:none;">focostsupport@gmail.com</a>
+              </div>
+              <div style="font-size:12px;line-height:1.5;color:#647891;margin-top:14px;font-weight:700;">Follow FOCOST on our official social channels</div>
+              <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin-top:9px;"><tr>
+                <td style="padding-right:10px;">
+                  <a href="https://www.facebook.com/profile.php?id=61595405655287" target="_blank" rel="noopener" aria-label="FOCOST on Facebook" style="display:inline-block;width:34px;height:34px;line-height:34px;text-align:center;background:#1877f2;color:#ffffff;text-decoration:none;border-radius:50%;font-family:Arial,sans-serif;font-size:22px;font-weight:700;">f</a>
+                </td>
+                <td>
+                  <a href="https://www.linkedin.com/company/focost/" target="_blank" rel="noopener" aria-label="FOCOST on LinkedIn" style="display:inline-block;width:34px;height:34px;line-height:34px;text-align:center;background:#0a66c2;color:#ffffff;text-decoration:none;border-radius:7px;font-family:Arial,sans-serif;font-size:15px;font-weight:700;">in</a>
+                </td>
+              </tr></table>
+              {% if signature %}<div style="font-size:12px;line-height:1.65;color:#647891;margin-top:14px;">{{ signature|safe }}</div>{% endif %}
+            </td></tr>
+          </table>
+        </td></tr>
+        {% endif %}
+        <tr><td style="padding:17px 30px;background:#f7f9fc;border-top:1px solid #e8eef6;font-size:11px;line-height:1.65;color:#8292a8;">
+          FOCOST · Plan. Track. Grow.<br>
+          This message was sent to {{ recipient.email if recipient else 'your registered email address' }} because your account matched the selected communication audience.
+        </td></tr>
+      </table>
+      <div style="font-size:10px;line-height:1.5;color:#9aa8ba;padding:14px 10px;">© FOCOST · All rights reserved.</div>
+    </td></tr>
+  </table>
+</body>
+</html>
