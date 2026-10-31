@@ -183,7 +183,7 @@ def register():
                             "If you did not create this FOCOST account, you can "
                             "safely ignore this email.\n\n"
                             "Regards,\n"
-                            "FOCOST Team"
+                            "The FOCOST Team"
                         ),
                         (
                             f"<p>Hello {user_name},</p>"
@@ -205,7 +205,7 @@ def register():
                             "If you did not create this FOCOST account, you can "
                             "safely ignore this email."
                             "</p>"
-                            "<p>Regards,<br><strong>FOCOST Team</strong></p>"
+                            "<p>Regards,<br><strong>The FOCOST Team</strong></p>"
                         ),
                     )
 
@@ -397,7 +397,7 @@ def resend_verification():
                         "If you did not create this FOCOST account, you can "
                         "safely ignore this email.\n\n"
                         "Regards,\n"
-                        "FOCOST Team"
+                        "The FOCOST Team"
                     ),
                     (
                         f"<p>Hello {user_name},</p>"
@@ -419,7 +419,7 @@ def resend_verification():
                         "If you did not create this FOCOST account, you can "
                         "safely ignore this email."
                         "</p>"
-                        "<p>Regards,<br><strong>FOCOST Team</strong></p>"
+                        "<p>Regards,<br><strong>The FOCOST Team</strong></p>"
                     ),
                 )
 
@@ -520,7 +520,7 @@ def forgot_password():
                             "If you did not request a password reset, no action "
                             "is required. Your password will remain unchanged.\n\n"
                             "Regards,\n"
-                            "FOCOST Team"
+                            "The FOCOST Team"
                         ),
                         (
                             f"<p>Hello {user_name},</p>"
@@ -546,7 +546,7 @@ def forgot_password():
                             "If you did not request a password reset, no action "
                             "is required. Your password will remain unchanged."
                             "</p>"
-                            "<p>Regards,<br><strong>FOCOST Team</strong></p>"
+                            "<p>Regards,<br><strong>The FOCOST Team</strong></p>"
                         ),
                     )
 
