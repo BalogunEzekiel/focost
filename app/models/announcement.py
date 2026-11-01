@@ -15,7 +15,8 @@ class Announcement(BaseModel):
     priority = db.Column(db.String(20), nullable=False, default="normal")
     status = db.Column(db.String(20), nullable=False, default="draft", index=True)
 
-    # Targeting: all, super_admin, admin, user, free_trial, basic, plus, pro.
+    # Targeting: all, super_admin, admin, user, free_trial, basic, plus, pro,
+    # subscription_expired, inactive_user (pending normal-user activation only).
     audience = db.Column(db.String(30), nullable=False, default="all", index=True)
     # JSON array of audience slugs; audience remains as a legacy fallback.
     audience_groups = db.Column(db.Text, nullable=True)

@@ -25,6 +25,7 @@ class AnnouncementService:
         "plus",
         "pro",
         "subscription_expired",
+        "inactive_user",
     )
 
     AUDIENCE_LABELS = {
@@ -37,6 +38,7 @@ class AnnouncementService:
         "plus": "Plus",
         "pro": "Pro",
         "subscription_expired": "Subscription Expired",
+        "inactive_user": "Inactive User",
     }
 
     PRIORITIES = ("low", "normal", "high", "urgent")
@@ -92,6 +94,18 @@ class AnnouncementService:
         )
 
     @staticmethod
+    def _is_inactive_user(user):
+        """Identify pending normal-user accounts, not suspended or closed accounts."""
+        return bool(
+            user
+            and user.role_group == "user"
+            and not user.is_active
+            and not user.email_verified
+            and (user.email or "").strip()
+            and not (user.email or "").lower().endswith("@deleted.focost.invalid")
+        )
+
+    @staticmethod
     def _matches_user(item, user_id):
         from app.models.user import User
         user = db.session.get(User, user_id)
@@ -106,6 +120,14 @@ class AnnouncementService:
 
         audiences = item.audiences
         role_group = user.role_group
+
+        # Inactive User is deliberately narrow: only normal consumer
+        # accounts that are both unactivated and unverified qualify.
+        # Closed/anonymized accounts have no role assignment and are
+        # therefore excluded even though their retained User row is inactive.
+        if "inactive_user" in audiences and AnnouncementService._is_inactive_user(user):
+            return True
+
         if "all" in audiences:
             return True
 
@@ -362,9 +384,18 @@ class AnnouncementService:
         if not announcement.email or not EmailService.enabled():
             return 0
         from app.models.user import User
-        users = User.query.filter_by(is_active=True).order_by(User.id.asc()).all()
+        audiences = announcement.audiences
+        users = User.query.order_by(User.id.asc()).all()
         sent = 0
         for user in users:
+            # Preserve the existing active-account delivery boundary.
+            # Pending verification accounts are included only when the
+            # communication explicitly targets Inactive User.
+            is_pending_user = AnnouncementService._is_inactive_user(user)
+            if not user.is_active and not (
+                "inactive_user" in audiences and is_pending_user
+            ):
+                continue
             if not user.email or not AnnouncementService._matches_user(announcement, user.id):
                 continue
             try:
