@@ -107,6 +107,9 @@ class Config:
 
     OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
+    # FX provider credentials are environment-only; never commit live keys.
+    EXCHANGE_RATE_API_KEY = os.getenv("EXCHANGE_RATE_API_KEY", "").strip()
+
     # Read-only Mono Open Banking Connect. Private keys are environment-only.
     MONO_PUBLIC_KEY = os.getenv("MONO_PUBLIC_KEY", "").strip()
     MONO_SECRET_KEY = os.getenv("MONO_SECRET_KEY", "").strip()

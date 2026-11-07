@@ -1,0 +1,15 @@
+{% extends "layouts/dashboard.html" %}
+{% block title %}Currency conversion unavailable | FOCOST{% endblock %}
+{% block content %}
+<div class="container py-5">
+  <div class="card border-0 shadow-sm rounded-4 mx-auto" style="max-width: 680px;">
+    <div class="card-body p-4 p-md-5 text-center">
+      <div class="display-5 text-warning mb-3"><i class="bi bi-currency-exchange"></i></div>
+      <h1 class="h3 fw-bold">Currency conversion temporarily unavailable</h1>
+      <p class="text-muted mt-3">FOCOST could not retrieve a required exchange rate. Your original transaction amounts have not been changed. To display consolidated totals in your selected currency, configure a valid exchange-rate provider key and ensure your provider plan supports historical rates.</p>
+      <p class="small text-muted">You can retry after the exchange-rate service is available. FOCOST will not substitute a currency symbol without converting the amount.</p>
+      <a class="btn btn-primary mt-2" href="{{ url_for('dashboard.dashboard') }}">Try again</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

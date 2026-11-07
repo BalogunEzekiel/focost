@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="{{ focost_speech_language|default('en-NG') }}" data-language-code="{{ focost_language|default('en') }}">
+<html lang="{{ focost_language|default('en') }}" dir="{{ focost_language_direction|default('ltr') }}" data-language-code="{{ focost_language|default('en') }}" data-currency-code="{{ focost_display_currency|default('NGN') }}" data-base-currency="{{ focost_base_currency|default('NGN') }}">
 
 <head>
 
@@ -77,38 +77,6 @@
 
         <main class="p-4">
             
-            <div class="focost-language-row">
-                <form
-                    method="post"
-                    action="{{ url_for('language.set_language') }}"
-                    class="focost-language-form"
-                    aria-label="Language preference"
-                >
-                    <input
-                        type="hidden"
-                        name="csrf_token"
-                        value="{{ csrf_token() }}"
-                    >
-
-                    <label for="focostLanguage">Language</label>
-
-                    <select
-                        id="focostLanguage"
-                        name="language"
-                        onchange="this.form.submit()"
-                    >
-                        {% for code, language in (focost_languages or {}).items() %}
-                            <option
-                                value="{{ code }}"
-                                {% if code == (focost_language|default('en', true)) %}selected{% endif %}
-                            >
-                                {{ language.native }}
-                            </option>
-                        {% endfor %}
-                    </select>
-                </form>
-            </div>
-
             {% with messages = get_flashed_messages(with_categories=true) %}
 
                 {% if messages %}
@@ -211,6 +179,9 @@
 
 <!-- Main App -->
 
+<script>window.FOCOST_I18N = {{ {"language": focost_language|default("en"), "locale": focost_speech_language|default("en-NG"), "currency": focost_display_currency|default("NGN"), "baseCurrency": focost_base_currency|default("NGN"), "direction": focost_language_direction|default("ltr"), "translations": focost_translations|default({}), "textKeys": focost_text_keys|default({})}|tojson }};</script>
+<script src="{{ url_for('static', filename='js/focost-i18n.js') }}"></script>
+<script src="{{ url_for('static', filename='js/focost-currency.js') }}"></script>
 <script src="{{ url_for('static', filename='js/app.js') }}"></script>
 
 <!-- AI Widget -->

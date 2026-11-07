@@ -35,11 +35,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
             data: {
 
-                labels: ["Income", "Expenses"],
+                labels: [window.FOCOST?.t("income") || "Income", window.FOCOST?.t("expenses") || "Expenses"],
 
                 datasets: [{
 
-                    label: "Amount (₦)",
+                    label: window.FOCOST?.t("amount") || "Amount",
 
                     data: [income, expenses],
 
@@ -61,12 +61,10 @@ document.addEventListener("DOMContentLoaded", () => {
                 maintainAspectRatio: false,
 
                 plugins: {
-
-                    legend: {
-                        display: false
-                    }
-
-                }
+                    legend: { display: false },
+                    tooltip: { callbacks: { label: (context) => window.FOCOST.formatMoney(context.raw, window.FOCOST_I18N.currency) } }
+                },
+                scales: { y: { ticks: { callback: (value) => window.FOCOST.formatMoney(value, window.FOCOST_I18N.currency, {minimumFractionDigits: 0, maximumFractionDigits: 0}) } } }
 
             }
 
@@ -118,13 +116,8 @@ document.addEventListener("DOMContentLoaded", () => {
                 maintainAspectRatio: false,
 
                 plugins: {
-
-                    legend: {
-
-                        position: "bottom"
-
-                    }
-
+                    legend: { position: "bottom" },
+                    tooltip: { callbacks: { label: (context) => `${context.label}: ${window.FOCOST.formatMoney(context.raw, window.FOCOST_I18N.currency)}` } }
                 }
 
             }
@@ -153,7 +146,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
                     {
 
-                        label: "Income",
+                        label: window.FOCOST?.t("income") || "Income",
 
                         data: cashIncome,
 
@@ -169,7 +162,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
                     {
 
-                        label: "Expenses",
+                        label: window.FOCOST?.t("expenses") || "Expenses",
 
                         data: cashExpenses,
 
@@ -202,13 +195,11 @@ document.addEventListener("DOMContentLoaded", () => {
                 },
 
                 plugins: {
-
-                    legend: {
-
-                        position: "bottom"
-
-                    }
-
+                    legend: { position: "bottom" },
+                    tooltip: { callbacks: { label: (context) => `${context.dataset.label}: ${window.FOCOST.formatMoney(context.raw, window.FOCOST_I18N.currency)}` } }
+                },
+                scales: {
+                    y: { ticks: { callback: (value) => window.FOCOST.formatMoney(value, window.FOCOST_I18N.currency, {minimumFractionDigits: 0, maximumFractionDigits: 0}) } }
                 }
 
             }

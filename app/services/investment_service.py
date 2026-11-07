@@ -110,6 +110,7 @@ class InvestmentService:
             merchant=investment_name[:150],
             description=f"Investment funding: {investment_name}",
             amount=amount,
+            currency=(user.base_currency or "NGN").upper(),
             payment_method="Internal Investment Funding",
             expense_date=acquisition_date,
             notes=notes,
@@ -136,7 +137,7 @@ class InvestmentService:
             current_value=current_value,
             quantity=quantity,
             cost_basis=amount,
-            currency=user.currency or "NGN",
+            currency=user.base_currency or "NGN",
             notes=notes,
             source_expense_id=expense.id,
         )
@@ -159,6 +160,7 @@ class InvestmentService:
             cost_basis_change=amount,
             realized_gain_loss=0,
             proceeds=0,
+            currency=asset.currency or "NGN",
             notes=notes,
         )
 
@@ -187,6 +189,7 @@ class InvestmentService:
                 cost_basis_change=0,
                 realized_gain_loss=initial_difference,
                 proceeds=0,
+                currency=asset.currency or "NGN",
                 notes=(
                     notes
                     or "Initial investment valuation adjustment."
@@ -267,6 +270,7 @@ class InvestmentService:
             cost_basis_change=0,
             realized_gain_loss=delta,
             proceeds=0,
+            currency=asset.currency or "NGN",
             notes=notes or "Investment valuation adjustment.",
         )
 
@@ -485,6 +489,7 @@ class InvestmentService:
             source=asset.name,
             category="Investment Liquidation",
             amount=proceeds,
+            currency=asset.currency or "NGN",
             received_date=liquidation_date,
             notes=(
                 notes
@@ -512,6 +517,7 @@ class InvestmentService:
             cost_basis_change=-allocated_cost,
             realized_gain_loss=realized_gain_loss,
             proceeds=proceeds,
+            currency=asset.currency or "NGN",
             income_id=income.id,
             notes=notes,
         )

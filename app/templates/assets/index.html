@@ -19,7 +19,7 @@
       <div class="card border-0 shadow-sm h-100">
         <div class="card-body">
           <small class="text-muted">Investment Cost Basis</small>
-          <h4 class="fw-bold">₦{{ "{:,.2f}".format(total_cost) }}</h4>
+          <h4 class="fw-bold">{{ focost_money(total_cost, source_currency=focost_display_currency) }}</h4>
         </div>
       </div>
     </div>
@@ -28,7 +28,7 @@
       <div class="card border-0 shadow-sm h-100">
         <div class="card-body">
           <small class="text-muted">Current Investment Value</small>
-          <h4 class="fw-bold text-primary">₦{{ "{:,.2f}".format(total_value) }}</h4>
+          <h4 class="fw-bold text-primary">{{ focost_money(total_value, source_currency=focost_display_currency) }}</h4>
         </div>
       </div>
     </div>
@@ -38,7 +38,7 @@
         <div class="card-body">
           <small class="text-muted">Investment Gain / Loss</small>
           <h4 class="fw-bold {% if gain_loss >= 0 %}text-success{% else %}text-danger{% endif %}">
-            ₦{{ "{:,.2f}".format(gain_loss) }}
+            {{ focost_money(gain_loss, source_currency=focost_display_currency) }}
           </h4>
         </div>
       </div>
@@ -163,15 +163,15 @@
             <td>{{ a.asset_type }}</td>
 
             <td>
-              ₦{{ "{:,.2f}".format(a.cost_basis if a.cost_basis is not none else a.acquisition_cost) }}
+              {{ focost_money(a.cost_basis if a.cost_basis is not none else a.acquisition_cost, source_currency=a.currency or "NGN") }}
             </td>
 
             <td>
-              ₦{{ "{:,.2f}".format(a.current_value) }}
+              {{ focost_money(a.current_value, source_currency=a.currency or "NGN") }}
             </td>
 
             <td class="{% if a.gain_loss >= 0 %}text-success{% else %}text-danger{% endif %}">
-              ₦{{ "{:,.2f}".format(a.gain_loss) }}
+              {{ focost_money(a.gain_loss, source_currency=a.currency or "NGN") }}
             </td>
 
             <td>
@@ -261,7 +261,7 @@
               <div class="d-flex justify-content-between align-items-center">
                 <span class="text-muted">Current investment value</span>
                 <strong>
-                  ₦{{ "{:,.2f}".format(a.current_value) }}
+                  {{ focost_money(a.current_value, source_currency=a.currency or "NGN") }}
                 </strong>
               </div>
             </div>
@@ -390,15 +390,15 @@
             </td>
 
             <td>
-              ₦{{ "{:,.2f}".format(event.proceeds or event.amount or 0) }}
+              {{ focost_money(event.proceeds or event.amount or 0, source_currency=event.currency or "NGN", on_date=event.event_date) }}
             </td>
 
             <td>
-              ₦{{ "{:,.2f}".format(event.previous_value or 0) }}
+              {{ focost_money(event.previous_value or 0, source_currency=event.currency or "NGN", on_date=event.event_date) }}
             </td>
 
             <td>
-              ₦{{ "{:,.2f}".format(event.new_value or 0) }}
+              {{ focost_money(event.new_value or 0, source_currency=event.currency or "NGN", on_date=event.event_date) }}
             </td>
 
             <td>

@@ -14,6 +14,7 @@
           <div class="col-lg-3">
             <div class="list-group settings-nav" role="tablist">
               <button class="list-group-item list-group-item-action active" data-bs-toggle="pill" data-bs-target="#focostAppearance" type="button">Appearance</button>
+              <button class="list-group-item list-group-item-action" data-bs-toggle="pill" data-bs-target="#focostRegional" type="button">Regional Preferences</button>
               <button class="list-group-item list-group-item-action" data-bs-toggle="pill" data-bs-target="#focostDashboard" type="button">Dashboard</button>
               <button class="list-group-item list-group-item-action" data-bs-toggle="pill" data-bs-target="#focostNotifications" type="button">Notifications</button>
               <button class="list-group-item list-group-item-action" data-bs-toggle="pill" data-bs-target="#focostAssistant" type="button">AI Preferences</button>
@@ -38,6 +39,19 @@
                       <option value="comfortable">Comfortable</option><option value="compact">Compact</option><option value="spacious">Spacious</option>
                     </select>
                   </div>
+                </div>
+              </div>
+
+              <div class="tab-pane fade" id="focostRegional">
+                <h5 class="fw-bold">Regional Preferences</h5><hr>
+                <p class="text-muted small">These preferences control your display currency and application language. FOCOST converts financial values for presentation using exchange-rate snapshots while preserving each original transaction amount and currency for accounting and audit purposes.</p>
+                <div class="row g-3">
+                  <div class="col-md-6"><label class="form-label" for="preferredCurrency">Preferred currency</label><select class="form-select" id="preferredCurrency">
+                    {% for code, item in focost_currencies.items() %}<option value="{{ code }}">{{ item.name }} ({{ code }} — {{ item.symbol }})</option>{% endfor %}
+                  </select></div>
+                  <div class="col-md-6"><label class="form-label" for="preferredLanguage">Preferred language</label><select class="form-select" id="preferredLanguage">
+                    {% for code, item in focost_languages.items() %}<option value="{{ code }}">{{ item.native }}</option>{% endfor %}
+                  </select></div>
                 </div>
               </div>
 
@@ -428,16 +442,32 @@ document.addEventListener("DOMContentLoaded", function () {
       updateWebPushUI();
     }
   }
-  function merge(saved){
-    const out=clone(defaults);
-    Object.keys(out).forEach(k=>{
-      if(saved && saved[k] && typeof saved[k]==="object" && !Array.isArray(saved[k])) out[k]={...out[k],...saved[k]};
+
+  function merge(saved = {}) {
+    const out = clone(defaults);
+
+    Object.keys(out).forEach((key) => {
+      if (
+        saved[key] &&
+        typeof saved[key] === "object" &&
+        !Array.isArray(saved[key])
+      ) {
+        out[key] = { ...out[key], ...saved[key] };
+      }
     });
+
+    // Preserve top-level regional preferences.
+    out.currency = saved.currency || "NGN";
+    out.language = saved.language || "en";
+
     return out;
   }
+
   function apply(p){
     p=merge(p);
     currentPushPreference = p.notifications.push === true;
+    if($("preferredCurrency")) $("preferredCurrency").value=p.currency||"NGN";
+    if($("preferredLanguage")) $("preferredLanguage").value=p.language||"en";
     $("dashboardTheme").value=p.appearance.theme;
     $("dashboardDensity").value=p.appearance.density;
     $("defaultChart").value=p.analytics.default_chart;
@@ -465,6 +495,8 @@ document.addEventListener("DOMContentLoaded", function () {
     Object.entries(ids.ai).forEach(([k,id])=>p.ai[k]=!!$(id)?.checked);
     Object.entries(ids.notifications).forEach(([k,id])=>p.notifications[k]=!!$(id)?.checked);
     p.notifications.push = currentPushPreference;
+    p.currency=$("preferredCurrency")?.value||"NGN";
+    p.language=$("preferredLanguage")?.value||"en";
     return p;
   }
   function show(msg,type="success"){ if(!status)return; status.className="small mt-3 text-"+type; status.textContent=msg; setTimeout(()=>{if(status)status.textContent=""},4000); }
@@ -485,7 +517,7 @@ document.addEventListener("DOMContentLoaded", function () {
       const r=await fetch("{{ url_for('settings.update_settings') }}",{method:"PUT",credentials:"same-origin",headers:{"Content-Type":"application/json","Accept":"application/json","X-CSRFToken":document.querySelector('meta[name="csrf-token"]')?.content||""},body:JSON.stringify({preferences:collect()})});
       const d=await r.json();
       if(!r.ok || !d.success) throw new Error(d.message||"Unable to save settings.");
-      apply(d.preferences); localStorage.setItem("focost_preferences",JSON.stringify(d.preferences)); show("Settings saved successfully.");
+      apply(d.preferences); localStorage.setItem("focost_preferences",JSON.stringify(d.preferences)); show("Settings saved successfully. Reload the page to apply language changes everywhere.");
     }catch(e){ show(e.message||"Unable to save settings.","danger"); }
     finally{btn.disabled=false;}
   }

@@ -851,10 +851,8 @@ def transaction_detail(
 
             "category": transaction.category,
 
-            "amount": float(
-                transaction.amount or 0
-            ),
-
+            "amount": float(transaction.amount or 0),
+            "currency": transaction.currency or "NGN",
             "date": transaction.received_date,
 
             "note": getattr(
@@ -902,10 +900,8 @@ def transaction_detail(
 
             "category": transaction.category,
 
-            "amount": float(
-                transaction.amount or 0
-            ),
-
+            "amount": float(transaction.amount or 0),
+            "currency": transaction.currency or "NGN",
             "date": transaction.expense_date,
 
             "note": getattr(

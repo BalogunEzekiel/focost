@@ -79,9 +79,7 @@ Expenses
 
                     <h4 class="fw-bold text-danger mt-2">
 
-                        ₦{{ "{:,.2f}".format(
-                            all_expenses|sum(attribute='amount')
-                        ) }}
+                        {{ focost_money(total_expense_display, source_currency=focost_display_currency) }}
 
                     </h4>
 
@@ -368,9 +366,7 @@ Expenses
 
                                     <strong class="text-danger">
 
-                                        ₦{{ "{:,.2f}".format(
-                                            expense.amount
-                                        ) }}
+                                        {{ focost_money(expense.amount, source_currency=expense.currency or "NGN", on_date=expense.expense_date) }}
 
                                     </strong>
 

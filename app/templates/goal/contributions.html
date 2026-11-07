@@ -72,7 +72,7 @@ Goal Contributions
 
                     <h3 class="text-primary">
 
-                        ₦{{ "{:,.2f}".format(goal.target_amount) }}
+                        {{ focost_money(goal.target_amount, source_currency=goal.currency or "NGN") }}
 
                     </h3>
 
@@ -96,7 +96,7 @@ Goal Contributions
 
                     <h3 class="text-success">
 
-                        ₦{{ "{:,.2f}".format(goal.saved_amount) }}
+                        {{ focost_money(goal.saved_amount, source_currency=goal.currency or "NGN") }}
 
                     </h3>
 
@@ -120,7 +120,7 @@ Goal Contributions
 
                     <h3 class="text-danger">
 
-                        ₦{{ "{:,.2f}".format(goal.remaining_amount) }}
+                        {{ focost_money(goal.remaining_amount, source_currency=goal.currency or "NGN") }}
 
                     </h3>
 
@@ -226,7 +226,7 @@ Goal Contributions
 
                             <td class="text-success fw-bold">
 
-                                ₦{{ "{:,.2f}".format(item.amount) }}
+                                {{ focost_money(item.amount, source_currency=item.currency or goal.currency or "NGN", on_date=item.contribution_date) }}
 
                             </td>
 

@@ -32,7 +32,7 @@
                             </div>
 
                             <small class="text-danger">
-                                ₦{{ "{:,.2f}".format(dashboard.top_spending_amount|default(0)) }}
+                                {{ focost_money(dashboard.top_spending_amount|default(0), source_currency=focost_display_currency) }}
                             </small>
 
                         </div>
@@ -70,7 +70,7 @@
                             </div>
 
                             <small class="text-success">
-                                ₦{{ "{:,.2f}".format(dashboard.top_income_amount|default(0)) }}
+                                {{ focost_money(dashboard.top_income_amount|default(0), source_currency=focost_display_currency) }}
                             </small>
 
                         </div>
@@ -206,9 +206,7 @@
 
                     <h5 class="fw-bold text-success mb-1">
 
-                        ₦{{ "{:,.2f}".format(
-                            dashboard.savings_opportunity|default(0)
-                        ) }}
+                        {{ focost_money(dashboard.savings_opportunity|default(0), source_currency=focost_display_currency) }}
 
                     </h5>
 
@@ -312,7 +310,7 @@
                 </div>
                 <div class="card-body p-3 text-center">
                     {% set investment_value = dashboard.investments.current_value|default(0)|float %}
-                    <h2 class="fw-bold text-primary mb-2">₦{{ "{:,.2f}".format(investment_value) }}</h2>
+                    <h2 class="fw-bold text-primary mb-2">{{ focost_money(investment_value, source_currency=focost_display_currency) }}</h2>
                     <small class="text-muted d-block mb-2">Current portfolio value</small>
                     <small class="text-muted">{{ dashboard.investments.count|default(0) }} active investment{{ '' if dashboard.investments.count|default(0) == 1 else 's' }}</small>
                     <div class="mt-3"><a href="{{ url_for('assets.index') }}" class="btn btn-sm btn-outline-primary">View Investments</a></div>
@@ -387,9 +385,7 @@
 
                         <div class="fw-bold text-primary">
 
-                            ₦{{ "{:,.2f}".format(
-                                financial_insight.monthly_income|default(0)
-                            ) }}
+                            {{ focost_money(financial_insight.monthly_income|default(0), source_currency=focost_display_currency) }}
 
                         </div>
 
@@ -410,9 +406,7 @@
 
                         <div class="fw-bold text-danger">
 
-                            ₦{{ "{:,.2f}".format(
-                                financial_insight.monthly_expenses|default(0)
-                            ) }}
+                            {{ focost_money(financial_insight.monthly_expenses|default(0), source_currency=focost_display_currency) }}
 
                         </div>
 
@@ -433,9 +427,7 @@
 
                         <div class="fw-bold text-success">
 
-                            ₦{{ "{:,.2f}".format(
-                                financial_insight.total_savings|default(0)
-                            ) }}
+                            {{ focost_money(financial_insight.total_savings|default(0), source_currency=focost_display_currency) }}
 
                         </div>
 
@@ -472,9 +464,7 @@
 
                         <div class="fw-bold text-primary">
 
-                            ₦{{ "{:,.2f}".format(
-                                financial_insight.projected_income|default(0)
-                            ) }}
+                            {{ focost_money(financial_insight.projected_income|default(0), source_currency=focost_display_currency) }}
 
                         </div>
 
@@ -495,9 +485,7 @@
 
                         <div class="fw-bold text-warning">
 
-                            ₦{{ "{:,.2f}".format(
-                                financial_insight.projected_expenses|default(0)
-                            ) }}
+                            {{ focost_money(financial_insight.projected_expenses|default(0), source_currency=focost_display_currency) }}
 
                         </div>
 
@@ -518,9 +506,7 @@
 
                         <div class="fw-bold text-success">
 
-                            ₦{{ "{:,.2f}".format(
-                                financial_insight.projected_savings|default(0)
-                            ) }}
+                            {{ focost_money(financial_insight.projected_savings|default(0), source_currency=focost_display_currency) }}
 
                         </div>
 

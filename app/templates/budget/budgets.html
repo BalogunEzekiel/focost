@@ -151,7 +151,7 @@ Budgets
 
                     <h6 class="fw-bold">
 
-                        ₦{{ "{:,.2f}".format(budgets|sum(attribute="amount")) }}
+                        {{ focost_money(total_budget_display, source_currency=focost_display_currency) }}
 
                     </h6>
 
@@ -175,7 +175,7 @@ Budgets
 
                     <h6 class="fw-bold text-success">
 
-                        ₦{{ "{:,.2f}".format(budgets|sum(attribute="remaining")) }}
+                        {{ focost_money(total_remaining_display, source_currency=focost_display_currency) }}
 
                     </h6>
 
@@ -252,15 +252,15 @@ Budgets
                         <td>{{ budget.category }}</td>
 
                         <td>
-                            ₦{{ "{:,.2f}".format(budget.amount) }}
+                            {{ focost_money(budget.amount, source_currency=budget.currency or "NGN") }}
                         </td>
 
                         <td class="text-danger">
-                            ₦{{ "{:,.2f}".format(budget.spent) }}
+                            {{ focost_money(budget.spent, source_currency=budget.currency or "NGN") }}
                         </td>
 
                         <td class="text-success">
-                            ₦{{ "{:,.2f}".format(budget.remaining) }}
+                            {{ focost_money(budget.remaining, source_currency=budget.currency or "NGN") }}
                         </td>
                                                 <!-- Usage -->
 

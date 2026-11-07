@@ -903,6 +903,10 @@ class AIService:
             "profile": profile,
             "preferences": preferences,
             "currency": profile.get("currency", "NGN"),
+            "currency_provenance": (
+                financial_context.get("currency_provenance", {})
+                if isinstance(financial_context, dict) else {}
+            ),
             "permissions": permissions,
             "application_rules": rules,
         }
@@ -1098,7 +1102,12 @@ class AIService:
             "- Never expose private chain-of-thought or internal reasoning. Give concise conclusions, evidence, assumptions and actionable next steps instead.\n\n"
             "RESPONSE RULES:\n"
             "- Answer the exact question directly in the shortest complete form.\n"
-            "- Use the user's configured currency. For NGN, use ₦.\n"
+            "- Use the user's configured display currency and the currency metadata attached to each financial value.\n"
+            "- DashboardService is authoritative: do not independently calculate exchange rates, convert amounts again, or infer a currency from a symbol.\n"
+            "- When a record contains original_amount/original_currency and amount/currency, amount is the converted display value and original_amount is the immutable ledger value.\n"
+            "- When a record contains only an original currency, preserve that currency explicitly; never relabel it as the display currency.\n"
+            "- Explain whether figures are transaction-date converted or valuation-date converted when that distinction materially affects the answer.\n"
+            "- If currency_provenance or a required rate is missing, disclose the limitation and do not invent an exchange rate.\n"
             "- Simple lookups: one concise sentence or a few bullets.\n"
             "- Breakdowns: use the actual supplied categories/records; never say details are unavailable when they are supplied.\n"
             "- If several financial domains are explicitly requested, answer all requested domains.\n"
@@ -1212,11 +1221,25 @@ class AIService:
 
         # Use the full session history for context resolution so that
         # conversational follow-ups can inherit the previous subject.
-        system_prompt = AIService.build_system_prompt(
-            user_id,
-            message,
-            history=full_history,
-        )
+        try:
+            system_prompt = AIService.build_system_prompt(
+                user_id,
+                message,
+                history=full_history,
+            )
+        except Exception as exc:
+            from app.services.exchange_rate_service import ExchangeRateUnavailable
+            if isinstance(exc, ExchangeRateUnavailable):
+                return {
+                    "success": False,
+                    "code": "CURRENCY_CONVERSION_UNAVAILABLE",
+                    "message": (
+                        "I can't prepare an accurate financial answer in your selected display currency "
+                        "because a required exchange rate is unavailable. Please try again later or "
+                        "temporarily select the original transaction currency."
+                    ),
+                }
+            raise
 
         request_id = uuid.uuid4().hex
         started = time.perf_counter()

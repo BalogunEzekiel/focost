@@ -25,6 +25,9 @@ class GoalContribution(BaseModel):
         nullable=False
     )
 
+    # Original currency of this contribution.
+    currency = db.Column(db.String(3), nullable=False, default="NGN", server_default="NGN")
+
     contribution_date = db.Column(
         db.Date,
         nullable=False
@@ -62,5 +65,5 @@ class GoalContribution(BaseModel):
         return (
             f"<GoalContribution "
             f"{self.goal_id} "
-            f"₦{self.amount:,.2f}>"
+            f"{self.amount:,.2f} {self.currency or 'NGN'}>"
         )

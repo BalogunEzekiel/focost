@@ -68,19 +68,16 @@ def index():
         .all()
     )
 
-    total_cost = sum(
-        float(
-            asset.cost_basis
-            if asset.cost_basis is not None
-            else asset.acquisition_cost or 0
-        )
-        for asset in investments
-    )
-
-    total_value = sum(
-        float(asset.current_value or 0)
-        for asset in investments
-    )
+    from app.services.financial_currency_service import FinancialCurrencyService
+    from app.utils.timezone import today
+    display_currency = FinancialCurrencyService.display_currency(current_user.id)
+    total_cost = sum(FinancialCurrencyService.convert_value(
+        asset.cost_basis if asset.cost_basis is not None else asset.acquisition_cost or 0,
+        asset.currency or "NGN", display_currency, on_date=today()
+    ) for asset in investments)
+    total_value = sum(FinancialCurrencyService.convert_value(
+        asset.current_value or 0, asset.currency or "NGN", display_currency, on_date=today()
+    ) for asset in investments)
 
     return render_template(
         "assets/index.html",
@@ -192,7 +189,7 @@ def create():
                     if request.form.get("cost_basis")
                     else None
                 ),
-                currency=current_user.currency or "NGN",
+                currency=current_user.base_currency or "NGN",
                 notes=notes,
             )
 

@@ -45,8 +45,17 @@ class WebPushService:
         return action_url
 
     @staticmethod
-    def send_subscription(subscription, title, body, action_url=None, tag=None):
-        """Send one payload to one saved browser subscription."""
+    def send_subscription(subscription, title, body, action_url=None, tag=None, user_id=None):
+        """Send one payload to one saved browser subscription.
+
+        Application-owned exact labels are localized. User-authored announcement
+        copy is left untouched unless it exactly matches a known catalogue entry.
+        """
+        if user_id is not None:
+            from app.services.language_service import LanguageService
+            locale = LanguageService.get(user_id)
+            title = LanguageService.translate_text(locale, title)
+            body = LanguageService.translate_text(locale, body)
         if not WebPushService.enabled():
             return False
 
@@ -165,6 +174,7 @@ class WebPushService:
                     body=AnnouncementService.plain_text(announcement.message),
                     action_url=announcement.action_url,
                     tag=f"announcement-{announcement.public_id}",
+                    user_id=user.id,
                 ):
                     sent += 1
 

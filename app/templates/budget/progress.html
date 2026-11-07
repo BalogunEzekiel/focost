@@ -54,7 +54,7 @@ Budget Progress
 
                 style="width:{{ budget.percentage_used }}%;">
 
-                    ₦{{ "{:,.2f}".format(budget.spent) }}
+                    {{ focost_money(budget.spent, source_currency=budget.currency or "NGN") }}
 
                 </div>
 
@@ -66,7 +66,7 @@ Budget Progress
 
                     <strong>Budget</strong><br>
 
-                    ₦{{ "{:,.2f}".format(budget.amount) }}
+                    {{ focost_money(budget.amount, source_currency=budget.currency or "NGN") }}
 
                 </div>
 
@@ -74,7 +74,7 @@ Budget Progress
 
                     <strong>Spent</strong><br>
 
-                    ₦{{ "{:,.2f}".format(budget.spent) }}
+                    {{ focost_money(budget.spent, source_currency=budget.currency or "NGN") }}
 
                 </div>
 
@@ -82,7 +82,7 @@ Budget Progress
 
                     <strong>Remaining</strong><br>
 
-                    ₦{{ "{:,.2f}".format(budget.remaining) }}
+                    {{ focost_money(budget.remaining, source_currency=budget.currency or "NGN") }}
 
                 </div>
 

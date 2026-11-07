@@ -55,9 +55,21 @@ class User(BaseModel, UserMixin):
         default="Nigeria",
     )
 
+    # Preferred display currency. This does not change source transaction amounts.
     currency = db.Column(
         db.String(10),
         default="NGN",
+    )
+
+    # Ledger/input currency, kept separate from the display preference.
+    # Existing FOCOST accounts are backfilled to NGN.
+    base_currency = db.Column(
+        db.String(3), nullable=False, default="NGN", server_default="NGN"
+    )
+
+    # Currency in which the optional monthly-income profile figure was entered.
+    monthly_income_currency = db.Column(
+        db.String(3), nullable=False, default="NGN", server_default="NGN"
     )
 
     occupation = db.Column(

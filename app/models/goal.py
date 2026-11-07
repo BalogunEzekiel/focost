@@ -38,6 +38,9 @@ class Goal(BaseModel):
         nullable=False,
     )
 
+    # Currency of the goal target; contributions must be reconciled to it.
+    currency = db.Column(db.String(3), nullable=False, default="NGN", server_default="NGN")
+
     target_date = db.Column(
         db.Date,
         nullable=False,

@@ -280,15 +280,21 @@
     };
 
     function getSpeechLanguage() {
-        const documentLanguage =
-            document.documentElement?.lang?.trim();
+        // The server renders the signed-in user's persisted language preference
+        // on <html lang="...">. Do not let the browser locale override it.
+        const documentLanguage = document.documentElement?.lang?.trim();
+        const supported = new Set(["en-NG", "yo-NG", "ha-NG", "fr-FR", "es-ES", "pt-PT"]);
+        if (documentLanguage && supported.has(documentLanguage)) return documentLanguage;
+        return "en-NG";
+    }
 
-        const browserLanguage =
-            navigator.language?.trim();
-
-        return documentLanguage ||
-            browserLanguage ||
-            "en-NG";
+    function selectSpeechVoice(locale) {
+        if (!("speechSynthesis" in window)) return null;
+        const voices = window.speechSynthesis.getVoices() || [];
+        const exact = voices.find(voice => (voice.lang || "").toLowerCase() === locale.toLowerCase());
+        if (exact) return exact;
+        const base = locale.split("-")[0].toLowerCase();
+        return voices.find(voice => (voice.lang || "").toLowerCase().startsWith(base + "-")) || null;
     }
 
     function setVoiceStatus(message, surface = null) {
@@ -446,7 +452,10 @@
             }
 
             const utterance = new SpeechSynthesisUtterance(chunks[index++]);
-            utterance.lang = getSpeechLanguage();
+            const speechLocale = getSpeechLanguage();
+            utterance.lang = speechLocale;
+            const preferredVoice = selectSpeechVoice(speechLocale);
+            if (preferredVoice) utterance.voice = preferredVoice;
             utterance.rate = 1;
             utterance.pitch = 1;
             utterance.volume = 1;
@@ -1107,9 +1116,13 @@ function renderFinancialCards(text) {
 // ==========================================================
 
 function money(value){
-
-    return "₦" + Number(value).toLocaleString();
-
+    const currency = window.FOCOST_I18N?.currency || "NGN";
+    if (window.FOCOST?.formatMoney) {
+        return window.FOCOST.formatMoney(Number(value), currency);
+    }
+    return new Intl.NumberFormat("en-NG", {
+        style: "currency", currency, minimumFractionDigits: 2, maximumFractionDigits: 2
+    }).format(Number(value || 0));
 }
 
 function percent(value){

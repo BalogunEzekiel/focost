@@ -12,6 +12,8 @@
 
 # Project documentation - exclude from GitHub
 /docs/
+docs
+docs/
 
 # ----------------------------------------------------------
 # Python virtual environments

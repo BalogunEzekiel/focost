@@ -64,25 +64,22 @@ def list_budgets():
 
     for budget in budgets:
 
-        spent = (
-            db.session.query(
-                func.coalesce(func.sum(Expense.amount), 0)
-            )
-            .filter(
-                Expense.user_id == budget.user_id,
-                Expense.category == budget.category,
-                Expense.expense_date >= budget.start_date,
-                Expense.expense_date <= budget.end_date
-            )
-            .scalar()
-        )
+        from app.services.financial_currency_service import FinancialCurrencyService
+        budget.spent = FinancialCurrencyService.budget_spent(budget)
 
-        # Only update spent
-        budget.spent = spent
-
+    from app.services.financial_currency_service import FinancialCurrencyService
+    display_currency = FinancialCurrencyService.display_currency(current_user.id)
+    total_budget_display = sum(FinancialCurrencyService.convert_value(
+        b.amount, b.currency or "NGN", display_currency
+    ) for b in budgets)
+    total_remaining_display = sum(FinancialCurrencyService.convert_value(
+        b.remaining, b.currency or "NGN", display_currency
+    ) for b in budgets)
     return render_template(
         "budget/budgets.html",
         budgets=budgets,
+        total_budget_display=total_budget_display,
+        total_remaining_display=total_remaining_display,
     )
 
 @budget_bp.route("/edit/<int:budget_id>", methods=["GET", "POST"])
@@ -134,18 +131,8 @@ def progress(budget_id):
         user_id=current_user.id
     ).first_or_404()
 
-    spent = (
-        db.session.query(
-            func.coalesce(func.sum(Expense.amount), 0)
-        )
-        .filter(
-            Expense.user_id == current_user.id,
-            Expense.category == budget.category,
-            Expense.expense_date >= budget.start_date,
-            Expense.expense_date <= budget.end_date
-        )
-        .scalar()
-    )
+    from app.services.financial_currency_service import FinancialCurrencyService
+    spent = FinancialCurrencyService.budget_spent(budget)
 
     remaining = budget.amount - spent
 

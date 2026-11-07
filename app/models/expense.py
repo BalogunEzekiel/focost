@@ -34,6 +34,9 @@ class Expense(BaseModel):
         nullable=False
     )
 
+    # ISO-4217 currency in which this expense was originally recorded.
+    currency = db.Column(db.String(3), nullable=False, default="NGN", server_default="NGN")
+
     payment_method = db.Column(
         db.String(50),
         nullable=False

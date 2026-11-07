@@ -28,6 +28,9 @@ class Income(BaseModel):
         nullable=False
     )
 
+    # ISO-4217 currency in which this income was originally recorded.
+    currency = db.Column(db.String(3), nullable=False, default="NGN", server_default="NGN")
+
     received_date = db.Column(
         db.Date,
         nullable=False

@@ -161,9 +161,7 @@
                                                    text-success"
                                         >
 
-                                            ₦{{ "{:,.0f}".format(
-                                                goal.saved|default(0)|float
-                                            ) }}
+                                            {{ focost_money(goal.saved|default(0)|float, source_currency=goal.currency or "NGN") }}
 
                                         </div>
 
@@ -182,9 +180,7 @@
 
                                         <div class="fw-semibold small">
 
-                                            ₦{{ "{:,.0f}".format(
-                                                goal.target|default(0)|float
-                                            ) }}
+                                            {{ focost_money(goal.target|default(0)|float, source_currency=goal.currency or "NGN") }}
 
                                         </div>
 
@@ -207,9 +203,7 @@
                                                    text-danger"
                                         >
 
-                                            ₦{{ "{:,.0f}".format(
-                                                goal.remaining|default(0)|float
-                                            ) }}
+                                            {{ focost_money(goal.remaining|default(0)|float, source_currency=goal.currency or "NGN") }}
 
                                         </div>
 
@@ -232,9 +226,7 @@
                                                    text-primary"
                                         >
 
-                                            ₦{{ "{:,.0f}".format(
-                                                goal.monthly_contribution|default(0)|float
-                                            ) }}
+                                            {{ focost_money(goal.monthly_contribution|default(0)|float, source_currency=goal.currency or "NGN") }}
 
                                         </div>
 

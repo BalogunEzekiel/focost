@@ -56,9 +56,7 @@ Income
 
                     <h4 class="fw-bold text-success mt-2">
 
-                        ₦{{ "{:,.2f}".format(
-                            all_incomes|sum(attribute='amount')
-                        ) }}
+                        {{ focost_money(total_income_display, source_currency=focost_display_currency) }}
 
                     </h4>
 
@@ -296,9 +294,7 @@ Income
  
                                 <strong>
 
-                                    ₦{{ "{:,.2f}".format(
-                                        income.amount
-                                    ) }}
+                                    {{ focost_money(income.amount, source_currency=income.currency or "NGN", on_date=income.received_date) }}
 
                                 </strong>
 

@@ -34,14 +34,17 @@ class SettingsService:
 
     @staticmethod
     def update(user_id, preferences):
+        settings = SettingsService.get(user_id)
 
-        settings = SettingsService.get(
-            user_id
+        # Preserve existing preferences when updating only selected fields.
+        existing_preferences = settings.get_preferences()
+
+        merged_preferences = UserSettings._deep_merge(
+            existing_preferences,
+            preferences or {}
         )
 
-        settings.set_preferences(
-            preferences
-        )
+        settings.set_preferences(merged_preferences)
 
         db.session.commit()
 

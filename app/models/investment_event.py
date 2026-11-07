@@ -66,6 +66,9 @@ class InvestmentEvent(BaseModel):
         default=0,
     )
 
+    # Currency of event amounts; normally matches the linked asset currency.
+    currency = db.Column(db.String(3), nullable=False, default="NGN", server_default="NGN")
+
     previous_value = db.Column(
         db.Float
     )

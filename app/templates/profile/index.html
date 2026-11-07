@@ -9,7 +9,7 @@
 <div class="col-md-6"><label class="form-label">Email</label><input class="form-control" value="{{ current_user.email }}" disabled></div>
 <div class="col-md-6"><label class="form-label">Phone</label><input class="form-control" name="phone" value="{{ current_user.phone or '' }}"></div>
 <div class="col-md-6"><label class="form-label">Country</label><input class="form-control" name="country" value="{{ current_user.country or '' }}"></div>
-<div class="col-md-6"><label class="form-label">Currency</label><input class="form-control" name="currency" value="{{ current_user.currency or 'NGN' }}"></div>
+
 <div class="col-md-6"><label class="form-label">Occupation</label><input class="form-control" name="occupation" value="{{ current_user.occupation or '' }}"></div>
 <div class="col-md-6"><label class="form-label">Profile picture</label><input class="form-control" type="file" name="avatar" accept="image/png,image/jpeg,image/webp"></div>
 </div><button class="btn btn-primary mt-4">Save Profile</button></form>

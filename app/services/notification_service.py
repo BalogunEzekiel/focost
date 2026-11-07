@@ -27,6 +27,23 @@ class NotificationService:
 
     DEFAULT_LIMIT = 10
 
+    @staticmethod
+    def _format_amount(user_id, amount, source_currency="NGN", on_date=None):
+        """Format an amount in the user's display currency without relabeling.
+
+        If FX is unavailable, show the amount in its original currency code.
+        """
+        from app.services.currency_service import CurrencyService
+        from app.services.financial_currency_service import FinancialCurrencyService
+        target = FinancialCurrencyService.display_currency(user_id)
+        try:
+            return CurrencyService.format_converted(
+                amount, source_currency=source_currency or "NGN",
+                display_currency=target, on_date=on_date, include_code=True,
+            )
+        except Exception:
+            return CurrencyService.format(amount, source_currency or "NGN", include_code=True)
+
     # ==========================================================
     # Create Notification
     # ==========================================================
@@ -430,11 +447,13 @@ class NotificationService:
         amount,
         action_url=None,
         commit=True,
+        currency="NGN",
     ):
+        amount_text = NotificationService._format_amount(user_id, amount, currency)
         return NotificationService.create(
             user_id=user_id,
             title="Budget Exceeded",
-            message=f"{budget_name} exceeded by ₦{amount:,.2f}.",
+            message=f"{budget_name} exceeded by {amount_text}.",
             level="warning",
             notification_type="budget",
             icon="bi-exclamation-triangle-fill",
@@ -585,10 +604,13 @@ class NotificationService:
         action_url=None,
         commit=True,
     ):
+        from app.services.financial_currency_service import FinancialCurrencyService
+        display_currency = FinancialCurrencyService.display_currency(user_id)
+        balance_text = NotificationService._format_amount(user_id, balance, display_currency)
         return NotificationService.create(
             user_id=user_id,
             title="Low Balance",
-            message=f"Current balance is ₦{balance:,.2f}.",
+            message=f"Current balance is {balance_text}.",
             level="danger",
             notification_type="system",
             icon="bi-wallet2",
@@ -607,12 +629,14 @@ class NotificationService:
         amount,
         action_url=None,
         commit=True,
+        currency="NGN",
     ):
+        amount_text = NotificationService._format_amount(user_id, amount, currency)
         return NotificationService.create(
             user_id=user_id,
             title="Income Added",
             message=(
-                f"₦{amount:,.2f} income "
+                f"{amount_text} income "
                 f"received from {source}."
             ),
             level="success",
@@ -633,12 +657,14 @@ class NotificationService:
         amount,
         action_url=None,
         commit=True,
+        currency="NGN",
     ):
+        amount_text = NotificationService._format_amount(user_id, amount, currency)
         return NotificationService.create(
             user_id=user_id,
             title="Expense Recorded",
             message=(
-                f"₦{amount:,.2f} spent on "
+                f"{amount_text} spent on "
                 f"{category}."
             ),
             level="info",
@@ -805,6 +831,7 @@ class NotificationService:
         # ------------------------------------------------------
 
         from app.services.dashboard_service import DashboardService
+        from app.services.financial_currency_service import FinancialCurrencyService
 
         cash_flow = DashboardService._cash_flow_totals(
             user_id=user_id,
@@ -820,7 +847,7 @@ class NotificationService:
 
                 title="Low Balance",
 
-                message=f"Current balance is ₦{balance:,.2f}.",
+                message=f"Current balance is {NotificationService._format_amount(user_id, balance, FinancialCurrencyService.display_currency(user_id))}.",
 
                 level="danger",
 

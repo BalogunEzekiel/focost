@@ -1,13 +1,16 @@
 from app.extensions import db
 from app.models.budget import Budget
+from app.models.user import User
 
 class BudgetService:
 
     @staticmethod
     def create_budget(form, user_id):
 
+        user = db.session.get(User, user_id)
         budget = Budget(
             user_id=user_id,
+            currency=(user.base_currency if user else "NGN") or "NGN",
             category=form.category.data,
             amount=float(form.amount.data),
             period=form.period.data,

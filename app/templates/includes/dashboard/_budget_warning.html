@@ -50,7 +50,7 @@
                         <small class="text-muted">
 
                             Budget:
-                            ₦{{ "{:,.2f}".format(budget.budget) }}
+                            {{ focost_money(budget.budget, source_currency=budget.currency or "NGN") }}
 
                         </small>
 
@@ -101,7 +101,7 @@
 
                         <div class="fw-semibold small">
 
-                            ₦{{ "{:,.0f}".format(budget.spent) }}
+                            {{ focost_money(budget.spent, source_currency=budget.currency or "NGN") }}
 
                         </div>
 
@@ -118,7 +118,7 @@
 
                         <div class="fw-semibold small">
 
-                            ₦{{ "{:,.0f}".format(budget.remaining) }}
+                            {{ focost_money(budget.remaining, source_currency=budget.currency or "NGN") }}
 
                         </div>
 
@@ -135,7 +135,7 @@
 
                         <div class="fw-semibold small">
 
-                            ₦{{ "{:,.0f}".format(budget.projected) }}
+                            {{ focost_money(budget.projected, source_currency=budget.currency or "NGN") }}
 
                         </div>
 

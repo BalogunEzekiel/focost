@@ -19,7 +19,7 @@
                         </small>
 
                         <div class="fw-bold fs-6">
-                            ₦{{ "{:,.2f}".format(dashboard.summary.balance) }}
+                            {{ focost_money(dashboard.summary.balance, source_currency=focost_display_currency) }}
                         </div>
 
                         <small class="text-success" style="font-size:.65rem;">
@@ -59,11 +59,11 @@
                         </small>
 
                         <div class="fw-bold text-success fs-6">
-                            ₦{{ "{:,.2f}".format(dashboard.summary.income) }}
+                            {{ focost_money(dashboard.summary.income, source_currency=focost_display_currency) }}
                         </div>
 
                         <small class="text-success" style="font-size:.65rem;">
-                            ↑ ₦{{ "{:,.2f}".format(dashboard.largest_income) }}
+                            ↑ {{ focost_money(dashboard.largest_income, source_currency=focost_display_currency) }}
                         </small>
 
                     </div>
@@ -99,11 +99,11 @@
                         </small>
 
                         <div class="fw-bold text-danger fs-6">
-                            ₦{{ "{:,.2f}".format(dashboard.summary.expenses) }}
+                            {{ focost_money(dashboard.summary.expenses, source_currency=focost_display_currency) }}
                         </div>
 
                         <small class="text-danger" style="font-size:.65rem;">
-                            ↓ ₦{{ "{:,.2f}".format(dashboard.largest_expense) }}
+                            ↓ {{ focost_money(dashboard.largest_expense, source_currency=focost_display_currency) }}
                         </small>
 
                     </div>
@@ -139,7 +139,7 @@
                         </small>
 
                         <div class="fw-bold text-primary fs-6">
-                            ₦{{ "{:,.2f}".format(dashboard.summary.savings) }}
+                            {{ focost_money(dashboard.summary.savings, source_currency=focost_display_currency) }}
                         </div>
 
                         <small class="text-primary" style="font-size:.65rem;">
@@ -219,7 +219,7 @@
                         </small>
 
                         <div class="fw-bold text-warning fs-6">
-                            ₦{{ "{:,.2f}".format(dashboard.average_daily_spending) }}
+                            {{ focost_money(dashboard.average_daily_spending, source_currency=focost_display_currency) }}
                         </div>
 
                         <small class="text-warning" style="font-size:.65rem;">

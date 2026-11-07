@@ -135,10 +135,16 @@ def list_income():
 
     incomes = income_pagination.items
 
+    from app.services.financial_currency_service import FinancialCurrencyService
+    display_currency = FinancialCurrencyService.display_currency(current_user.id)
+    total_income_display = FinancialCurrencyService.sum_records(
+        all_incomes, display_currency, date_field="received_date"
+    )
     return render_template(
         "income/list.html",
         incomes=incomes,
         all_incomes=all_incomes,
+        total_income_display=total_income_display,
         income_pagination=income_pagination,
         search=search,
     )
@@ -171,6 +177,7 @@ def add_income():
             source=form.source.data,
             category=form.category.data,
             amount=float(form.amount.data),
+            currency=(current_user.base_currency or "NGN").upper(),
             received_date=form.received_date.data,
             notes=form.notes.data,
             recurring=form.recurring.data,

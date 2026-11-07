@@ -13,7 +13,7 @@
           <thead class="table-light"><tr><th class="ps-4">Date</th><th>Type</th><th>Category</th><th>Description</th><th class="text-end pe-4">Amount</th></tr></thead>
           <tbody>
           {% for tx in transactions %}
-            <tr><td class="ps-4 text-nowrap">{{ tx.date.strftime('%d %b %Y') }}</td><td><span class="badge {% if tx.type == 'Income' %}text-bg-success{% else %}text-bg-danger{% endif %}">{{ tx.type }}</span></td><td>{{ tx.category or 'Uncategorized' }}</td><td>{{ tx.description or '—' }}</td><td class="text-end pe-4 fw-semibold {% if tx.type == 'Income' %}text-success{% else %}text-danger{% endif %}">₦{{ "{:,.2f}".format(tx.amount) }}</td></tr>
+            <tr><td class="ps-4 text-nowrap">{{ tx.date.strftime('%d %b %Y') }}</td><td><span class="badge {% if tx.type == 'Income' %}text-bg-success{% else %}text-bg-danger{% endif %}">{{ tx.type }}</span></td><td>{{ tx.category or 'Uncategorized' }}</td><td>{{ tx.description or '—' }}</td><td class="text-end pe-4 fw-semibold {% if tx.type == 'Income' %}text-success{% else %}text-danger{% endif %}">{{ focost_money(tx.amount, source_currency=tx.currency or "NGN", on_date=tx.date) }}</td></tr>
           {% else %}<tr><td colspan="5" class="text-center py-5 text-muted">No transactions match the selected filters.</td></tr>{% endfor %}
           </tbody>
         </table>

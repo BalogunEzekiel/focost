@@ -381,9 +381,7 @@
 
                                 <span class="text-success">
 
-                                    +₦{{ "{:,.2f}".format(
-                                        item.amount
-                                    ) }}
+                                    +{{ focost_money(item.amount, source_currency=focost_display_currency) }}
 
                                 </span>
 
@@ -391,9 +389,7 @@
 
                                 <span class="text-danger">
 
-                                    -₦{{ "{:,.2f}".format(
-                                        item.amount
-                                    ) }}
+                                    -{{ focost_money(item.amount, source_currency=focost_display_currency) }}
 
                                 </span>
 

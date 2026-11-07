@@ -205,11 +205,17 @@ def list_expense():
     # RENDER
     # ======================================================
 
+    from app.services.financial_currency_service import FinancialCurrencyService
+    display_currency = FinancialCurrencyService.display_currency(current_user.id)
+    total_expense_display = FinancialCurrencyService.sum_records(
+        filtered_expenses, display_currency, date_field="expense_date"
+    )
     return render_template(
         "expense/list.html",
 
         # Current page records
         expenses=expenses,
+        total_expense_display=total_expense_display,
 
         # Pagination object
         pagination=pagination,
@@ -262,6 +268,7 @@ def add_expense():
             amount=float(
                 form.amount.data
             ),
+            currency=(current_user.base_currency or "NGN").upper(),
 
             payment_method=form.payment_method.data,
 

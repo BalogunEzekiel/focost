@@ -4,6 +4,7 @@ from app.models.goal import Goal
 from app.models.goal_contribution import GoalContribution
 from app.models.expense import Expense
 from app.models.income import Income
+from app.models.user import User
 from app.models.notification import Notification
 from datetime import datetime
 from app.utils.timezone import today
@@ -13,8 +14,10 @@ class GoalService:
 
     @staticmethod
     def create_goal(form, user_id):
+        user = db.session.get(User, user_id)
         goal = Goal(
             user_id=user_id,
+            currency=(user.base_currency if user else "NGN") or "NGN",
             title=form.title.data,
             goal_type=form.goal_type.data,
             target_amount=float(form.target_amount.data),
@@ -112,6 +115,7 @@ class GoalService:
                     source=goal.title,
                     category="Goal Termination Return",
                     amount=total_return,
+                    currency=goal.currency or "NGN",
                     received_date=termination_date,
                     notes=(
                         f"Returned contributions from terminated goal: "
@@ -151,9 +155,10 @@ class GoalService:
             )
 
         if amount > remaining + 1e-9:
+            from app.services.currency_service import CurrencyService
+            remaining_text = CurrencyService.format(remaining, goal.currency or "NGN", include_code=True)
             raise ValueError(
-                f"Contribution cannot exceed the remaining goal amount of "
-                f"{remaining:,.2f}."
+                f"Contribution cannot exceed the remaining goal amount of {remaining_text}."
             )
 
         allowed, message = SubscriptionService.can_add_transaction(user_id)
@@ -165,11 +170,17 @@ class GoalService:
             user_id,
             as_of=contribution_date,
         )
+        from app.services.financial_currency_service import FinancialCurrencyService
+        display_currency = FinancialCurrencyService.display_currency(user_id)
+        contribution_in_display_currency = FinancialCurrencyService.convert_value(
+            amount, goal.currency or "NGN", display_currency, on_date=contribution_date
+        )
 
-        if amount > available_cash + 1e-9:
+        if contribution_in_display_currency > available_cash + 1e-9:
+            from app.services.currency_service import CurrencyService
+            available_text = CurrencyService.format(available_cash, display_currency, include_code=True)
             raise ValueError(
-                f"Insufficient available balance. Available balance is "
-                f"{available_cash:,.2f}."
+                f"Insufficient available balance. Available balance is {available_text}."
             )
 
         expense = Expense(
@@ -178,6 +189,7 @@ class GoalService:
             merchant=goal.title,
             description=f"Contribution to goal: {goal.title}",
             amount=amount,
+            currency=goal.currency or "NGN",
             payment_method="Internal Transfer",
             expense_date=contribution_date,
             notes=form.note.data,
@@ -192,6 +204,7 @@ class GoalService:
             goal_id=goal.id,
             user_id=user_id,
             amount=amount,
+            currency=goal.currency or "NGN",
             contribution_date=contribution_date,
             note=form.note.data,
             expense_id=expense.id,
@@ -224,9 +237,10 @@ class GoalService:
         )
 
         if new_amount > remaining_after_others + 1e-9:
+            from app.services.currency_service import CurrencyService
+            remaining_text = CurrencyService.format(remaining_after_others, goal.currency or "NGN", include_code=True)
             raise ValueError(
-                f"Contribution cannot exceed the remaining goal amount of "
-                f"{remaining_after_others:,.2f}."
+                f"Contribution cannot exceed the remaining goal amount of {remaining_text}."
             )
 
         linked_expense = contribution.expense
@@ -237,11 +251,18 @@ class GoalService:
             exclude_expense_id=exclude_id,
             as_of=form.contribution_date.data,
         )
+        from app.services.financial_currency_service import FinancialCurrencyService
+        display_currency = FinancialCurrencyService.display_currency(user_id)
+        contribution_in_display_currency = FinancialCurrencyService.convert_value(
+            new_amount, goal.currency or "NGN", display_currency,
+            on_date=form.contribution_date.data,
+        )
 
-        if new_amount > available_cash + 1e-9:
+        if contribution_in_display_currency > available_cash + 1e-9:
+            from app.services.currency_service import CurrencyService
+            available_text = CurrencyService.format(available_cash, display_currency, include_code=True)
             raise ValueError(
-                f"Insufficient available balance. Available balance is "
-                f"{available_cash:,.2f}."
+                f"Insufficient available balance. Available balance is {available_text}."
             )
 
         contribution.amount = new_amount
@@ -273,9 +294,16 @@ class GoalService:
         total_target = 0
         total_saved = 0
 
+        from app.services.financial_currency_service import FinancialCurrencyService
+        display_currency = FinancialCurrencyService.display_currency(user_id)
+        from app.utils.timezone import today
         for goal in goals:
-            total_target += goal.target_amount
-            total_saved += goal.saved_amount
+            total_target += FinancialCurrencyService.convert_value(
+                goal.target_amount, goal.currency or "NGN", display_currency, on_date=today()
+            )
+            total_saved += FinancialCurrencyService.convert_value(
+                goal.saved_amount, goal.currency or "NGN", display_currency, on_date=today()
+            )
 
             if goal.progress_status == "Completed":
                 completed += 1

@@ -3,6 +3,7 @@ from flask_login import login_required, current_user
 
 from app.rbac.decorators import permission_required
 from app.services.announcement_service import AnnouncementService
+from app.services.email_service import EmailService
 from app.models.announcement import Announcement
 from app.models.announcement_user_state import AnnouncementUserState
 from app.models.notification import Notification
@@ -22,6 +23,7 @@ def index():
         "admin/communications.html",
         announcements=items,
         audience_options=AnnouncementService.audience_options(),
+        sender_options=EmailService.SENDERS,
     )
 
 
@@ -49,6 +51,8 @@ def create():
             message_background=data.get("message_background", "plain"),
             email_signature_enabled="email_signature_enabled" in data,
             email_signature=data.get("email_signature", "").strip() or None,
+            recipient_emails_raw=data.get("recipient_emails", ""),
+            sender_identity=data.get("sender_identity", "team"),
         )
         if data.get("publish") == "1":
             AnnouncementService.publish(item, current_user.id)
@@ -109,6 +113,8 @@ def edit(public_id):
             item.message_background = data.get("message_background", "plain")
             item.email_signature_enabled = "email_signature_enabled" in data
             item.email_signature = AnnouncementService.sanitize_message(data.get("email_signature", "").strip()) or None
+            item.recipient_emails = json.dumps(AnnouncementService.normalize_individual_emails(data.get("recipient_emails", "")))
+            item.sender_identity = AnnouncementService.normalize_sender(data.get("sender_identity", "team"))
             item.action_url = AnnouncementService.validate_url(item.action_url, "Action URL")
             item.image_url = AnnouncementService.validate_url(item.image_url, "Image/Flyer URL")
             if data.get("publish") == "1":
@@ -121,7 +127,8 @@ def edit(public_id):
             flash(str(exc), "danger")
         return redirect(url_for("admin_communications.index"))
     return render_template("admin/communications_edit.html", item=item,
-                           audience_options=AnnouncementService.audience_options())
+                           audience_options=AnnouncementService.audience_options(),
+                           sender_options=EmailService.SENDERS)
 
 
 @admin_communications_bp.post("/<public_id>/delete")

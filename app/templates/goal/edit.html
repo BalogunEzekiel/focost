@@ -89,7 +89,7 @@ Edit Goal
                             <div class="input-group">
 
                                 <span class="input-group-text">
-                                    ₦
+                                    {{ focost_currencies.get(focost_base_currency, {}).get("symbol", "₦") }}
                                 </span>
 
                                 {{ form.target_amount(class="form-control") }}

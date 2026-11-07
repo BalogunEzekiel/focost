@@ -269,9 +269,9 @@ def confirm_bank_transaction(record_id):
         flash(limit_message or "Your active subscription does not allow another transaction.", "warning")
         return redirect(url_for("integrations.index"))
     if kind == "expense":
-        db.session.add(Expense(user_id=current_user.id, category=category, merchant=desc[:150], description=desc, amount=amount, payment_method="Bank sync", expense_date=tx_date, notes=f"Confirmed read-only bank transaction #{record.provider_transaction_id}"))
+        db.session.add(Expense(user_id=current_user.id, category=category, merchant=desc[:150], description=desc, amount=amount, currency=(record.currency or record.connection.currency or current_user.base_currency or "NGN").upper(), payment_method="Bank sync", expense_date=tx_date, notes=f"Confirmed read-only bank transaction #{record.provider_transaction_id}"))
     else:
-        db.session.add(Income(user_id=current_user.id, source=desc[:150], category=category, amount=amount, received_date=tx_date, notes=f"Confirmed read-only bank transaction #{record.provider_transaction_id}"))
+        db.session.add(Income(user_id=current_user.id, source=desc[:150], category=category, amount=amount, currency=(record.currency or record.connection.currency or current_user.base_currency or "NGN").upper(), received_date=tx_date, notes=f"Confirmed read-only bank transaction #{record.provider_transaction_id}"))
     record.status = "imported"
     db.session.commit()
     from app.audit.service import AuditService

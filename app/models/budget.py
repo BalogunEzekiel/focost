@@ -27,6 +27,9 @@ class Budget(BaseModel):
         nullable=False
     )
 
+    # Currency of the budget limit and its spending calculations.
+    currency = db.Column(db.String(3), nullable=False, default="NGN", server_default="NGN")
+
     period = db.Column(
         db.String(20),
         default="Monthly"

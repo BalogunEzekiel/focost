@@ -17,6 +17,10 @@ class NotificationDeliveryService:
             return False
         settings = UserSettings.query.filter_by(user_id=user_id).first()
         prefs = settings.get_preferences() if settings else UserSettings.DEFAULTS
+        from app.services.language_service import LanguageService
+        language_code = LanguageService.get(user_id)
+        title = LanguageService.translate_text(language_code, title)
+        message = LanguageService.translate_text(language_code, message)
         if not prefs.get("notifications", {}).get("email", False):
             return False
         host = os.getenv("MAIL_HOST")
@@ -29,7 +33,14 @@ class NotificationDeliveryService:
         msg["Subject"] = f"FOCOST: {title}"
         msg["From"] = sender
         msg["To"] = user.email
-        msg.set_content(message)
+        msg.set_content(f"{message}\n\nFOCOST")
+        from html import escape
+        msg.add_alternative(
+            "<!doctype html><html><body style=\"font-family:Arial,sans-serif;color:#263238;line-height:1.6\">"
+            f"<h2>{escape(str(title))}</h2><p>{escape(str(message))}</p>"
+            "<p style=\"color:#607d8b;font-size:12px\">FOCOST</p></body></html>",
+            subtype="html",
+        )
         port = int(os.getenv("MAIL_PORT", "587"))
         with smtplib.SMTP(host, port, timeout=15) as smtp:
             smtp.starttls()

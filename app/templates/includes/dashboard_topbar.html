@@ -18,7 +18,7 @@
                     class="btn btn-outline-secondary d-lg-none"
                     id="sidebarToggle"
                     type="button"
-                    aria-label="Toggle Sidebar">
+                    aria-label="{{ focost_t('dashboard') }}">
 
                     <i class="bi bi-list fs-4"></i>
 
@@ -37,7 +37,7 @@
                     <input
                         type="search"
                         class="form-control form-control-sm ps-5"
-                        placeholder="Search..."
+                        placeholder="{{ focost_t('search') }}"
                         autocomplete="off">
 
                 </div>
@@ -80,7 +80,7 @@
 
                     <div class="d-flex justify-content-between align-items-center px-3 py-2 border-bottom">
 
-                        <strong>Alerts</strong>
+                        <strong>{{ focost_t('alerts') }}</strong>
 
                         <div>
 
@@ -132,7 +132,7 @@
 
                                                 <div class="fw-semibold small">
 
-                                                    {{ notification.title }}
+                                                    {{ focost_translate_text(notification.title) }}
 
                                                 </div>
 
@@ -159,7 +159,7 @@
 
                                         <small class="text-muted d-block mt-2">
 
-                                            {{ notification.message }}
+                                            {{ focost_translate_text(notification.message) }}
 
                                         </small>
 

@@ -46,6 +46,19 @@ def create_app(config_override=None):
     login_manager.init_app(app)
     csrf.init_app(app)
 
+    from app.services.exchange_rate_service import ExchangeRateUnavailable
+
+    @app.errorhandler(ExchangeRateUnavailable)
+    def handle_currency_provider_failure(error):
+        app.logger.warning("Currency conversion unavailable: %s", error)
+        if request.path.startswith("/api/") or request.is_json:
+            return jsonify({
+                "success": False,
+                "code": "CURRENCY_CONVERSION_UNAVAILABLE",
+                "message": str(error),
+            }), 503
+        return render_template("errors/503.html"), 503
+
     # ---------------------------------------------------------
     # Progressive Web App (PWA) service worker
     # ---------------------------------------------------------
@@ -366,9 +379,33 @@ def create_app(config_override=None):
     register_context_processors(app)
 
     @app.context_processor
+    def currency_context():
+        from flask_login import current_user
+        from app.services.currency_service import CurrencyService
+        def focost_money(amount, code=None, source_currency="NGN", on_date=None):
+            display_currency = code or (current_user.currency if current_user.is_authenticated else "NGN")
+            try:
+                return CurrencyService.format_converted(
+                    amount, source_currency=source_currency,
+                    display_currency=display_currency, on_date=on_date,
+                )
+            except Exception:
+                # Never relabel an unconverted amount with the target symbol.
+                return CurrencyService.format(amount, source_currency, include_code=True)
+
+        def focost_original_money(amount, source_currency="NGN", include_code=False):
+            return CurrencyService.format(amount, source_currency or "NGN", include_code=include_code)
+
+        return {
+            "focost_currencies": CurrencyService.available(),
+            "focost_money": focost_money,
+            "focost_original_money": focost_original_money,
+        }
+
+    @app.context_processor
     def integration_context():
         from flask_login import current_user
-        from app.services.language_service import LanguageService, LANGUAGES
+        from app.services.language_service import LanguageService, LANGUAGES, CATALOGUE, TEXT_KEY_MAP
         from app.services.feature_access_service import FeatureAccessService
         try:
             code = LanguageService.get(current_user.id if current_user.is_authenticated else None)
@@ -386,7 +423,7 @@ def create_app(config_override=None):
         except Exception:
             code, enabled, can_manage_modules = "en", False, False
         speech = {"en": "en-NG", "yo": "yo-NG", "ha": "ha-NG", "fr": "fr-FR", "es": "es-ES", "pt": "pt-PT"}
-        return {"focost_language": code, "focost_languages": LanguageService.available(), "focost_language_enabled": enabled, "focost_speech_language": speech.get(code, "en-NG"), "focost_can_manage_modules": can_manage_modules, "focost_t": lambda key: LanguageService.translate(code, key)}
+        return {"focost_language": code, "focost_languages": LanguageService.available(), "focost_language_enabled": enabled, "focost_speech_language": speech.get(code, "en-NG"), "focost_can_manage_modules": can_manage_modules, "focost_t": lambda key: LanguageService.translate(code, key), "focost_translate_text": lambda value: LanguageService.translate_text(code, value), "focost_translations": CATALOGUE.get(code, CATALOGUE["en"]), "focost_text_keys": TEXT_KEY_MAP, "focost_language_direction": LANGUAGES.get(code, LANGUAGES["en"]).get("dir", "ltr"), "focost_display_currency": (current_user.currency or "NGN") if current_user.is_authenticated else "NGN", "focost_base_currency": (current_user.base_currency or "NGN") if current_user.is_authenticated else "NGN"}
 
     from .seeds.rbac_seed import RBACSeed
     from .seeds.compliance_seed import seed_policies

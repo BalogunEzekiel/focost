@@ -178,11 +178,11 @@
                 </td>
 
                 <td>
-                  ₦{{ "{:,.2f}".format(event.previous_value or 0) }}
+                  {{ focost_money(event.previous_value or 0, source_currency=event.currency or "NGN", on_date=event.event_date) }}
                 </td>
 
                 <td>
-                  ₦{{ "{:,.2f}".format(event.new_value or 0) }}
+                  {{ focost_money(event.new_value or 0, source_currency=event.currency or "NGN", on_date=event.event_date) }}
                 </td>
 
                 <td
@@ -192,7 +192,7 @@
                            text-danger
                          {% endif %}"
                 >
-                  ₦{{ "{:,.2f}".format(event.realized_gain_loss or 0) }}
+                  {{ focost_money(event.realized_gain_loss or 0, source_currency=event.currency or "NGN", on_date=event.event_date) }}
                 </td>
 
                 <td class="text-end">

@@ -133,9 +133,7 @@ Transaction Details
                                {% endif %}"
                     >
 
-                        ₦{{ "{:,.2f}".format(
-                            transaction.amount
-                        ) }}
+                        {{ focost_money(transaction.amount, source_currency=transaction.currency or "NGN", on_date=transaction.date) }}
 
                     </h3>
 

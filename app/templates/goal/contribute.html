@@ -75,7 +75,7 @@ Contribute to Goal
 
                         <strong>Target</strong><br>
 
-                        ₦{{ "{:,.2f}".format(goal.target_amount) }}
+                        {{ focost_money(goal.target_amount, source_currency=goal.currency or "NGN") }}
 
                     </p>
 
@@ -83,7 +83,7 @@ Contribute to Goal
 
                         <strong>Current Savings</strong><br>
 
-                        ₦{{ "{:,.2f}".format(goal.saved_amount) }}
+                        {{ focost_money(goal.saved_amount, source_currency=goal.currency or "NGN") }}
 
                     </p>
 
@@ -91,7 +91,7 @@ Contribute to Goal
 
                         <strong>Remaining</strong><br>
 
-                        ₦{{ "{:,.2f}".format(goal.remaining_amount) }}
+                        {{ focost_money(goal.remaining_amount, source_currency=goal.currency or "NGN") }}
 
                     </p>
 
@@ -166,7 +166,7 @@ Contribute to Goal
 
                                 <span class="input-group-text">
 
-                                    ₦
+                                    {{ focost_currencies.get(goal.currency or "NGN", {}).get("symbol", "₦") }}
 
                                 </span>
 

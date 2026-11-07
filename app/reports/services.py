@@ -10,7 +10,8 @@ from app.models.goal import Goal
 from app.models.investment_event import InvestmentEvent
 from app.models.asset import Asset
 from app.services.dashboard_service import DashboardService
-
+from app.services.financial_currency_service import FinancialCurrencyService
+from decimal import Decimal
 
 class ReportService:
     """All report calculations live here so the UI, PDF and Excel exports
@@ -125,11 +126,16 @@ class ReportService:
             Expense.expense_date.desc(), Expense.id.desc()
         ).all()
 
-        income_total = sum(float(x.amount or 0) for x in incomes)
-        expense_total = sum(float(x.amount or 0) for x in expenses)
-        operating_expense_total = sum(
-            float(x.amount or 0) for x in expenses
-            if x.transaction_class in (None, "expense")
+        display_currency = FinancialCurrencyService.display_currency(user_id)
+        income_total = FinancialCurrencyService.sum_records(
+            incomes, display_currency, date_field="received_date"
+        )
+        expense_total = FinancialCurrencyService.sum_records(
+            expenses, display_currency, date_field="expense_date"
+        )
+        operating_expense_total = FinancialCurrencyService.sum_records(
+            [x for x in expenses if x.transaction_class in (None, "expense")],
+            display_currency, date_field="expense_date"
         )
         savings = income_total - expense_total
         savings_rate = (savings / income_total * 100) if income_total else 0
@@ -155,7 +161,12 @@ class ReportService:
                 "type": "Income",
                 "category": item.category,
                 "description": item.source,
-                "amount": float(item.amount or 0),
+                "amount": FinancialCurrencyService.convert_record(
+                    item, display_currency, date_field="received_date"
+                ),
+                "currency": display_currency,
+                "original_amount": float(item.amount or 0),
+                "original_currency": item.currency or "NGN",
             })
 
         for item in expenses:
@@ -165,7 +176,12 @@ class ReportService:
                 "type": "Expense",
                 "category": item.category,
                 "description": item.merchant,
-                "amount": float(item.amount or 0),
+                "amount": FinancialCurrencyService.convert_record(
+                    item, display_currency, date_field="expense_date"
+                ),
+                "currency": display_currency,
+                "original_amount": float(item.amount or 0),
+                "original_currency": item.currency or "NGN",
             })
 
         recent_transactions.sort(
@@ -175,16 +191,22 @@ class ReportService:
 
         # Financial-position components that are intentionally kept separate
         # from ordinary operating income/expense totals.
-        investment_funding = sum(float(x.amount or 0) for x in Expense.query.filter(
+        investment_funding_rows = Expense.query.filter(
             Expense.user_id == user_id, Expense.transaction_class == "investment",
             Expense.expense_date >= ReportService._date(start_date) if ReportService._date(start_date) else True,
             Expense.expense_date <= ReportService._date(end_date) if ReportService._date(end_date) else True,
-        ).all())
-        goal_contributions = sum(float(x.amount or 0) for x in Expense.query.filter(
+        ).all()
+        investment_funding = FinancialCurrencyService.sum_records(
+            investment_funding_rows, display_currency, date_field="expense_date"
+        )
+        goal_contribution_rows = Expense.query.filter(
             Expense.user_id == user_id, Expense.transaction_class == "goal_contribution",
             Expense.expense_date >= ReportService._date(start_date) if ReportService._date(start_date) else True,
             Expense.expense_date <= ReportService._date(end_date) if ReportService._date(end_date) else True,
-        ).all())
+        ).all()
+        goal_contributions = FinancialCurrencyService.sum_records(
+            goal_contribution_rows, display_currency, date_field="expense_date"
+        )
         # Valuation gains/losses are investment-value changes, not
         # Income/Expense transactions. Keep them available as investment
         # reporting metrics, sourced from the investment event ledger.
@@ -205,23 +227,35 @@ class ReportService:
 
         valuation_events = valuation_query.all()
         investment_gains = sum(
-            float(x.realized_gain_loss or 0)
+            FinancialCurrencyService.convert_record(
+                x, display_currency, amount_field="realized_gain_loss", date_field="event_date"
+            )
             for x in valuation_events
             if float(x.realized_gain_loss or 0) > 0
         )
         investment_losses = sum(
-            abs(float(x.realized_gain_loss or 0))
+            abs(FinancialCurrencyService.convert_record(
+                x, display_currency, amount_field="realized_gain_loss", date_field="event_date"
+            ))
             for x in valuation_events
             if float(x.realized_gain_loss or 0) < 0
         )
-        liquidation_proceeds = sum(float(x.amount or 0) for x in Income.query.filter(
+        liquidation_rows = Income.query.filter(
             Income.user_id == user_id, Income.transaction_class == "investment_liquidation",
             Income.received_date >= ReportService._date(start_date) if ReportService._date(start_date) else True,
             Income.received_date <= ReportService._date(end_date) if ReportService._date(end_date) else True,
-        ).all())
+        ).all()
+        liquidation_proceeds = FinancialCurrencyService.sum_records(
+            liquidation_rows, display_currency, date_field="received_date"
+        )
         active_investments = Asset.query.filter_by(user_id=user_id, is_active=True).filter(Asset.asset_type.ilike("investment")).all()
-        investment_cost_basis = sum(float(a.cost_basis if a.cost_basis is not None else a.acquisition_cost or 0) for a in active_investments)
-        investment_current_value = sum(float(a.current_value or 0) for a in active_investments)
+        investment_cost_basis = sum(FinancialCurrencyService.convert_value(
+            a.cost_basis if a.cost_basis is not None else a.acquisition_cost or 0,
+            a.currency, display_currency, on_date=today()
+        ) for a in active_investments)
+        investment_current_value = sum(FinancialCurrencyService.convert_value(
+            a.current_value or 0, a.currency, display_currency, on_date=today()
+        ) for a in active_investments)
 
         return {
             "income": income_total,
@@ -253,76 +287,289 @@ class ReportService:
         }
 
     @staticmethod
-    def income_by_category(user_id, start_date=None, end_date=None, category=None):
-        q = db.session.query(Income.category, func.sum(Income.amount))
-        q = ReportService._filters(q, Income, user_id, ReportService._date(start_date), ReportService._date(end_date), category, Income.received_date)
-        rows = q.group_by(Income.category).order_by(func.sum(Income.amount).desc()).all()
-        return {"labels": [r[0] or "Uncategorized" for r in rows], "values": [float(r[1] or 0) for r in rows]}
+    def income_by_category(
+        user_id,
+        start_date=None,
+        end_date=None,
+        category=None,
+    ):
+        rows = ReportService._income_query(
+            user_id,
+            start_date,
+            end_date,
+            category,
+        ).all()
+
+        target = FinancialCurrencyService.display_currency(
+            user_id
+        )
+
+        totals = {}
+
+        for row in rows:
+            key = row.category or "Uncategorized"
+
+            converted_amount = FinancialCurrencyService.convert_record(
+                row,
+                target,
+                date_field="received_date",
+            )
+
+            totals[key] = (
+                totals.get(key, Decimal("0"))
+                + converted_amount
+            )
+
+        ordered = sorted(
+            totals.items(),
+            key=lambda item: item[1],
+            reverse=True,
+        )
+
+        return {
+            "labels": [
+                item[0]
+                for item in ordered
+            ],
+            "values": [
+                round(float(item[1]), 2)
+                for item in ordered
+            ],
+        }
 
     @staticmethod
-    def expense_by_category(user_id, start_date=None, end_date=None, category=None):
-        q = db.session.query(Expense.category, func.sum(Expense.amount))
-        q = ReportService._filters(q, Expense, user_id, ReportService._date(start_date), ReportService._date(end_date), category, Expense.expense_date)
-        rows = q.group_by(Expense.category).order_by(func.sum(Expense.amount).desc()).all()
-        return {"labels": [r[0] or "Uncategorized" for r in rows], "values": [float(r[1] or 0) for r in rows]}
+    def expense_by_category(
+        user_id,
+        start_date=None,
+        end_date=None,
+        category=None,
+    ):
+        rows = ReportService._expense_query(
+            user_id,
+            start_date,
+            end_date,
+            category,
+        ).all()
+
+        target = FinancialCurrencyService.display_currency(
+            user_id
+        )
+
+        totals = {}
+
+        for row in rows:
+            key = row.category or "Uncategorized"
+
+            converted_amount = FinancialCurrencyService.convert_record(
+                row,
+                target,
+                date_field="expense_date",
+            )
+
+            totals[key] = (
+                totals.get(key, Decimal("0"))
+                + converted_amount
+            )
+
+        ordered = sorted(
+            totals.items(),
+            key=lambda item: item[1],
+            reverse=True,
+        )
+
+        return {
+            "labels": [
+                item[0]
+                for item in ordered
+            ],
+            "values": [
+                round(float(item[1]), 2)
+                for item in ordered
+            ],
+        }
 
     @staticmethod
-    def monthly_trend(user_id, start_date=None, end_date=None, category=None):
-        # Use a calendar-year/month aggregation, then fill missing months with zero.
-        # This avoids the old implementation's problem of mixing different years.
+    def monthly_trend(
+        user_id,
+        start_date=None,
+        end_date=None,
+        category=None,
+    ):
         start = ReportService._date(start_date)
         end = ReportService._date(end_date)
+
         if not start and not end:
             today_date = today()
-            start = date(today_date.year, 1, 1)
-            end = date(today_date.year, 12, 31)
-        elif start and not end:
-            end = date(start.year, 12, 31)
-        elif end and not start:
-            start = date(end.year, 1, 1)
 
-        if start.year != end.year:
-            # For multi-year reports, use month labels with year and aggregate chronologically.
-            income_rows = db.session.query(
-                extract("year", Income.received_date), extract("month", Income.received_date), func.sum(Income.amount)
-            ).filter(Income.user_id == user_id, Income.received_date >= start, Income.received_date <= end)
-            expense_rows = db.session.query(
-                extract("year", Expense.expense_date), extract("month", Expense.expense_date), func.sum(Expense.amount)
-            ).filter(
-                Expense.user_id == user_id,
-                Expense.expense_date >= start, Expense.expense_date <= end
+            start = date(
+                today_date.year,
+                1,
+                1,
             )
-            if category:
-                income_rows = income_rows.filter(Income.category == category)
-                expense_rows = expense_rows.filter(Expense.category == category)
-            income_rows = income_rows.group_by(extract("year", Income.received_date), extract("month", Income.received_date)).all()
-            expense_rows = expense_rows.group_by(extract("year", Expense.expense_date), extract("month", Expense.expense_date)).all()
-            keys = sorted({(int(y), int(m)) for y, m, _ in income_rows} | {(int(y), int(m)) for y, m, _ in expense_rows})
-            imap = {(int(y), int(m)): float(v or 0) for y, m, v in income_rows}
-            emap = {(int(y), int(m)): float(v or 0) for y, m, v in expense_rows}
-            return {
-                "labels": [date(y, m, 1).strftime("%b %Y") for y, m in keys],
-                "income": [imap.get(k, 0) for k in keys],
-                "expenses": [emap.get(k, 0) for k in keys],
-            }
 
-        year = start.year
-        income_rows = db.session.query(extract("month", Income.received_date), func.sum(Income.amount)).filter(
-            Income.user_id == user_id, Income.received_date >= start, Income.received_date <= end
+            end = date(
+                today_date.year,
+                12,
+                31,
+            )
+
+        elif start and not end:
+            end = date(
+                start.year,
+                12,
+                31,
+            )
+
+        elif end and not start:
+            start = date(
+                end.year,
+                1,
+                1,
+            )
+
+        target = FinancialCurrencyService.display_currency(
+            user_id
         )
-        expense_rows = db.session.query(extract("month", Expense.expense_date), func.sum(Expense.amount)).filter(
-            Expense.user_id == user_id,
-            Expense.expense_date >= start, Expense.expense_date <= end
+
+        income_rows = ReportService._income_query(
+            user_id,
+            start,
+            end,
+            category,
+        ).all()
+
+        expense_rows = ReportService._expense_query(
+            user_id,
+            start,
+            end,
+            category,
+        ).all()
+
+        # Decimal accumulators prevent float/Decimal errors.
+        income_map = {}
+        expense_map = {}
+
+        # ------------------------------------------------------
+        # Monthly income aggregation.
+        # ------------------------------------------------------
+
+        for row in income_rows:
+            if not row.received_date:
+                continue
+
+            key = (
+                row.received_date.year,
+                row.received_date.month,
+            )
+
+            converted_amount = FinancialCurrencyService.convert_record(
+                row,
+                target,
+                date_field="received_date",
+            )
+
+            income_map[key] = (
+                income_map.get(key, Decimal("0"))
+                + converted_amount
+            )
+
+        # ------------------------------------------------------
+        # Monthly expense aggregation.
+        # ------------------------------------------------------
+
+        for row in expense_rows:
+            if not row.expense_date:
+                continue
+
+            key = (
+                row.expense_date.year,
+                row.expense_date.month,
+            )
+
+            converted_amount = FinancialCurrencyService.convert_record(
+                row,
+                target,
+                date_field="expense_date",
+            )
+
+            expense_map[key] = (
+                expense_map.get(key, Decimal("0"))
+                + converted_amount
+            )
+
+        # ------------------------------------------------------
+        # Generate continuous month labels.
+        # ------------------------------------------------------
+
+        cursor = date(
+            start.year,
+            start.month,
+            1,
         )
-        if category:
-            income_rows = income_rows.filter(Income.category == category)
-            expense_rows = expense_rows.filter(Expense.category == category)
-        income_rows = income_rows.group_by(extract("month", Income.received_date)).all()
-        expense_rows = expense_rows.group_by(extract("month", Expense.expense_date)).all()
-        income_map = {int(m): float(v or 0) for m, v in income_rows}
-        expense_map = {int(m): float(v or 0) for m, v in expense_rows}
-        labels = [date(year, m, 1).strftime("%b") for m in range(1, 13)]
-        return {"labels": labels, "income": [income_map.get(m, 0) for m in range(1, 13)], "expenses": [expense_map.get(m, 0) for m in range(1, 13)]}
+
+        keys = []
+
+        while cursor <= end:
+            keys.append(
+                (
+                    cursor.year,
+                    cursor.month,
+                )
+            )
+
+            if cursor.month == 12:
+                cursor = date(
+                    cursor.year + 1,
+                    1,
+                    1,
+                )
+            else:
+                cursor = date(
+                    cursor.year,
+                    cursor.month + 1,
+                    1,
+                )
+
+        # ------------------------------------------------------
+        # Return chart-compatible values.
+        # ------------------------------------------------------
+
+        return {
+            "labels": [
+                date(year, month, 1).strftime(
+                    "%b %Y"
+                    if start.year != end.year
+                    else "%b"
+                )
+                for year, month in keys
+            ],
+
+            "income": [
+                round(
+                    float(
+                        income_map.get(
+                            key,
+                            Decimal("0"),
+                        )
+                    ),
+                    2,
+                )
+                for key in keys
+            ],
+
+            "expenses": [
+                round(
+                    float(
+                        expense_map.get(
+                            key,
+                            Decimal("0"),
+                        )
+                    ),
+                    2,
+                )
+                for key in keys
+            ],
+        }
 
     @staticmethod
     def get_summary(user_id, start_date=None, end_date=None, category=None):
@@ -340,6 +587,7 @@ class ReportService:
         financial_position = DashboardService.financial_position_summary(user_id)
 
         return {
+            "display_currency": FinancialCurrencyService.display_currency(user_id),
             "summary": summary,
             "financial_position": financial_position,
             "income_categories": ReportService.income_by_category(user_id, start_date, end_date, category),

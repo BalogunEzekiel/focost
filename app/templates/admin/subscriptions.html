@@ -288,7 +288,7 @@ Subscription Management
                                         </span>
                                     {% else %}
                                         <span class="fw-semibold">
-                                            ₦{{ "{:,.2f}".format(plan.price) }}
+                                            {{ focost_original_money(plan.price, plan.currency or 'NGN') }}
                                         </span>
                                     {% endif %}
 
@@ -627,7 +627,7 @@ Subscription Management
         <div class="card-header bg-white border-bottom"><h5 class="fw-bold mb-0">Recent Payment Transactions</h5></div>
         <div class="table-responsive"><table class="table table-hover align-middle mb-0"><thead><tr><th>Reference</th><th>User</th><th>Plan</th><th>Amount</th><th>Status</th><th>Created</th></tr></thead><tbody>
         {% for tx in payment_transactions|default([]) %}
-        <tr><td><code>{{ tx.reference }}</code></td><td>{{ tx.user.email if tx.user else '—' }}</td><td>{{ tx.plan.name if tx.plan else '—' }}</td><td>₦{{ '{:,.2f}'.format(tx.amount_minor / 100) }}</td><td>{{ tx.status|title }}</td><td>{{ tx.created_at.strftime('%d %b %Y %H:%M') if tx.created_at else '—' }}</td></tr>
+        <tr><td><code>{{ tx.reference }}</code></td><td>{{ tx.user.email if tx.user else '—' }}</td><td>{{ tx.plan.name if tx.plan else '—' }}</td><td>{{ focost_original_money(tx.amount_minor / 100, tx.currency or 'NGN') }}</td><td>{{ tx.status|title }}</td><td>{{ tx.created_at.strftime('%d %b %Y %H:%M') if tx.created_at else '—' }}</td></tr>
         {% else %}<tr><td colspan="6" class="text-center py-4 text-muted">No payment transactions yet.</td></tr>{% endfor %}
         </tbody></table></div>
     </div>

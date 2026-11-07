@@ -3,6 +3,7 @@ from flask_login import login_required, current_user
 
 from app.services.ai_service import AIService
 from app.services.ai_usage_service import AIUsageService
+from app.services.language_service import LanguageService
 from app.subscriptions.decorators import subscription_required
 
 
@@ -53,14 +54,13 @@ def chat():
     if len(message) > 4000:
         return jsonify({
             "success": False,
-            "message": "Please keep your FOCOST AI message within 4,000 characters."
+            "message": LanguageService.translate_text(LanguageService.get(current_user.id), "Please keep your FOCOST AI message within 4,000 characters.")
         }), 400
 
     if not message:
-
         return jsonify({
             "success": False,
-            "message": "Please enter a message."
+            "message": LanguageService.translate_text(LanguageService.get(current_user.id), "Please enter a message.")
         }), 400
 
     result = AIService.chat(
@@ -80,6 +80,10 @@ def chat():
 
         status = 503
 
+    if isinstance(result, dict) and result.get("message"):
+        result["message"] = LanguageService.translate_text(
+            LanguageService.get(current_user.id), result["message"]
+        )
     return jsonify(result), status
 
 

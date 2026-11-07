@@ -7,6 +7,7 @@ from app.services.email_service import EmailService
 from app.models.announcement_user_state import AnnouncementUserState
 import json
 import re
+from email_validator import validate_email, EmailNotValidError
 import bleach
 from urllib.parse import urlparse
 from markupsafe import escape
@@ -74,6 +75,35 @@ class AnnouncementService:
         return value.strip()
 
     @classmethod
+    def normalize_individual_emails(cls, raw):
+        """Parse, validate and de-duplicate comma/semicolon/newline-separated addresses."""
+        values = re.split(r"[,;\n\r]+", raw or "")
+        cleaned, invalid = [], []
+        seen = set()
+        for value in values:
+            value = value.strip()
+            if not value:
+                continue
+            try:
+                address = validate_email(value, check_deliverability=False).normalized
+            except EmailNotValidError:
+                invalid.append(value)
+                continue
+            key = address.casefold()
+            if key not in seen:
+                seen.add(key)
+                cleaned.append(address)
+        if invalid:
+            raise ValueError("Invalid email address(es): " + ", ".join(invalid))
+        return cleaned
+
+    @classmethod
+    def normalize_sender(cls, value):
+        if value not in EmailService.SENDERS:
+            raise ValueError("Select a valid FOCOST sender identity.")
+        return value
+
+    @classmethod
     def normalize_audiences(cls, values):
         raw_values = list(values or [])
         invalid = sorted(set(raw_values) - set(cls.AUDIENCES))
@@ -95,14 +125,27 @@ class AnnouncementService:
 
     @staticmethod
     def _is_inactive_user(user):
-        """Identify pending normal-user accounts, not suspended or closed accounts."""
+        """
+        Identify pending, unverified normal-user accounts.
+
+        Excludes:
+        - Active accounts.
+        - Verified but deactivated accounts.
+        - Admin accounts.
+        - Accounts without a normal-user role assignment.
+        - Deleted/anonymized accounts.
+        """
+        if not user:
+            return False
+
+        email = (user.email or "").strip().lower()
+
         return bool(
-            user
-            and user.role_group == "user"
+            user.is_normal_user
             and not user.is_active
             and not user.email_verified
-            and (user.email or "").strip()
-            and not (user.email or "").lower().endswith("@deleted.focost.invalid")
+            and email
+            and not email.endswith("@deleted.focost.invalid")
         )
 
     @staticmethod
@@ -317,6 +360,7 @@ class AnnouncementService:
         announcement.action_url = AnnouncementService.validate_url(announcement.action_url, "Action URL")
         announcement.image_url = AnnouncementService.validate_url(announcement.image_url, "Image/Flyer URL")
         announcement.email_signature = AnnouncementService.sanitize_message(announcement.email_signature or "")
+        announcement.sender_identity = AnnouncementService.normalize_sender(announcement.sender_identity or "team")
         announcement.status = "published"
         announcement.published_at = utc_now()
         announcement.published_by_id = published_by_id
@@ -357,6 +401,9 @@ class AnnouncementService:
         data["action_url"] = AnnouncementService.validate_url(data.get("action_url"), "Action URL")
         data["image_url"] = AnnouncementService.validate_url(data.get("image_url"), "Image/Flyer URL")
         data["email_signature"] = AnnouncementService.sanitize_message(data.get("email_signature", ""))
+        data["recipient_emails"] = json.dumps(AnnouncementService.normalize_individual_emails(data.get("recipient_emails_raw", "")))
+        data.pop("recipient_emails_raw", None)
+        data["sender_identity"] = AnnouncementService.normalize_sender(data.get("sender_identity", "team"))
         announcement = Announcement(**data)
         db.session.add(announcement)
         db.session.commit()
@@ -372,6 +419,8 @@ class AnnouncementService:
             recipient=recipient,
             greeting=greeting,
             logo_url=logo_url,
+            sender_name=EmailService.SENDERS.get(announcement.sender_identity or "team", EmailService.SENDERS["team"])[0],
+            sender_email=EmailService.SENDERS.get(announcement.sender_identity or "team", EmailService.SENDERS["team"])[1],
             signature=(
                 AnnouncementService.sanitize_message(announcement.email_signature or "")
                 if announcement.email_signature_enabled and announcement.email_signature
@@ -385,50 +434,34 @@ class AnnouncementService:
             return 0
         from app.models.user import User
         audiences = announcement.audiences
-        users = User.query.order_by(User.id.asc()).all()
-        sent = 0
-        for user in users:
-            # Preserve the existing active-account delivery boundary.
-            # Pending verification accounts are included only when the
-            # communication explicitly targets Inactive User.
+        targets = {}
+        for user in User.query.order_by(User.id.asc()).all():
             is_pending_user = AnnouncementService._is_inactive_user(user)
-            if not user.is_active and not (
-                "inactive_user" in audiences and is_pending_user
-            ):
+            if not user.is_active and not ("inactive_user" in audiences and is_pending_user):
                 continue
-            if not user.email or not AnnouncementService._matches_user(announcement, user.id):
-                continue
+            address = (user.email or "").strip()
+            if address and AnnouncementService._matches_user(announcement, user.id):
+                targets.setdefault(address.casefold(), (address, user))
+        try:
+            individual = json.loads(announcement.recipient_emails or "[]")
+        except (TypeError, ValueError):
+            individual = []
+        for address in individual if isinstance(individual, list) else []:
+            if address and "@" in address:
+                targets.setdefault(address.casefold(), (address, None))
+
+        sent = 0
+        for address, user in targets.values():
             try:
-                first_name = (user.first_name or "").strip()
-                last_name = (user.last_name or "").strip()
-                full_name = " ".join(part for part in (first_name, last_name) if part)
+                full_name = " ".join(part for part in ((user.first_name or "").strip(), (user.last_name or "").strip()) if part) if user else ""
                 greeting = f"Dear {full_name}," if full_name else "Hello,"
-                html_body = AnnouncementService.email_html(
-                    announcement,
-                    recipient=user,
-                    greeting=greeting,
-                )
-                text_body = "\n\n".join((
-                    greeting,
-                    AnnouncementService.plain_text(announcement.message),
-                    "\nVisit FOCOST: https://focost.pythonanywhere.com",
-                    "Support: focostsupport@gmail.com",
-                ))
-                if EmailService.send(
-                    user.email,
-                    announcement.title,
-                    text_body,
-                    html_body,
-                ):
+                html_body = AnnouncementService.email_html(announcement, recipient=user, greeting=greeting)
+                text_body = "\n\n".join((greeting, AnnouncementService.plain_text(announcement.message), "\nVisit FOCOST: https://focost.pythonanywhere.com", f"{EmailService.SENDERS[announcement.sender_identity][0]}: {EmailService.SENDERS[announcement.sender_identity][1]}"))
+                if EmailService.send(address, announcement.title, text_body, html_body, sender_identity=announcement.sender_identity):
                     sent += 1
             except Exception:
-                # Email is a secondary channel; failure must not roll back the
-                # published announcement or in-app delivery.
                 import logging
-                logging.getLogger(__name__).exception(
-                    "Announcement email failed for recipient %s", user.id
-                )
-                continue
+                logging.getLogger(__name__).exception("Announcement email failed for recipient %s", address)
         return sent
 
     @staticmethod

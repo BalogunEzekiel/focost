@@ -21,7 +21,6 @@ def index():
         current_user.last_name = request.form.get("last_name", current_user.last_name).strip()[:80]
         current_user.phone = request.form.get("phone", current_user.phone or "").strip()[:20] or None
         current_user.country = request.form.get("country", current_user.country or "").strip()[:80] or None
-        current_user.currency = request.form.get("currency", current_user.currency or "NGN").strip()[:10] or "NGN"
         current_user.occupation = request.form.get("occupation", current_user.occupation or "").strip()[:120] or None
         upload = request.files.get("avatar")
         if upload and upload.filename:

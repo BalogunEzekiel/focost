@@ -22,6 +22,8 @@ class Announcement(BaseModel):
     audience_groups = db.Column(db.Text, nullable=True)
     email_signature_enabled = db.Column(db.Boolean, nullable=False, default=True)
     email_signature = db.Column(db.Text, nullable=True)
+    recipient_emails = db.Column(db.Text, nullable=True)  # JSON array of individually entered recipients
+    sender_identity = db.Column(db.String(30), nullable=False, default="team")
     message_background = db.Column(db.String(30), nullable=False, default="plain")
     target_user_id = db.Column(db.Integer, db.ForeignKey("users.id", ondelete="CASCADE"), nullable=True)
 

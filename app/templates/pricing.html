@@ -125,7 +125,7 @@
                     </p>
 
                     <div class="display-6 fw-bold mb-1">
-                        ₦{{ '{:,.0f}'.format(plan.amount) }}
+                        {{ focost_original_money(plan.amount, plan.currency or 'NGN') }}
                     </div>
 
                     <div class="text-muted mb-0">

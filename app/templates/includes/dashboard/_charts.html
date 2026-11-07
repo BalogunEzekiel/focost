@@ -267,11 +267,11 @@
 
                         <small class="text-muted d-block mt-1">
 
-                            ₦{{ "{:,.0f}".format(budget.spent) }}
+                            {{ focost_money(budget.spent, source_currency=budget.currency or "NGN") }}
 
                             /
 
-                            ₦{{ "{:,.0f}".format(budget.amount) }}
+                            {{ focost_money(budget.amount, source_currency=budget.currency or "NGN") }}
 
                         </small>
 
@@ -391,7 +391,7 @@
 
                 <h4 class="fw-bold text-success mb-1">
 
-                    ₦{{ "{:,.2f}".format(dashboard.forecast_balance) }}
+                    {{ focost_money(dashboard.forecast_balance, source_currency=focost_display_currency) }}
 
                 </h4>
 

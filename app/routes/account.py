@@ -59,6 +59,8 @@ def export_data():
         "phone": current_user.phone,
         "country": current_user.country,
         "currency": current_user.currency,
+        "base_currency": current_user.base_currency,
+        "monthly_income_currency": current_user.monthly_income_currency,
         "occupation": current_user.occupation,
         "exported_at": datetime.now(
             timezone.utc
@@ -181,6 +183,7 @@ def export_data():
                 "amount": float(
                     x.amount or 0
                 ),
+                "currency": x.currency,
                 "received_date": _iso(
                     x.received_date
                 ),
@@ -201,6 +204,7 @@ def export_data():
                 "amount": float(
                     x.amount or 0
                 ),
+                "currency": x.currency,
                 "payment_method": x.payment_method,
                 "expense_date": _iso(
                     x.expense_date
@@ -225,6 +229,7 @@ def export_data():
                 "amount": float(
                     x.amount or 0
                 ),
+                "currency": x.currency,
                 "period": x.period,
                 "start_date": _iso(
                     x.start_date
@@ -373,6 +378,7 @@ def export_data():
                 "target_date": _iso(
                     x.target_date
                 ),
+                "currency": x.currency,
                 "priority": x.priority,
                 "status": x.status,
                 "notes": x.notes,

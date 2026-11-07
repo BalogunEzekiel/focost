@@ -19,6 +19,7 @@ from app.extensions import db
 from app.models.integration import DocumentImport
 from app.models.expense import Expense
 from app.models.income import Income
+from app.models.user import User
 from app.services.category_service import CategoryService
 
 
@@ -1491,6 +1492,11 @@ class DocumentIntelligenceService:
             raise ValueError("Transaction row not found.")
 
         row = rows[index]
+        user = db.session.get(User, user_id)
+        source_currency = str(data.get("currency") or row.get("currency") or (user.base_currency if user else "NGN") or "NGN").strip().upper()
+        from app.services.currency_service import CurrencyService
+        if source_currency not in CurrencyService.available():
+            raise ValueError("The imported transaction has an unsupported currency code.")
 
         if row.get("confirmed"):
             raise ValueError(
@@ -1652,6 +1658,7 @@ class DocumentIntelligenceService:
                 merchant=description[:150],
                 description=description,
                 amount=abs(amount),
+                currency=source_currency,
                 payment_method=(
                     "Receipt"
                     if record.import_type == "receipt"
@@ -1672,6 +1679,7 @@ class DocumentIntelligenceService:
                 source=description[:150],
                 category=category,
                 amount=abs(amount),
+                currency=source_currency,
                 received_date=transaction_date,
                 notes=(
                     f"Confirmed from statement import "

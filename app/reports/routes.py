@@ -18,6 +18,7 @@ from app.rbac.decorators import permission_required
 from app.reports import reports_bp
 from app.reports.services import ReportService
 from app.reports.exports import ExportService
+from app.services.language_service import LanguageService
 
 
 # ==========================================================
@@ -309,6 +310,7 @@ def export_pdf():
         start_date,
         end_date,
         category,
+        language_code=LanguageService.get(current_user.id),
     )
 
     filename = (
@@ -359,6 +361,7 @@ def export_excel():
         start_date,
         end_date,
         category,
+        language_code=LanguageService.get(current_user.id),
     )
 
     filename = (
@@ -431,6 +434,7 @@ def transactions():
             "description": item.source,
 
             "amount": item.amount,
+            "currency": item.currency or "NGN",
 
         })
 
@@ -456,6 +460,7 @@ def transactions():
             "description": item.merchant,
 
             "amount": item.amount,
+            "currency": item.currency or "NGN",
 
         })
 

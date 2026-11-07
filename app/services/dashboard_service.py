@@ -18,6 +18,9 @@ from app.models.goal_contribution import GoalContribution
 from app.models.investment_event import InvestmentEvent
 from app.services.notification_service import NotificationService
 from app.utils.timezone import now, today
+from decimal import Decimal
+from app.services.financial_currency_service import FinancialCurrencyService
+from app.services.currency_service import CurrencyService
 
 class DashboardService:
 
@@ -80,23 +83,14 @@ class DashboardService:
         # - legacy/null transaction_class
         # ------------------------------------------------------
 
-        operating_expenses = float(
-            DashboardService
-            ._active_operating_expense_query(user_id)
-            .filter(
-                Expense.expense_date.between(
-                    start,
-                    end,
-                ),
-            )
-            .with_entities(
-                func.coalesce(
-                    func.sum(Expense.amount),
-                    0,
-                )
-            )
-            .scalar()
-            or 0
+        operating_expense_rows = DashboardService._active_operating_expense_query(
+            user_id
+        ).filter(Expense.expense_date.between(start, end)).all()
+        from app.services.financial_currency_service import FinancialCurrencyService
+        operating_expenses = FinancialCurrencyService.sum_records(
+            operating_expense_rows,
+            FinancialCurrencyService.display_currency(user_id),
+            date_field="expense_date",
         )
 
         # ------------------------------------------------------
@@ -366,32 +360,21 @@ class DashboardService:
                 Expense.id != exclude_expense_id
             )
 
-        # ----------------------------------------------------------
-        # Aggregate income
-        # ----------------------------------------------------------
-
-        income = float(
-            income_query.with_entities(
-                func.coalesce(
-                    func.sum(Income.amount),
-                    0,
-                )
-            ).scalar()
-            or 0
+        # Convert each ledger row before aggregation. SQL SUM(amount) is
+        # invalid once a user can hold records denominated in different
+        # currencies. Historical cash-flow reports use each transaction date.
+        from app.services.financial_currency_service import FinancialCurrencyService
+        income_rows = income_query.order_by(Income.received_date.asc(), Income.id.asc()).all()
+        expense_rows = expense_query.order_by(Expense.expense_date.asc(), Expense.id.asc()).all()
+        display_currency = FinancialCurrencyService.display_currency(user_id)
+        # Current/lifetime balances are translated at the valuation date;
+        # period performance uses each transaction's historical date.
+        valuation_date = as_of or (today() if start_date is None and end_date is None else None)
+        income = FinancialCurrencyService.sum_records(
+            income_rows, display_currency, date_field="received_date", on_date=valuation_date
         )
-
-        # ----------------------------------------------------------
-        # Aggregate expenses
-        # ----------------------------------------------------------
-
-        expenses = float(
-            expense_query.with_entities(
-                func.coalesce(
-                    func.sum(Expense.amount),
-                    0,
-                )
-            ).scalar()
-            or 0
+        expenses = FinancialCurrencyService.sum_records(
+            expense_rows, display_currency, date_field="expense_date", on_date=valuation_date
         )
 
         # ----------------------------------------------------------
@@ -581,8 +564,16 @@ class DashboardService:
     def investment_summary(user_id):
         from app.models.asset import Asset
         assets = Asset.query.filter_by(user_id=user_id, is_active=True).filter(Asset.asset_type.ilike("investment")).all()
-        cost = sum(float(a.cost_basis if a.cost_basis is not None else a.acquisition_cost or 0) for a in assets)
-        value = sum(float(a.current_value or 0) for a in assets)
+        from app.services.financial_currency_service import FinancialCurrencyService
+        display_currency = FinancialCurrencyService.display_currency(user_id)
+        valuation_date = today()
+        cost = sum(FinancialCurrencyService.convert_value(
+            a.cost_basis if a.cost_basis is not None else a.acquisition_cost or 0,
+            a.currency, display_currency, on_date=valuation_date
+        ) for a in assets)
+        value = sum(FinancialCurrencyService.convert_value(
+            a.current_value or 0, a.currency, display_currency, on_date=valuation_date
+        ) for a in assets)
         return {
             "count": len(assets),
             "cost_basis": cost,
@@ -604,14 +595,16 @@ class DashboardService:
         affect the investment carrying value rather than available cash.
         """
         investment_summary = DashboardService.investment_summary(user_id)
-        goal_contributions = (
-            db.session.query(func.coalesce(func.sum(GoalContribution.amount), 0))
-            .filter(
-                GoalContribution.user_id == user_id,
-                GoalContribution.is_active == True,
-            )
-            .scalar()
-            or 0
+        goal_contribution_rows = GoalContribution.query.filter(
+            GoalContribution.user_id == user_id,
+            GoalContribution.is_active.is_(True),
+        ).all()
+        from app.services.financial_currency_service import FinancialCurrencyService
+        goal_contributions = FinancialCurrencyService.sum_records(
+            goal_contribution_rows,
+            FinancialCurrencyService.display_currency(user_id),
+            date_field="contribution_date",
+            on_date=today(),
         )
 
         cash_flow = DashboardService._cash_flow_totals(user_id)
@@ -1085,9 +1078,12 @@ class DashboardService:
         # Savings Advice
         # -------------------------------------------------------
 
+        from app.services.financial_currency_service import FinancialCurrencyService
+        from app.services.currency_service import CurrencyService
+        dashboard_currency = FinancialCurrencyService.display_currency(user_id)
         dashboard["savings_advice"] = (
             f"You could save approximately "
-            f"₦{savings_opportunity:,.2f} by reducing "
+            f"{CurrencyService.format(savings_opportunity, dashboard_currency)} by reducing "
             f"discretionary spending by 10%."
             if savings_opportunity
             else "No savings opportunity detected."
@@ -1190,18 +1186,15 @@ class DashboardService:
 
         today = date.today()
 
-        total_spent = (
-            db.session.query(
-                func.coalesce(func.sum(Expense.amount), 0)
-            )
-            .filter(
-                Expense.user_id == user_id,
-                or_(Expense.transaction_class == "expense", Expense.transaction_class.is_(None)),
-                extract("year", Expense.expense_date) == today.year,
-                extract("month", Expense.expense_date) == today.month
-            )
-            .scalar()
-            or 0
+        expense_rows = Expense.query.filter(
+            Expense.user_id == user_id,
+            or_(Expense.transaction_class == "expense", Expense.transaction_class.is_(None)),
+            extract("year", Expense.expense_date) == today.year,
+            extract("month", Expense.expense_date) == today.month,
+        ).all()
+        from app.services.financial_currency_service import FinancialCurrencyService
+        total_spent = FinancialCurrencyService.sum_records(
+            expense_rows, FinancialCurrencyService.display_currency(user_id), date_field="expense_date"
         )
 
         days_elapsed = max(today.day, 1)
@@ -1224,23 +1217,19 @@ class DashboardService:
     # ==========================================================
 
     @staticmethod
-    def build_summary(
-        user_id,
-        period="month",
-    ):
-
-        start, end = (
-            DashboardService.get_period_dates(
-                period
-            )
+    def build_summary(user_id, period="month"):
+        from decimal import Decimal
+        from app.services.financial_currency_service import (
+            FinancialCurrencyService,
         )
+
+        start, end = DashboardService.get_period_dates(period)
 
         # ------------------------------------------------------
         # Authoritative cash-flow calculation.
         #
         # Income and expenses are calculated only by
         # DashboardService._cash_flow_totals().
-        # This keeps savings consistent across FOCOST.
         # ------------------------------------------------------
 
         totals = DashboardService._cash_flow_totals(
@@ -1260,114 +1249,110 @@ class DashboardService:
         )
 
         # ------------------------------------------------------
-        # Lifetime balance comes from cumulative monthly savings.
+        # Lifetime balance.
         # ------------------------------------------------------
 
-        balance = DashboardService.available_balance(
+        balance = DashboardService.available_balance(user_id)
+
+        # ------------------------------------------------------
+        # Display currency.
+        # ------------------------------------------------------
+
+        display_currency = FinancialCurrencyService.display_currency(
             user_id
         )
 
         # ------------------------------------------------------
         # Top spending category.
+        #
+        # Decimal is used throughout the aggregation to avoid
+        # float/Decimal arithmetic errors and preserve precision.
         # ------------------------------------------------------
 
-        top_expense = (
-            db.session.query(
-                Expense.category,
-                func.sum(
-                    Expense.amount
-                ).label("total"),
-            )
-            .filter(
-                Expense.user_id == user_id,
-                Expense.is_active.is_(True),
-                Expense.expense_date.between(
-                    start,
-                    end,
-                ),
-            )
-            .group_by(
-                Expense.category
-            )
-            .order_by(
-                func.sum(
-                    Expense.amount
-                ).desc()
-            )
-            .first()
-        )
+        expense_rows = Expense.query.filter(
+            Expense.user_id == user_id,
+            Expense.is_active.is_(True),
+            Expense.expense_date.between(start, end),
+        ).all()
 
-        top_spending = (
-            top_expense.category
-            if top_expense
-            else "None"
-        )
+        expense_category_totals = {}
 
-        top_spending_amount = (
-            float(top_expense.total)
-            if top_expense
-            else 0.0
+        for row in expense_rows:
+            key = row.category or "Uncategorized"
+
+            converted_amount = FinancialCurrencyService.convert_record(
+                row,
+                display_currency,
+                date_field="expense_date",
+            )
+
+            expense_category_totals[key] = (
+                expense_category_totals.get(key, Decimal("0"))
+                + converted_amount
+            )
+
+        top_spending, top_spending_amount = max(
+            expense_category_totals.items(),
+            key=lambda item: item[1],
+            default=("None", Decimal("0")),
         )
 
         # ------------------------------------------------------
         # Top income source.
         # ------------------------------------------------------
 
-        top_income = (
-            db.session.query(
-                Income.source,
-                func.sum(
-                    Income.amount
-                ).label("total"),
+        income_rows = Income.query.filter(
+            Income.user_id == user_id,
+            Income.is_active.is_(True),
+            Income.received_date.between(start, end),
+        ).all()
+
+        income_source_totals = {}
+
+        for row in income_rows:
+            key = row.source or "Unspecified"
+
+            converted_amount = FinancialCurrencyService.convert_record(
+                row,
+                display_currency,
+                date_field="received_date",
             )
-            .filter(
-                Income.user_id == user_id,
-                Income.is_active.is_(True),
-                Income.received_date.between(
-                    start,
-                    end,
-                ),
+
+            income_source_totals[key] = (
+                income_source_totals.get(key, Decimal("0"))
+                + converted_amount
             )
-            .group_by(
-                Income.source
-            )
-            .order_by(
-                func.sum(
-                    Income.amount
-                ).desc()
-            )
-            .first()
+
+        top_income_source, top_income_amount = max(
+            income_source_totals.items(),
+            key=lambda item: item[1],
+            default=("None", Decimal("0")),
         )
 
-        top_income_source = (
-            top_income.source
-            if top_income
-            else "None"
-        )
-
-        top_income_amount = (
-            float(top_income.total)
-            if top_income
-            else 0.0
-        )
+        # ------------------------------------------------------
+        # Response.
+        #
+        # Convert Decimal values to float at the response
+        # boundary for compatibility with existing consumers.
+        # ------------------------------------------------------
 
         return {
-            "balance": round(balance, 2),
-            "income": round(monthly_income, 2),
-            "expenses": round(monthly_expenses, 2),
-            "savings": round(savings, 2),
-            "savings_rate": round(savings_rate, 2),
-            "monthly_income": round(monthly_income, 2),
-            "monthly_expenses": round(monthly_expenses, 2),
+            "balance": round(float(balance), 2),
+            "income": round(float(monthly_income), 2),
+            "expenses": round(float(monthly_expenses), 2),
+            "savings": round(float(savings), 2),
+            "savings_rate": round(float(savings_rate), 2),
+            "monthly_income": round(float(monthly_income), 2),
+            "monthly_expenses": round(float(monthly_expenses), 2),
             "top_spending": top_spending,
-            "top_spending_amount": round(top_spending_amount, 2),
+            "top_spending_amount": round(
+                float(top_spending_amount), 2
+            ),
             "top_income_source": top_income_source,
-            "top_income_amount": round(top_income_amount, 2),
+            "top_income_amount": round(
+                float(top_income_amount), 2
+            ),
         }
-
-    # ==========================================================
-    # AI FINANCIAL INSIGHT
-    # ==========================================================
 
     # ==========================================================
     # AI FINANCIAL INSIGHT
@@ -1454,27 +1439,28 @@ class DashboardService:
 
         category_totals = {}
 
-        expenses = (
-            Expense.query
-            .filter_by(user_id=user_id)
-            .all()
-        )
+        expenses = Expense.query.filter(
+            Expense.user_id == user_id,
+            Expense.is_active.is_(True),
+            extract("year", Expense.expense_date) == current_year,
+            extract("month", Expense.expense_date) == current_month,
+        ).all()
+
+        display_currency = FinancialCurrencyService.display_currency(user_id)
 
         for expense in expenses:
+            category = expense.category or "Uncategorized"
 
-            if (
-                expense.expense_date.year == current_year
-                and expense.expense_date.month == current_month
-            ):
+            converted_amount = FinancialCurrencyService.convert_record(
+                expense,
+                display_currency,
+                date_field="expense_date",
+            )
 
-                category_totals.setdefault(
-                    expense.category,
-                    0
-                )
-
-                category_totals[
-                    expense.category
-                ] += expense.amount
+            category_totals[category] = (
+                category_totals.get(category, Decimal("0"))
+                + converted_amount
+            )
 
         for category, amount in category_totals.items():
 
@@ -1484,7 +1470,7 @@ class DashboardService:
 
                 advice.append(
                     f"⚠️ High spending detected on <strong>{category}</strong> "
-                    f"(₦{amount:,.2f}), representing "
+                    f"({CurrencyService.format(amount, display_currency)}), representing "
                     f"<strong>{ratio:.0%}</strong> of this month's income."
                 )
 
@@ -1492,7 +1478,7 @@ class DashboardService:
 
                 advice.append(
                     f"ℹ️ Spending on <strong>{category}</strong> "
-                    f"<strong>(₦{amount:,.2f})</strong>, "
+                    f"<strong>({CurrencyService.format(amount, display_currency)})</strong>, "
                     f"is relatively low this month."
                 )
 
@@ -1637,20 +1623,16 @@ class DashboardService:
             "Miscellaneous"
         ]
 
-        amount = (
-            db.session.query(
-                func.coalesce(func.sum(Expense.amount), 0)
-            )
-            .filter(
-                Expense.user_id == user_id,
-                Expense.category.in_(discretionary_categories),
-                extract("year", Expense.expense_date) == today.year,
-                extract("month", Expense.expense_date) == today.month,
-            )
-            .scalar()
-            or 0
+        rows = Expense.query.filter(
+            Expense.user_id == user_id,
+            Expense.category.in_(discretionary_categories),
+            extract("year", Expense.expense_date) == today.year,
+            extract("month", Expense.expense_date) == today.month,
+        ).all()
+        from app.services.financial_currency_service import FinancialCurrencyService
+        amount = FinancialCurrencyService.sum_records(
+            rows, FinancialCurrencyService.display_currency(user_id), date_field="expense_date"
         )
-
         return round(float(amount) * 0.10, 2)
 
     # ==========================================================
@@ -1716,18 +1698,16 @@ class DashboardService:
         # Monthly Expenses
         # ---------------------------------------------------------
 
-        monthly_expenses = (
-            db.session.query(
-                func.coalesce(func.sum(Expense.amount), 0)
-            )
-            .filter(
-                Expense.user_id == user_id,
-                or_(Expense.transaction_class == "expense", Expense.transaction_class.is_(None)),
-                extract("year", Expense.expense_date) == today.year,
-                extract("month", Expense.expense_date) == today.month,
-            )
-            .scalar()
-            or 0
+        from app.services.financial_currency_service import FinancialCurrencyService
+        display_currency = FinancialCurrencyService.display_currency(user_id)
+        monthly_expense_rows = Expense.query.filter(
+            Expense.user_id == user_id,
+            or_(Expense.transaction_class == "expense", Expense.transaction_class.is_(None)),
+            extract("year", Expense.expense_date) == today.year,
+            extract("month", Expense.expense_date) == today.month,
+        ).all()
+        monthly_expenses = FinancialCurrencyService.sum_records(
+            monthly_expense_rows, display_currency, date_field="expense_date"
         )
 
         # ---------------------------------------------------------
@@ -1757,26 +1737,13 @@ class DashboardService:
 
         if budgets:
 
-            total_budget = sum(float(b.amount) for b in budgets)
-
-            total_spent = 0
-
-            for budget in budgets:
-
-                spent = (
-                    db.session.query(
-                        func.coalesce(func.sum(Expense.amount), 0)
-                    )
-                    .filter(
-                        Expense.user_id == user_id,
-                        Expense.category == budget.category,
-                        Expense.expense_date >= budget.start_date,
-                        Expense.expense_date <= budget.end_date
-                    )
-                    .scalar()
-                )
-
-                total_spent += float(spent)
+            total_budget = sum(FinancialCurrencyService.convert_value(
+                b.amount, b.currency or "NGN", display_currency, on_date=today
+            ) for b in budgets)
+            total_spent = sum(FinancialCurrencyService.convert_value(
+                FinancialCurrencyService.budget_spent(b), b.currency or "NGN",
+                display_currency, on_date=today
+            ) for b in budgets)
 
             budget_used = round(
                 (total_spent / total_budget) * 100,
@@ -1835,11 +1802,11 @@ class DashboardService:
         return {
 
             "largest_income":
-                float(largest_income.amount)
+                FinancialCurrencyService.convert_record(largest_income, display_currency, date_field="received_date")
                 if largest_income else 0,
 
             "largest_expense":
-                float(largest_expense.amount)
+                FinancialCurrencyService.convert_record(largest_expense, display_currency, date_field="expense_date")
                 if largest_expense else 0,
 
             "transaction_count":
@@ -1911,9 +1878,12 @@ class DashboardService:
             else:
                 score = 55
 
+            from app.services.financial_currency_service import FinancialCurrencyService
+            from app.services.currency_service import CurrencyService
+            display_currency = FinancialCurrencyService.display_currency(user_id)
             message = (
-                f"You earned ₦{income:,.2f}, spent ₦{expenses:,.2f}, "
-                f"and currently have ₦{savings:,.2f}. "
+                f"You earned {CurrencyService.format(income, display_currency)}, spent {CurrencyService.format(expenses, display_currency)}, "
+                f"and currently have {CurrencyService.format(savings, display_currency)}. "
                 f"Your savings rate is {savings_rate:.2f}%."
             )
 
@@ -2093,6 +2063,21 @@ class DashboardService:
                 goal.remaining_amount / remaining_months,
                 2,
             )
+            from app.services.financial_currency_service import FinancialCurrencyService
+            from app.services.currency_service import CurrencyService
+            display_currency = FinancialCurrencyService.display_currency(user_id)
+            required_monthly_display = CurrencyService.format(
+                FinancialCurrencyService.convert_value(required_monthly, goal.currency or "NGN", display_currency, on_date=today_date),
+                display_currency,
+            )
+            monthly_contribution_display = CurrencyService.format(
+                FinancialCurrencyService.convert_value(goal.monthly_contribution or 0, goal.currency or "NGN", display_currency, on_date=today_date),
+                display_currency,
+            )
+            remaining_display = CurrencyService.format(
+                FinancialCurrencyService.convert_value(goal.remaining_amount, goal.currency or "NGN", display_currency, on_date=today_date),
+                display_currency,
+            )
 
             # --------------------------------------------------
             # AI Recommendation
@@ -2119,7 +2104,7 @@ class DashboardService:
                     f"This goal is overdue by <strong>{days_overdue}</strong> "
                     f"day{'s' if days_overdue != 1 else ''}. "
                     f"To complete <strong>{goal.title}</strong>, increase your monthly savings "
-                    f"to approximately <strong>₦{required_monthly:,.2f}</strong> "
+                    f"to approximately <strong>{required_monthly_display}</strong> "
                     f"or extend the target date."
                 )
 
@@ -2127,7 +2112,7 @@ class DashboardService:
 
                 recommendation = (
                     f"✅ Excellent progress! Continue contributing at least "
-                    f"<strong>₦{goal.monthly_contribution:,.2f}</strong> each month "
+                    f"<strong>{monthly_contribution_display}</strong> each month "
                     f"to complete <strong>{goal.title}</strong> on schedule."
                 )
 
@@ -2135,7 +2120,7 @@ class DashboardService:
 
                 recommendation = (
                     f"⚠️ You're making steady progress. Increasing your monthly savings "
-                    f"to approximately <strong>₦{required_monthly:,.2f}</strong> "
+                    f"to approximately <strong>{required_monthly_display}</strong> "
                     f"will improve your chances of reaching "
                     f"<strong>{goal.title}</strong> by the target date."
                 )
@@ -2148,7 +2133,7 @@ class DashboardService:
                 recommendation = (
                     f"Your <strong>{goal.title}</strong> goal is in progress. "
                     f"Continue contributing toward the remaining "
-                    f"<strong>₦{goal.remaining_amount:,.2f}</strong> before "
+                    f"<strong>{remaining_display}</strong> before "
                     f"the target date."
                 )
 
@@ -2157,7 +2142,7 @@ class DashboardService:
                 recommendation = (
                     f"🚨 Your goal is behind schedule. To reach "
                     f"<strong>{goal.title}</strong> on time, aim to save about "
-                    f"<strong>₦{required_monthly:,.2f}</strong> each month "
+                    f"<strong>{required_monthly_display}</strong> each month "
                     f"and reduce non-essential spending where possible."
                 )
 
@@ -2244,6 +2229,7 @@ class DashboardService:
                 "saved": goal.saved_amount,
                 "target": goal.target_amount,
                 "remaining": goal.remaining_amount,
+                "currency": goal.currency or "NGN",
                 "percentage": percentage,
                 "status": status,
                 "days_remaining": goal.days_remaining,
@@ -2304,27 +2290,9 @@ class DashboardService:
 
         for budget in budgets:
 
-            spent = float(
-                DashboardService
-                ._active_operating_expense_query(user_id)
-                .filter(
-                    Expense.category == budget.category,
-                    Expense.expense_date.between(
-                        budget.start_date,
-                        budget.end_date,
-                    ),
-                )
-                .with_entities(
-                    func.coalesce(
-                        func.sum(Expense.amount),
-                        0,
-                    )
-                )
-                .scalar()
-                or 0
-            )
-
-            budget.spent = spent
+            from app.services.financial_currency_service import FinancialCurrencyService
+            budget.spent = FinancialCurrencyService.budget_spent(budget)
+            spent = budget.spent
 
             projected = (
                 budget.spent / days_elapsed
@@ -2369,10 +2337,8 @@ class DashboardService:
 
                 "category": budget.category,
 
-                "budget": float(
-                    budget.amount
-                ),
-
+                "budget": float(budget.amount),
+                "currency": budget.currency or "NGN",
                 "spent": budget.spent,
 
                 "remaining": budget.remaining,
@@ -2591,6 +2557,9 @@ class DashboardService:
         expenses = totals["expenses"]
         savings = totals["savings"]
 
+        from app.services.financial_currency_service import FinancialCurrencyService
+        from app.services.currency_service import CurrencyService
+        display_currency = FinancialCurrencyService.display_currency(user_id)
         return {
             "date": today_date,
             "today_income": income,
@@ -2598,10 +2567,10 @@ class DashboardService:
             "today_balance": savings,
             "message": (
                 f"Today your financial position shows "
-                f"₦{income:,.2f} income, "
-                f"₦{expenses:,.2f} expenses "
+                f"{CurrencyService.format(income, display_currency)} income, "
+                f"{CurrencyService.format(expenses, display_currency)} expenses "
                 f"and a remaining balance of "
-                f"₦{savings:,.2f}. "
+                f"{CurrencyService.format(savings, display_currency)}. "
                 f"Continue monitoring your budgets "
                 f"and contribute toward your savings goals."
             ),
@@ -2610,51 +2579,41 @@ class DashboardService:
     # ==========================================================
     # EXPENSE BREAKDOWN (DOUGHNUT CHART)
     # ==========================================================
-
     @staticmethod
     def expense_breakdown(user_id):
-        """
-        Doughnut Chart
-        Current Month Operating Expense Breakdown.
-        """
+        """Current-month operating expense categories in display currency."""
+        from decimal import Decimal
+        from app.services.financial_currency_service import FinancialCurrencyService
 
         today_date = today()
+        start, end = today_date.replace(day=1), today_date
 
-        start = today_date.replace(day=1)
-        end = today_date
+        rows = DashboardService._active_operating_expense_query(user_id).filter(
+            Expense.expense_date.between(start, end)
+        ).all()
 
-        rows = (
-            DashboardService
-            ._active_operating_expense_query(user_id)
-            .filter(
-                Expense.expense_date.between(
-                    start,
-                    end,
-                )
+        target = FinancialCurrencyService.display_currency(user_id)
+        totals = {}
+
+        for row in rows:
+            key = row.category or "Uncategorized"
+            converted_amount = FinancialCurrencyService.convert_record(
+                row, target, date_field="expense_date"
             )
-            .with_entities(
-                Expense.category,
-                func.sum(Expense.amount),
-            )
-            .group_by(
-                Expense.category
-            )
-            .order_by(
-                func.sum(Expense.amount).desc()
-            )
-            .all()
+
+            totals[key] = totals.get(key, Decimal("0")) + converted_amount
+
+        ordered = sorted(
+            totals.items(),
+            key=lambda item: item[1],
+            reverse=True,
         )
 
         return {
-            "labels": [
-                row[0]
-                for row in rows
-            ],
-            "values": [
-                float(row[1] or 0)
-                for row in rows
-            ],
+            "labels": [item[0] for item in ordered],
+            "values": [float(item[1]) for item in ordered],
         }
+
 
     # ==========================================================
     # INCOME VS EXPENSE (CURRENT MONTH)
@@ -2704,7 +2663,15 @@ class DashboardService:
 
         Investment valuation/revaluation is excluded because it
         does not enter the Income or Expense tables.
+
+        Every transaction is converted into the user's display
+        currency using its transaction date before aggregation.
         """
+
+        from decimal import Decimal
+        from app.services.financial_currency_service import (
+            FinancialCurrencyService,
+        )
 
         today_date = today()
 
@@ -2714,8 +2681,9 @@ class DashboardService:
             "Sep", "Oct", "Nov", "Dec",
         ]
 
-        income = [0.0] * 12
-        expense = [0.0] * 12
+        # Use Decimal for all internal financial aggregation.
+        income = [Decimal("0") for _ in range(12)]
+        expense = [Decimal("0") for _ in range(12)]
 
         year_start = date(
             today_date.year,
@@ -2729,9 +2697,9 @@ class DashboardService:
             31,
         )
 
-        # ---------------------------------------------------------
-        # Active Income by Month (Current Year)
-        # ---------------------------------------------------------
+        # ------------------------------------------------------
+        # Active income records for the current year.
+        # ------------------------------------------------------
 
         income_query = (
             DashboardService
@@ -2744,75 +2712,79 @@ class DashboardService:
             )
         )
 
-        income_rows = (
-            income_query
-            .with_entities(
-                extract(
-                    "month",
-                    Income.received_date,
-                ),
-                func.sum(Income.amount),
-            )
-            .group_by(
-                extract(
-                    "month",
-                    Income.received_date,
-                )
-            )
-            .all()
+        # ------------------------------------------------------
+        # Active expense records for the current year.
+        #
+        # Explicitly define expense_query. This fixes the
+        # NameError in the previous implementation.
+        # ------------------------------------------------------
+
+        expense_query = Expense.query.filter(
+            Expense.user_id == user_id,
+            Expense.is_active.is_(True),
+            Expense.expense_date.between(
+                year_start,
+                year_end,
+            ),
         )
 
-        # ---------------------------------------------------------
-        # Active Cash Expenses by Month (Current Year)
-        # ---------------------------------------------------------
+        income_rows = income_query.all()
+        expense_rows = expense_query.all()
 
-        expense_query = (
-            DashboardService
-            ._active_expense_query(user_id)
-            .filter(
-                Expense.expense_date.between(
-                    year_start,
-                    year_end,
-                )
-            )
+        target = FinancialCurrencyService.display_currency(
+            user_id
         )
 
-        expense_rows = (
-            expense_query
-            .with_entities(
-                extract(
-                    "month",
-                    Expense.expense_date,
-                ),
-                func.sum(Expense.amount),
-            )
-            .group_by(
-                extract(
-                    "month",
-                    Expense.expense_date,
-                )
-            )
-            .all()
-        )
+        # ------------------------------------------------------
+        # Aggregate income by month.
+        # ------------------------------------------------------
 
-        # ---------------------------------------------------------
-        # Populate Monthly Series
-        # ---------------------------------------------------------
+        for row in income_rows:
+            if not row.received_date:
+                continue
 
-        for month, amount in income_rows:
-            income[int(month) - 1] = float(
-                amount or 0
+            month_index = row.received_date.month - 1
+
+            converted_amount = FinancialCurrencyService.convert_record(
+                row,
+                target,
+                date_field="received_date",
             )
 
-        for month, amount in expense_rows:
-            expense[int(month) - 1] = float(
-                amount or 0
+            income[month_index] += converted_amount
+
+        # ------------------------------------------------------
+        # Aggregate expenses by month.
+        # ------------------------------------------------------
+
+        for row in expense_rows:
+            if not row.expense_date:
+                continue
+
+            month_index = row.expense_date.month - 1
+
+            converted_amount = FinancialCurrencyService.convert_record(
+                row,
+                target,
+                date_field="expense_date",
             )
+
+            expense[month_index] += converted_amount
+
+        # ------------------------------------------------------
+        # Return chart-compatible numeric values.
+        # ------------------------------------------------------
 
         return {
             "labels": months,
-            "income": income,
-            "expenses": expense,
+            "income": [
+                round(float(value), 2)
+                for value in income
+            ],
+            "expenses": [
+                round(float(value), 2)
+                for value in expense
+            ],
         }
 
     # ==========================================================
@@ -2829,26 +2801,9 @@ class DashboardService:
             .all()
         )
 
+        from app.services.financial_currency_service import FinancialCurrencyService
         for budget in budgets:
-
-            spent = (
-                db.session.query(
-                    func.coalesce(
-                        func.sum(Expense.amount),
-                        0
-                    )
-                )
-                .filter(
-                    Expense.user_id == user_id,
-                    or_(Expense.transaction_class == "expense", Expense.transaction_class.is_(None)),
-                    Expense.category == budget.category,
-                    Expense.expense_date >= budget.start_date,
-                    Expense.expense_date <= budget.end_date
-                )
-                .scalar()
-            )
-
-            budget.spent = float(spent)
+            budget.spent = FinancialCurrencyService.budget_spent(budget)
 
         return budgets
 
@@ -3082,6 +3037,8 @@ class DashboardService:
         # BUILD TRANSACTIONS
         # ------------------------------------------------------
 
+        from app.services.financial_currency_service import FinancialCurrencyService
+        display_currency = FinancialCurrencyService.display_currency(user_id)
         transactions = []
 
         # ------------------------------------------------------
@@ -3101,9 +3058,10 @@ class DashboardService:
                     "type": "Income",
                     "title": item.source,
                     "category": item.category,
-                    "amount": float(
-                        item.amount or 0
-                    ),
+                    "amount": FinancialCurrencyService.convert_record(item, display_currency, date_field="received_date"),
+                    "currency": display_currency,
+                    "original_amount": float(item.amount or 0),
+                    "original_currency": item.currency or "NGN",
                     "date": item.received_date,
                     "note": getattr(
                         item,
@@ -3138,9 +3096,10 @@ class DashboardService:
                     "type": "Expense",
                     "title": item.merchant,
                     "category": item.category,
-                    "amount": float(
-                        item.amount or 0
-                    ),
+                    "amount": FinancialCurrencyService.convert_record(item, display_currency, date_field="expense_date"),
+                    "currency": display_currency,
+                    "original_amount": float(item.amount or 0),
+                    "original_currency": item.currency or "NGN",
                     "date": item.expense_date,
                     "note": getattr(
                         item,
@@ -3692,6 +3651,11 @@ class DashboardService:
                 context = {}
 
             context["calculation_context"] = calculation_context
+            from app.services.financial_currency_service import FinancialCurrencyService
+            context["currency_provenance"] = FinancialCurrencyService.ai_currency_provenance(
+                user_id, start=start, end=end
+            )
+            context.setdefault("currency", FinancialCurrencyService.display_currency(user_id))
 
             return context
 
@@ -4052,623 +4016,183 @@ class DashboardService:
         }
 
     @staticmethod
-    def ai_income_context(
-        user_id,
-        start,
-        end,
-        limit=20,
-    ):
-        """
-        Authoritative AI income context.
-
-        Provides:
-            - total income across ALL matching records
-            - category breakdown across ALL matching records
-            - transaction-class breakdown across ALL matching records
-            - detailed income records up to `limit`
-
-        IMPORTANT:
-        The detailed record limit must never hide the existence of income
-        components needed to reconcile the authoritative total.
-        """
-
-        from sqlalchemy import func
-
-        # ------------------------------------------------------
-        # Authoritative active-income query
-        # ------------------------------------------------------
+    def ai_income_context(user_id, start, end, limit=20):
+        """Currency-aware authoritative income context for FOCOST AI."""
+        from collections import defaultdict
+        from app.services.financial_currency_service import FinancialCurrencyService
 
         rows = (
-            DashboardService
-            ._active_income_query(user_id)
-            .filter(
-                Income.received_date.between(
-                    start,
-                    end,
-                ),
-            )
-            .order_by(
-                Income.received_date.asc(),
-                Income.id.asc(),
-            )
+            DashboardService._active_income_query(user_id)
+            .filter(Income.received_date.between(start, end))
+            .order_by(Income.received_date.asc(), Income.id.asc())
             .all()
         )
-
-        # ------------------------------------------------------
-        # Base income query
-        # ------------------------------------------------------
-
-        base_query = Income.query.filter(
-            Income.user_id == user_id,
-            Income.is_active == True,
-            Income.received_date.between(
-                start,
-                end,
-            ),
+        display_currency = FinancialCurrencyService.display_currency(user_id)
+        converted = FinancialCurrencyService.convert_records(
+            rows, display_currency, date_field="received_date"
         )
+        total = sum(float(item["converted_amount"]) for item in converted)
+        by_category, by_class = defaultdict(lambda: {"amount": 0.0, "count": 0}), defaultdict(lambda: {"amount": 0.0, "count": 0})
+        records = []
+        for row, fx in zip(rows, converted):
+            amount = float(fx["converted_amount"])
+            category = row.category or "Uncategorized"
+            transaction_class = getattr(row, "transaction_class", None) or "income"
+            by_category[category]["amount"] += amount
+            by_category[category]["count"] += 1
+            by_class[transaction_class]["amount"] += amount
+            by_class[transaction_class]["count"] += 1
+            if len(records) < max(int(limit or 20), 1):
+                records.append({
+                    "id": row.id,
+                    "date": row.received_date.isoformat() if row.received_date else None,
+                    "source": row.source,
+                    "category": category,
+                    "amount": amount,
+                    "currency": display_currency,
+                    "original_amount": float(row.amount or 0),
+                    "original_currency": row.currency or "NGN",
+                    "exchange_rate": str(fx["exchange_rate"]),
+                    "rate_date": fx["rate_date"].isoformat(),
+                    "notes": row.notes,
+                    "recurring": bool(row.recurring),
+                    "transaction_class": transaction_class,
+                })
 
-        # ------------------------------------------------------
-        # AUTHORITATIVE TOTAL
-        # ------------------------------------------------------
-
-        total = float(
-            base_query.with_entities(
-                func.coalesce(
-                    func.sum(Income.amount),
-                    0,
-                )
-            ).scalar()
-            or 0
-        )
-
-        # ------------------------------------------------------
-        # TOTAL RECORD COUNT
-        # ------------------------------------------------------
-
-        record_count = int(
-            base_query.with_entities(
-                func.count(Income.id)
-            ).scalar()
-            or 0
-        )
-
-        # ------------------------------------------------------
-        # CATEGORY BREAKDOWN
-        #
-        # This is calculated across ALL income records,
-        # not just the limited detailed records.
-        # ------------------------------------------------------
-
-        category_rows = (
-            base_query.with_entities(
-                Income.category,
-                func.coalesce(
-                    func.sum(Income.amount),
-                    0,
-                ).label("total"),
-                func.count(Income.id).label("count"),
-            )
-            .group_by(Income.category)
-            .order_by(
-                func.sum(Income.amount).desc()
-            )
-            .all()
-        )
-
-        category_breakdown = [
-            {
-                "category": category or "Uncategorized",
-                "amount": round(float(amount or 0), 2),
-                "count": int(count or 0),
-                "percentage_of_total": round(
-                    (
-                        float(amount or 0) / total * 100
-                        if total
-                        else 0
-                    ),
-                    2,
-                ),
-            }
-            for category, amount, count in category_rows
-        ]
-
-        # ------------------------------------------------------
-        # TRANSACTION CLASS BREAKDOWN
-        # ------------------------------------------------------
-
-        class_rows = (
-            base_query.with_entities(
-                Income.transaction_class,
-                func.coalesce(
-                    func.sum(Income.amount),
-                    0,
-                ).label("total"),
-                func.count(Income.id).label("count"),
-            )
-            .group_by(Income.transaction_class)
-            .order_by(
-                func.sum(Income.amount).desc()
-            )
-            .all()
-        )
-
-        transaction_class_breakdown = [
-            {
-                "transaction_class": (
-                    transaction_class or "income"
-                ),
-                "amount": round(float(amount or 0), 2),
-                "count": int(count or 0),
-                "percentage_of_total": round(
-                    (
-                        float(amount or 0) / total * 100
-                        if total
-                        else 0
-                    ),
-                    2,
-                ),
-            }
-            for transaction_class, amount, count
-            in class_rows
-        ]
-
-        # ------------------------------------------------------
-        # DETAILED RECORDS
-        #
-        # This can still be limited for token efficiency.
-        # The authoritative breakdown above is NOT limited.
-        # ------------------------------------------------------
-
-        rows = (
-            base_query
-            .order_by(
-                Income.received_date.asc(),
-                Income.id.asc(),
-            )
-            .limit(max(int(limit or 20), 1))
-            .all()
-        )
-
-        records = [
-            {
-                "id": row.id,
-                "date": row.received_date.isoformat(),
-                "source": row.source,
-                "category": row.category,
-                "amount": float(row.amount or 0),
-                "notes": row.notes,
-                "recurring": bool(row.recurring),
-                "transaction_class": (
-                    getattr(
-                        row,
-                        "transaction_class",
-                        "income",
-                    )
-                    or "income"
-                ),
-            }
-            for row in rows
-        ]
-
-        # ------------------------------------------------------
-        # RETURN
-        # ------------------------------------------------------
+        def breakdown(source, field):
+            result = []
+            for name, data in sorted(source.items(), key=lambda pair: pair[1]["amount"], reverse=True):
+                result.append({
+                    field: name,
+                    "amount": round(data["amount"], 2),
+                    "currency": display_currency,
+                    "count": data["count"],
+                    "percentage_of_total": round(data["amount"] / total * 100, 2) if total else 0,
+                })
+            return result
 
         return {
-            "user": DashboardService._ai_user_context(
-                user_id
-            ),
-
-            "period": {
-                "start": start.isoformat(),
-                "end": end.isoformat(),
-            },
-
-            # Authoritative total across ALL records.
+            "user": DashboardService._ai_user_context(user_id),
+            "period": {"start": start.isoformat(), "end": end.isoformat()},
+            "currency": display_currency,
             "total": round(total, 2),
-
-            "record_count": record_count,
-
-            # Number actually supplied as individual records.
+            "record_count": len(rows),
             "record_count_returned": len(records),
-
-            "records_truncated": (
-                len(records) < record_count
-            ),
-
-            # ALL matching income, regardless of detailed-record limit.
-            "category_breakdown": category_breakdown,
-
-            "transaction_class_breakdown": (
-                transaction_class_breakdown
-            ),
-
-            # Detailed records.
+            "records_truncated": len(records) < len(rows),
+            "category_breakdown": breakdown(by_category, "category"),
+            "transaction_class_breakdown": breakdown(by_class, "transaction_class"),
             "records": records,
-
-            # Explicit reconciliation helper.
             "calculation": {
-                "formula": (
-                    "total_income = sum(all active Income.amount "
-                    "records in the requested period)"
-                ),
+                "formula": "sum each active income record after conversion from its original currency at its received date",
                 "result": round(total, 2),
+                "currency": display_currency,
             },
-
-            # Explicit accounting rules.
             "accounting_rules": {
-                "investment_liquidation": (
-                    "Investment liquidation proceeds are recorded "
-                    "as income."
-                ),
-                "goal_termination": (
-                    "When a goal is terminated, all contributed "
-                    "amounts are returned as a new Income transaction "
-                    "with transaction_class='goal_termination'."
-                ),
+                "investment_liquidation": "Investment liquidation proceeds are recorded as income.",
+                "goal_termination": "Goal termination returns are represented as a new income transaction with transaction_class='goal_termination'.",
             },
         }
 
     @staticmethod
-    def ai_expense_context(
-        user_id,
-        start,
-        end,
-        message="",
-        limit=30,
-    ):
-        """
-        Authoritative AI expense context.
+    def ai_expense_context(user_id, start, end, message="", limit=30):
+        """Currency-aware authoritative expense context for FOCOST AI."""
+        from collections import defaultdict
+        from app.services.financial_currency_service import FinancialCurrencyService
 
-        IMPORTANT:
-        This uses the same expense definition as the dashboard's
-        monthly_expense() and _monthly_savings_rows():
-
-            total expenses = all legitimate Expense records
-
-        Therefore this includes:
-            - ordinary expenses
-            - investment funding/cost
-            - goal contributions
-            - other legitimate cash-outflows
-
-        The AI receives both:
-            1. the authoritative total
-            2. operating-expense-only total
-            3. category breakdown
-            4. transaction-class breakdown
-            5. merchant breakdown
-            6. individual records
-
-        This prevents the AI from saying that expenses do not exist merely
-        because the expenses are investment-related.
-        """
-
-        from sqlalchemy import func
-
-        base_query = Expense.query.filter(
+        query = Expense.query.filter(
             Expense.user_id == user_id,
             Expense.is_active == True,
             Expense.expense_date.between(start, end),
         )
-
-        # ------------------------------------------------------
-        # Optional category / merchant filtering
-        # ------------------------------------------------------
-
         text = (message or "").lower().strip()
-
-        categories = [
-            row[0]
-            for row in (
-                db.session.query(Expense.category)
-                .filter(
-                    Expense.user_id == user_id,
-                    Expense.category.isnot(None),
-                )
-                .distinct()
-                .all()
-            )
-            if row[0]
-        ]
-
-        category_match = None
-
-        for category in categories:
-            category_text = str(category).lower().strip()
-
-            if category_text and category_text in text:
-                category_match = category
-                break
-
+        categories = [r[0] for r in db.session.query(Expense.category).filter(
+            Expense.user_id == user_id, Expense.category.isnot(None)
+        ).distinct().all() if r[0]]
+        category_match = next((c for c in categories if str(c).lower().strip() in text), None)
         if category_match:
-            base_query = base_query.filter(
-                Expense.category == category_match
-            )
-
-        merchants = [
-            row[0]
-            for row in (
-                db.session.query(Expense.merchant)
-                .filter(
-                    Expense.user_id == user_id,
-                    Expense.merchant.isnot(None),
-                )
-                .distinct()
-                .all()
-            )
-            if row[0]
-        ]
-
-        merchant_match = None
-
-        for merchant in merchants:
-            merchant_text = str(merchant).lower().strip()
-
-            if merchant_text and merchant_text in text:
-                merchant_match = merchant
-                break
-
+            query = query.filter(Expense.category == category_match)
+        merchants = [r[0] for r in db.session.query(Expense.merchant).filter(
+            Expense.user_id == user_id, Expense.merchant.isnot(None)
+        ).distinct().all() if r[0]]
+        merchant_match = next((m for m in merchants if str(m).lower().strip() in text), None)
         if merchant_match:
-            base_query = base_query.filter(
-                Expense.merchant == merchant_match
-            )
+            query = query.filter(Expense.merchant == merchant_match)
 
-        # ------------------------------------------------------
-        # Authoritative total
-        # ------------------------------------------------------
-
-        total = float(
-            base_query.with_entities(
-                func.coalesce(
-                    func.sum(Expense.amount),
-                    0,
-                )
-            ).scalar()
-            or 0
+        rows = query.order_by(Expense.expense_date.asc(), Expense.id.asc()).all()
+        display_currency = FinancialCurrencyService.display_currency(user_id)
+        converted = FinancialCurrencyService.convert_records(
+            rows, display_currency, date_field="expense_date"
         )
+        total = sum(float(item["converted_amount"]) for item in converted)
+        operating_total = 0.0
+        category_totals, class_totals, merchant_totals = defaultdict(lambda: {"amount": 0.0, "count": 0}), defaultdict(lambda: {"amount": 0.0, "count": 0}), defaultdict(lambda: {"amount": 0.0, "count": 0})
+        records = []
+        for row, fx in zip(rows, converted):
+            amount = float(fx["converted_amount"])
+            category = row.category or "Uncategorized"
+            merchant = row.merchant or "Unknown"
+            transaction_class = getattr(row, "transaction_class", None) or "expense"
+            category_totals[category]["amount"] += amount
+            category_totals[category]["count"] += 1
+            class_totals[transaction_class]["amount"] += amount
+            class_totals[transaction_class]["count"] += 1
+            merchant_totals[merchant]["amount"] += amount
+            merchant_totals[merchant]["count"] += 1
+            if transaction_class == "expense":
+                operating_total += amount
+            if len(records) < max(int(limit or 30), 1):
+                records.append({
+                    "id": row.id,
+                    "date": row.expense_date.isoformat() if row.expense_date else None,
+                    "merchant": merchant,
+                    "category": category,
+                    "description": row.description,
+                    "amount": amount,
+                    "currency": display_currency,
+                    "original_amount": float(row.amount or 0),
+                    "original_currency": row.currency or "NGN",
+                    "exchange_rate": str(fx["exchange_rate"]),
+                    "rate_date": fx["rate_date"].isoformat(),
+                    "payment_method": row.payment_method,
+                    "notes": row.notes,
+                    "recurring": bool(row.recurring),
+                    "transaction_class": transaction_class,
+                })
 
-        # ------------------------------------------------------
-        # Category breakdown
-        # ------------------------------------------------------
-
-        category_rows = (
-            base_query.with_entities(
-                Expense.category,
-                func.coalesce(
-                    func.sum(Expense.amount),
-                    0,
-                ).label("total"),
-                func.count(Expense.id).label("count"),
-            )
-            .group_by(Expense.category)
-            .order_by(
-                func.sum(Expense.amount).desc()
-            )
-            .all()
-        )
-
-        category_breakdown = [
-            {
-                "category": category or "Uncategorized",
-                "amount": round(float(amount or 0), 2),
-                "count": int(count or 0),
-                "percentage_of_total": round(
-                    (
-                        float(amount or 0) / total * 100
-                        if total
-                        else 0
-                    ),
-                    2,
-                ),
-            }
-            for category, amount, count in category_rows
-        ]
-
-        # ------------------------------------------------------
-        # Transaction-class breakdown
-        # ------------------------------------------------------
-
-        class_rows = (
-            base_query.with_entities(
-                Expense.transaction_class,
-                func.coalesce(
-                    func.sum(Expense.amount),
-                    0,
-                ).label("total"),
-                func.count(Expense.id).label("count"),
-            )
-            .group_by(Expense.transaction_class)
-            .order_by(
-                func.sum(Expense.amount).desc()
-            )
-            .all()
-        )
-
-        transaction_class_breakdown = [
-            {
-                "transaction_class": (
-                    transaction_class or "expense"
-                ),
-                "amount": round(float(amount or 0), 2),
-                "count": int(count or 0),
-                "percentage_of_total": round(
-                    (
-                        float(amount or 0) / total * 100
-                        if total
-                        else 0
-                    ),
-                    2,
-                ),
-            }
-            for transaction_class, amount, count
-            in class_rows
-        ]
-
-        # ------------------------------------------------------
-        # Operating-expense total
-        # ------------------------------------------------------
-
-        operating_total = float(
-            base_query.filter(
-                or_(
-                    Expense.transaction_class == "expense",
-                    Expense.transaction_class.is_(None),
-                )
-            )
-            .with_entities(
-                func.coalesce(
-                    func.sum(Expense.amount),
-                    0,
-                )
-            )
-            .scalar()
-            or 0
-        )
-
-        # ------------------------------------------------------
-        # Merchant breakdown
-        # ------------------------------------------------------
-
-        merchant_rows = (
-            base_query.with_entities(
-                Expense.merchant,
-                func.coalesce(
-                    func.sum(Expense.amount),
-                    0,
-                ).label("total"),
-                func.count(Expense.id).label("count"),
-            )
-            .group_by(Expense.merchant)
-            .order_by(
-                func.sum(Expense.amount).desc()
-            )
-            .all()
-        )
-
-        merchant_breakdown = [
-            {
-                "merchant": merchant or "Unknown",
-                "amount": round(float(amount or 0), 2),
-                "count": int(count or 0),
-            }
-            for merchant, amount, count in merchant_rows
-        ]
-
-        # ------------------------------------------------------
-        # Detailed records
-        # ------------------------------------------------------
-
-        rows = (
-            base_query
-            .order_by(
-                Expense.expense_date.desc(),
-                Expense.id.desc(),
-            )
-            .limit(max(int(limit or 30), 1))
-            .all()
-        )
-
-        records = [
-            {
-                "id": row.id,
-                "date": row.expense_date.isoformat(),
-                "merchant": row.merchant,
-                "category": row.category,
-                "description": row.description,
-                "amount": float(row.amount or 0),
-                "payment_method": row.payment_method,
-                "notes": row.notes,
-                "recurring": bool(row.recurring),
-                "transaction_class": (
-                    getattr(
-                        row,
-                        "transaction_class",
-                        "expense",
-                    )
-                    or "expense"
-                ),
-            }
-            for row in rows
-        ]
-
-        # ------------------------------------------------------
-        # Authoritative calculation explanation
-        # ------------------------------------------------------
+        def make_breakdown(source, field):
+            return [{
+                field: name,
+                "amount": round(data["amount"], 2),
+                "currency": display_currency,
+                "count": data["count"],
+                "percentage_of_total": round(data["amount"] / total * 100, 2) if total else 0,
+            } for name, data in sorted(source.items(), key=lambda pair: pair[1]["amount"], reverse=True)]
 
         return {
             "user": DashboardService._ai_user_context(user_id),
-
-            "period": {
-                "start": start.isoformat(),
-                "end": end.isoformat(),
-            },
-
+            "period": {"start": start.isoformat(), "end": end.isoformat()},
+            "currency": display_currency,
             "definition": {
-                "total_expenses": (
-                    "Sum of all active Expense records in the "
-                    "requested period."
-                ),
-                "operating_expenses": (
-                    "Expenses whose transaction_class is "
-                    "'expense' or NULL."
-                ),
-                "investment_costs": (
-                    "Investment funding is recorded as an expense "
-                    "and therefore reduces savings."
-                ),
-                "investment_valuation": (
-                    "Investment valuation gains/losses are non-cash "
-                    "investment-value changes and are never recorded "
-                    "as expenses."
-                ),
-                "goal_contributions": (
-                    "Goal contributions are treated as expenses "
-                    "by the dashboard accounting model."
-                ),
+                "total_expenses": "Sum of all active Expense records after converting each original amount at its transaction date.",
+                "operating_expenses": "Expenses whose transaction_class is 'expense' or NULL.",
+                "investment_costs": "Investment funding is recorded as an expense and reduces savings.",
+                "investment_valuation": "Investment valuation gains/losses are non-cash changes and are not expenses.",
+                "goal_contributions": "Goal contributions are treated as expenses by the dashboard accounting model.",
             },
-
             "calculation": {
-                "formula": "total_expenses = sum(all active Expense.amount)",
+                "formula": "sum each active expense record after conversion from its original currency at its expense date",
                 "result": round(total, 2),
+                "currency": display_currency,
             },
-
             "total_matching_amount": round(total, 2),
-
-            "operating_expenses": round(
-                operating_total,
-                2,
-            ),
-
-            "non_operating_expenses": round(
-                total - operating_total,
-                2,
-            ),
-
-            "category_breakdown": category_breakdown,
-
-            "transaction_class_breakdown": (
-                transaction_class_breakdown
-            ),
-
-            "merchant_breakdown": merchant_breakdown,
-
-            "filters": {
-                "category": category_match,
-                "merchant": merchant_match,
-            },
-
-            "record_count": (
-                int(
-                    base_query.with_entities(
-                        func.count(Expense.id)
-                    ).scalar()
-                    or 0
-                )
-            ),
-
+            "operating_expenses": round(operating_total, 2),
+            "non_operating_expenses": round(total - operating_total, 2),
+            "category_breakdown": make_breakdown(category_totals, "category"),
+            "transaction_class_breakdown": make_breakdown(class_totals, "transaction_class"),
+            "merchant_breakdown": make_breakdown(merchant_totals, "merchant"),
+            "filters": {"category": category_match, "merchant": merchant_match},
+            "record_count": len(rows),
             "record_count_returned": len(records),
-
             "records": records,
         }
 
@@ -4793,320 +4317,202 @@ class DashboardService:
             )
 
         # ------------------------------------------------------
-        # Detailed transaction records
+        # Detailed transaction records and authoritative total
         # ------------------------------------------------------
-
-        rows = (
-            query
-            .order_by(
-                Expense.expense_date.desc(),
-                Expense.id.desc(),
-            )
-            .limit(max(int(limit or 20), 1))
-            .all()
-        )
-
-        records = [
-            {
+        from app.services.financial_currency_service import FinancialCurrencyService
+        display_currency = FinancialCurrencyService.display_currency(user_id)
+        rows = query.order_by(Expense.expense_date.desc(), Expense.id.desc()).all()
+        converted = FinancialCurrencyService.convert_records(rows, display_currency, date_field="expense_date")
+        total = sum(float(item["converted_amount"]) for item in converted)
+        record_limit = max(int(limit or 20), 1)
+        records = []
+        for row, fx in list(zip(rows, converted))[:record_limit]:
+            records.append({
                 "id": row.id,
-                "date": row.expense_date.isoformat(),
+                "date": row.expense_date.isoformat() if row.expense_date else None,
                 "merchant": row.merchant,
                 "category": row.category,
                 "description": row.description,
-                "amount": float(
-                    row.amount or 0
-                ),
+                "amount": float(fx["converted_amount"]),
+                "currency": display_currency,
+                "original_amount": float(row.amount or 0),
+                "original_currency": row.currency or "NGN",
+                "exchange_rate": str(fx["exchange_rate"]),
+                "rate_date": fx["rate_date"].isoformat(),
                 "payment_method": row.payment_method,
                 "notes": row.notes,
-                "recurring": bool(
-                    row.recurring
-                ),
-                "transaction_class": (
-                    getattr(
-                        row,
-                        "transaction_class",
-                        "expense",
-                    )
-                    or "expense"
-                ),
-            }
-            for row in rows
-        ]
-
-        # ------------------------------------------------------
-        # Authoritative total for the same filtered query
-        # ------------------------------------------------------
-
-        total_query = query.with_entities(
-            func.coalesce(
-                func.sum(Expense.amount),
-                0,
-            )
-        )
-
-        total = float(
-            total_query.scalar()
-            or 0
-        )
+                "recurring": bool(row.recurring),
+                "transaction_class": getattr(row, "transaction_class", None) or "expense",
+            })
 
         return {
-            "user": DashboardService._ai_user_context(
-                user_id
-            ),
-            "period": {
-                "start": start.isoformat(),
-                "end": end.isoformat(),
-            },
-            "filters": {
-                "category": category_match,
-                "merchant": merchant_match,
-                "expense_only": expense_only,
-            },
-            "total_matching_amount": round(
-                total,
-                2,
-            ),
-            "record_count_returned": len(
-                records
-            ),
+            "user": DashboardService._ai_user_context(user_id),
+            "period": {"start": start.isoformat(), "end": end.isoformat()},
+            "currency": display_currency,
+            "filters": {"category": category_match, "merchant": merchant_match, "expense_only": expense_only},
+            "total_matching_amount": round(total, 2),
+            "record_count": len(rows),
+            "record_count_returned": len(records),
+            "records_truncated": len(records) < len(rows),
             "records": records,
         }
 
     @staticmethod
     def ai_goals_context(user_id):
-        goals = (
-            Goal.query
-            .filter_by(
-                user_id=user_id,
-                is_active=True,
-            )
-            .order_by(
-                Goal.target_date.asc()
-            )
-            .all()
-        )
+        """Return active goals translated into the user's display currency."""
+        from app.services.financial_currency_service import FinancialCurrencyService
+        from app.utils.timezone import today
 
+        goals = Goal.query.filter_by(user_id=user_id, is_active=True).order_by(Goal.target_date.asc()).all()
+        display_currency = FinancialCurrencyService.display_currency(user_id)
+        valuation_date = today()
         result = []
-
         for goal in goals:
-            result.append(
-                {
-                    "id": goal.id,
-                    "title": goal.title,
-                    "goal_type": goal.goal_type,
-                    "target": float(
-                        goal.target_amount or 0
-                    ),
-                    "saved": float(
-                        goal.saved_amount or 0
-                    ),
-                    "remaining": float(
-                        goal.remaining_amount or 0
-                    ),
-                    "target_date": (
-                        goal.target_date.isoformat()
-                        if goal.target_date
-                        else None
-                    ),
-                    "status": goal.progress_status,
-                    "progress_percent": round(
-                        float(
-                            goal.progress_percentage
-                            or 0
-                        ),
-                        2,
-                    ),
-                    "monthly_contribution": float(
-                        goal.monthly_contribution
-                        or 0
-                    ),
-                }
+            source_currency = (getattr(goal, "currency", None) or "NGN").upper()
+            contributions = GoalContribution.query.filter_by(
+                goal_id=goal.id, user_id=user_id
+            ).all()
+            saved_in_goal_currency = FinancialCurrencyService.sum_records(
+                contributions, source_currency, date_field="contribution_date"
             )
-
+            saved_in_goal_currency = min(float(goal.target_amount or 0), saved_in_goal_currency)
+            original = {
+                "target": float(goal.target_amount or 0),
+                "saved": saved_in_goal_currency,
+                "remaining": max(float(goal.target_amount or 0) - saved_in_goal_currency, 0.0),
+                "monthly_contribution": float(goal.monthly_contribution or 0),
+            }
+            converted = {
+                key: FinancialCurrencyService.convert_value(value, source_currency, display_currency, on_date=valuation_date)
+                for key, value in original.items()
+            }
+            result.append({
+                "id": goal.id,
+                "title": goal.title,
+                "goal_type": goal.goal_type,
+                **converted,
+                "currency": display_currency,
+                "original_currency": source_currency,
+                "original_amounts": original,
+                "target_date": goal.target_date.isoformat() if goal.target_date else None,
+                "status": goal.progress_status,
+                "progress_percent": round((saved_in_goal_currency / float(goal.target_amount or 1) * 100) if goal.target_amount else 0, 2),
+                "valuation_date": valuation_date.isoformat(),
+            })
         return {
-            "user": DashboardService._ai_user_context(
-                user_id
-            ),
+            "user": DashboardService._ai_user_context(user_id),
+            "currency": display_currency,
+            "valuation_date": valuation_date.isoformat(),
             "goal_count": len(result),
             "goals": result,
         }
 
     @staticmethod
-    def ai_budgets_context(
-        user_id,
-        start,
-        end,
-    ):
-        budgets = (
-            Budget.query
-            .filter(
-                Budget.user_id == user_id,
-                Budget.is_active == True,
-            )
-            .all()
-        )
+    def ai_budgets_context(user_id, start, end):
+        """Return budget progress in the user's display currency."""
+        from app.services.financial_currency_service import FinancialCurrencyService
 
+        budgets = Budget.query.filter(Budget.user_id == user_id, Budget.is_active == True).all()
+        display_currency = FinancialCurrencyService.display_currency(user_id)
+        valuation_date = end
         result = []
-
         for budget in budgets:
-            spent = float(
-                db.session.query(
-                    func.coalesce(
-                        func.sum(
-                            Expense.amount
-                        ),
-                        0,
-                    )
-                )
-                .filter(
-                    Expense.user_id == user_id,
-                    or_(
-                        Expense.transaction_class == "expense",
-                        Expense.transaction_class.is_(None),
-                    ),
-                    Expense.category == budget.category,
-                    Expense.expense_date.between(
-                        start,
-                        end,
-                    ),
-                )
-                .scalar()
-                or 0
+            budget_currency = (getattr(budget, "currency", None) or "NGN").upper()
+            budget_amount_original = float(budget.amount or 0)
+            spent_in_budget_currency = FinancialCurrencyService.budget_spent(budget, start_date=start, end_date=end)
+            budget_amount_display = FinancialCurrencyService.convert_value(
+                budget_amount_original, budget_currency, display_currency, on_date=valuation_date
             )
-
-            amount = float(
-                budget.amount or 0
+            spent_display = FinancialCurrencyService.convert_value(
+                spent_in_budget_currency, budget_currency, display_currency, on_date=valuation_date
             )
-
-            result.append(
-                {
-                    "id": budget.id,
-                    "category": budget.category,
-                    "budget": round(
-                        amount,
-                        2,
-                    ),
-                    "spent": round(
-                        spent,
-                        2,
-                    ),
-                    "remaining": round(
-                        amount - spent,
-                        2,
-                    ),
-                    "percentage_used": round(
-                        (
-                            spent / amount * 100
-                            if amount
-                            else 0
-                        ),
-                        2,
-                    ),
-                    "status": budget.status,
-                    "start_date": (
-                        budget.start_date.isoformat()
-                        if budget.start_date
-                        else None
-                    ),
-                    "end_date": (
-                        budget.end_date.isoformat()
-                        if budget.end_date
-                        else None
-                    ),
-                }
-            )
-
+            remaining_display = budget_amount_display - spent_display
+            percentage_used = (spent_in_budget_currency / budget_amount_original * 100) if budget_amount_original else 0
+            status = "Exceeded" if percentage_used >= 100 else "Critical" if percentage_used >= 90 else "Warning" if percentage_used >= 75 else "Healthy"
+            result.append({
+                "id": budget.id,
+                "category": budget.category,
+                "budget": round(budget_amount_display, 2),
+                "spent": round(spent_display, 2),
+                "remaining": round(remaining_display, 2),
+                "currency": display_currency,
+                "original_budget": budget_amount_original,
+                "original_spent": round(spent_in_budget_currency, 2),
+                "original_currency": budget_currency,
+                "percentage_used": round(percentage_used, 2),
+                "status": status,
+                "start_date": budget.start_date.isoformat() if budget.start_date else None,
+                "end_date": budget.end_date.isoformat() if budget.end_date else None,
+                "valuation_date": valuation_date.isoformat(),
+                "spending_conversion_basis": "Each expense converted into the budget currency at its transaction date before budget reconciliation.",
+            })
         return {
-            "user": DashboardService._ai_user_context(
-                user_id
-            ),
-            "period": {
-                "start": start.isoformat(),
-                "end": end.isoformat(),
-            },
+            "user": DashboardService._ai_user_context(user_id),
+            "period": {"start": start.isoformat(), "end": end.isoformat()},
+            "currency": display_currency,
             "budgets": result,
         }
 
     @staticmethod
     def ai_investments_context(user_id):
+        """Return investment valuations with original and display-currency provenance."""
         from app.models.asset import Asset
+        from app.services.financial_currency_service import FinancialCurrencyService
+        from app.utils.timezone import today
 
-        assets = (
-            Asset.query
-            .filter_by(
-                user_id=user_id,
-                is_active=True,
-            )
-            .order_by(
-                Asset.acquisition_date.asc()
-            )
-            .all()
-        )
-
+        assets = Asset.query.filter_by(user_id=user_id, is_active=True).order_by(Asset.acquisition_date.asc()).all()
+        display_currency = FinancialCurrencyService.display_currency(user_id)
+        valuation_date = today()
         records = []
-
         for asset in assets:
-            records.append(
-                {
-                    "id": asset.id,
-                    "name": asset.name,
-                    "asset_type": asset.asset_type,
-                    "investment_type": asset.investment_type,
-                    "acquisition_date": (
-                        asset.acquisition_date.isoformat()
-                        if asset.acquisition_date
-                        else None
-                    ),
-                    "acquisition_cost": float(
-                        asset.acquisition_cost or 0
-                    ),
-                    "current_value": float(
-                        asset.current_value or 0
-                    ),
-                    "quantity": asset.quantity,
-                    "cost_basis": asset.cost_basis,
-                    "gain_loss": round(
-                        float(
-                            asset.gain_loss or 0
-                        ),
-                        2,
-                    ),
-                    "return_pct": float(
-                        asset.return_pct or 0
-                    ),
-                    "source_expense_id": (
-                        asset.source_expense_id
-                    ),
-                }
+            source_currency = (getattr(asset, "currency", None) or "NGN").upper()
+            original_cost = float(asset.acquisition_cost or 0)
+            original_value = float(asset.current_value or 0)
+            original_gain = float(asset.gain_loss or 0)
+            acquisition_date = asset.acquisition_date or valuation_date
+            cost_display = FinancialCurrencyService.convert_value(
+                original_cost, source_currency, display_currency, on_date=acquisition_date
             )
+            value_display = FinancialCurrencyService.convert_value(
+                original_value, source_currency, display_currency, on_date=valuation_date
+            )
+            gain_display_at_current_rate = FinancialCurrencyService.convert_value(
+                original_gain, source_currency, display_currency, on_date=valuation_date
+            )
+            records.append({
+                "id": asset.id,
+                "name": asset.name,
+                "asset_type": asset.asset_type,
+                "investment_type": asset.investment_type,
+                "acquisition_date": acquisition_date.isoformat(),
+                "acquisition_cost": round(cost_display, 2),
+                "current_value": round(value_display, 2),
+                "gain_loss": round(gain_display_at_current_rate, 2),
+                "currency": display_currency,
+                "original_acquisition_cost": original_cost,
+                "original_current_value": original_value,
+                "original_gain_loss": original_gain,
+                "original_currency": source_currency,
+                "fx_translation_effect": round((value_display - cost_display) - gain_display_at_current_rate, 2),
+                "quantity": asset.quantity,
+                "cost_basis": asset.cost_basis,
+                "return_pct": float(asset.return_pct or 0),
+                "return_basis": "Original asset currency; currency translation effects are reported separately.",
+                "source_expense_id": asset.source_expense_id,
+                "valuation_date": valuation_date.isoformat(),
+            })
 
         return {
-            "user": DashboardService._ai_user_context(
-                user_id
-            ),
+            "user": DashboardService._ai_user_context(user_id),
+            "currency": display_currency,
+            "valuation_date": valuation_date.isoformat(),
             "asset_count": len(records),
             "assets": records,
-            "total_acquisition_cost": round(
-                sum(
-                    item["acquisition_cost"]
-                    for item in records
-                ),
-                2,
-            ),
-            "total_current_value": round(
-                sum(
-                    item["current_value"]
-                    for item in records
-                ),
-                2,
-            ),
-            "total_gain_loss": round(
-                sum(
-                    item["gain_loss"]
-                    for item in records
-                ),
-                2,
-            ),
+            "total_acquisition_cost": round(sum(item["acquisition_cost"] for item in records), 2),
+            "total_current_value": round(sum(item["current_value"] for item in records), 2),
+            "total_gain_loss": round(sum(item["gain_loss"] for item in records), 2),
+            "total_fx_translation_effect": round(sum(item["fx_translation_effect"] for item in records), 2),
+            "valuation_policy": "Acquisition cost uses the acquisition-date rate; current value and current-rate translated gain/loss use the valuation-date rate. FX translation effect is shown separately.",
         }
 
     @staticmethod
@@ -5121,23 +4527,16 @@ class DashboardService:
             end_date=end,
         )
 
-        operating_expenses = float(
-            DashboardService
-            ._active_operating_expense_query(user_id)
-            .filter(
-                Expense.expense_date.between(
-                    start,
-                    end,
-                ),
-            )
-            .with_entities(
-                func.coalesce(
-                    func.sum(Expense.amount),
-                    0,
-                )
-            )
-            .scalar()
-            or 0
+        from app.services.financial_currency_service import FinancialCurrencyService
+        operating_rows = (
+            DashboardService._active_operating_expense_query(user_id)
+            .filter(Expense.expense_date.between(start, end))
+            .all()
+        )
+        operating_expenses = FinancialCurrencyService.sum_records(
+            operating_rows,
+            FinancialCurrencyService.display_currency(user_id),
+            date_field="expense_date",
         )
 
         return {
@@ -5148,6 +4547,7 @@ class DashboardService:
                 "start": start.isoformat(),
                 "end": end.isoformat(),
             },
+            "currency": FinancialCurrencyService.display_currency(user_id),
             "income": totals["income"],
             "expenses": totals["expenses"],
             "operating_expenses": round(
@@ -5581,209 +4981,90 @@ class DashboardService:
         adjusted_expenses = expenses * (1 + float(expense_change_pct) / 100)
         return {"baseline_income": round(income, 2), "baseline_expenses": round(expenses, 2), "adjusted_income": round(adjusted_income, 2), "adjusted_expenses": round(adjusted_expenses, 2), "baseline_net": round(income-expenses, 2), "scenario_net": round(adjusted_income-adjusted_expenses, 2)}
 
-        # @staticmethod
-        # def month_end_forecast(user_id):
-        #     """Conservative month-end run-rate forecast; no fabricated salary/category assumptions."""
-        #     today = date.today()
-        #     days_in_month = calendar.monthrange(today.year, today.month)[1]
-        #     elapsed = max(today.day, 1)
-        #     income = DashboardService.monthly_income(user_id)
-        #     expenses = DashboardService.monthly_expense(user_id)
-        #     projected_income = (income / elapsed) * days_in_month
-        #     projected_expenses = (expenses / elapsed) * days_in_month
-        #     projected_savings = projected_income - projected_expenses
-        #
-        #     if income == 0 and expenses == 0:
-        #         status = "Insufficient current-month activity for a reliable run-rate forecast."
-        #     elif projected_savings < 0:
-        #         status = "Forecast indicates a potential month-end cash-flow deficit if the current run rate continues."
-        #     else:
-        #         status = "Forecast indicates positive month-end cash flow if the current run rate continues."
-        #
-        #     confidence = round(
-        #         min(90, 35 + (elapsed / days_in_month) * 55),
-        #         1,
-        #     )
-        #
-        #     return {
-        #         "projected_income": round(
-        #             projected_income,
-        #             2,
-        #         ),
-        #         "projected_expenses": round(
-        #             projected_expenses,
-        #             2,
-        #         ),
-        #         "projected_savings": round(
-        #             projected_savings,
-        #             2,
-        #         ),
-        #
-        #         "current_income": round(
-        #             income,
-        #             2,
-        #         ),
-        #         "current_expenses": round(
-        #             expenses,
-        #             2,
-        #         ),
-        #
-        #         "days_elapsed": elapsed,
-        #         "days_in_month": days_in_month,
-        #         "days_remaining": max(
-        #             days_in_month - today.day,
-        #             0,
-        #         ),
-        #
-        #         "daily_income_run_rate": round(
-        #             income / elapsed,
-        #             2,
-        #         ),
-        #
-        #         "daily_expense_run_rate": round(
-        #             expenses / elapsed,
-        #             2,
-        #         ),
-        #
-        #         "daily_savings_run_rate": round(
-        #             (income - expenses) / elapsed,
-        #             2,
-        #         ),
-        #
-        #         "calculation": {
-        #             "projected_income": (
-        #                 "current_income / days_elapsed "
-        #                 "* days_in_month"
-        #             ),
-        #             "projected_expenses": (
-        #                 "current_expenses / days_elapsed "
-        #                 "* days_in_month"
-        #             ),
-        #             "projected_savings": (
-        #                 "projected_income - projected_expenses"
-        #             ),
-        #         },
-        #
-        #         "forecast_status": status,
-        #         "confidence": confidence,
-        #         "method": "current_month_run_rate",
-        #         "is_guaranteed": False,
-        #     }
-
     @staticmethod
-    def category_forecasts(
-        user_id,
-        months=3,
-    ):
-        """
-        Forecast operating spending by category.
+    def category_forecasts(user_id, months=3):
+        """Forecast operating spend by category in the selected display currency."""
+        from collections import defaultdict
+        from decimal import Decimal
+        from app.services.financial_currency_service import FinancialCurrencyService
 
-        Category forecasting is intentionally restricted to active
-        operating expenses only.
+        current = today()
+        target = FinancialCurrencyService.display_currency(user_id)
+        monthly_series = []
 
-        It is a category-spending forecast, not a total cash-outflow
-        forecast. Therefore, investment funding, goal contributions,
-        and other non-operating cash expenses are excluded.
-        """
-
-        today = date.today()
-
-        categories = {}
-
-        for offset in range(
-            11,
-            -1,
-            -1,
-        ):
-            year = today.year
-            month = today.month - offset
+        for offset in range(11, -1, -1):
+            year, month = current.year, current.month - offset
 
             while month <= 0:
                 month += 12
                 year -= 1
 
-            start = date(
+            month_start = date(year, month, 1)
+            month_end = date(
                 year,
                 month,
-                1,
+                calendar.monthrange(year, month)[1],
             )
 
-            end = date(
-                year,
-                month,
-                calendar.monthrange(
-                    year,
-                    month,
-                )[1],
+            rows = Expense.query.filter(
+                Expense.user_id == user_id,
+                Expense.is_active.is_(True),
+                or_(
+                    Expense.transaction_class == "expense",
+                    Expense.transaction_class.is_(None),
+                ),
+                Expense.expense_date.between(month_start, month_end),
+            ).all()
+
+            converted = FinancialCurrencyService.convert_records(
+                rows,
+                target,
+                date_field="expense_date",
             )
 
-            rows = (
-                db.session.query(
-                    Expense.category,
-                    func.sum(
-                        Expense.amount
-                    ),
-                )
-                .filter(
-                    Expense.user_id == user_id,
-                    Expense.is_active.is_(True),
-                    or_(
-                        Expense.transaction_class == "expense",
-                        Expense.transaction_class.is_(None),
-                    ),
-                    Expense.expense_date.between(
-                        start,
-                        end,
-                    ),
-                )
-                .group_by(
-                    Expense.category
-                )
-                .all()
-            )
+            monthly_by_category = defaultdict(lambda: Decimal("0"))
 
-            for cat, amount in rows:
-                categories.setdefault(
-                    cat,
-                    [],
-                ).append(
-                    float(amount or 0)
-                )
+            for row, fx in zip(rows, converted):
+                category = row.category or "Uncategorized"
+                amount = fx["converted_amount"]
+
+                monthly_by_category[category] += amount
+
+            monthly_series.append(dict(monthly_by_category))
+
+        all_categories = sorted({
+            category
+            for month_values in monthly_series
+            for category in month_values
+        })
+
+        categories = {
+            category: [
+                month_values.get(category, Decimal("0"))
+                for month_values in monthly_series
+            ]
+            for category in all_categories
+        }
 
         result = []
 
-        for cat, values in categories.items():
+        for category, values in categories.items():
             if len(values) < 3:
                 continue
 
-            recent = values[-3:]
+            recent_values = values[-3:]
+            baseline = sum(recent_values, Decimal("0")) / Decimal(len(recent_values))
 
-            baseline = (
-                sum(recent)
-                / len(recent)
-            )
-
-            result.append(
-                {
-                    "category": cat,
-                    "average_recent": round(
-                        baseline,
-                        2,
-                    ),
-                    "projected_monthly": round(
-                        baseline,
-                        2,
-                    ),
-                    "history_points": len(
-                        values
-                    ),
-                }
-            )
+            result.append({
+                "category": category,
+                "average_recent": round(float(baseline), 2),
+                "projected_monthly": round(float(baseline), 2),
+                "currency": target,
+                "history_points": len(values),
+            })
 
         return sorted(
             result,
-            key=lambda x: x[
-                "projected_monthly"
-            ],
+            key=lambda item: item["projected_monthly"],
             reverse=True,
         )

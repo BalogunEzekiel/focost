@@ -142,11 +142,26 @@ def delete(goal_id):
         user_id=current_user.id
     ).first_or_404()
 
+    goal_currency = goal.currency or "NGN"
     returned_amount = GoalService.delete_goal(goal)
 
     if returned_amount > 0:
+        from app.services.currency_service import CurrencyService
+        from app.utils.timezone import today
+        try:
+            returned_display = CurrencyService.format_converted(
+                returned_amount,
+                source_currency=goal_currency,
+                display_currency=current_user.currency or "NGN",
+                on_date=today(),
+                include_code=True,
+            )
+        except Exception:
+            returned_display = CurrencyService.format(
+                returned_amount, goal_currency, include_code=True
+            )
         flash(
-            f"Goal deleted successfully. ₦{returned_amount:,.2f} in contributions "
+            f"Goal deleted successfully. {returned_display} in contributions "
             "was returned to your income.",
             "success"
         )

@@ -27,11 +27,47 @@ from reportlab.platypus import (
 
 
 class ExportService:
-    """Generate consistent branded financial report exports."""
+    """Generate consistent branded, locale-aware financial report exports."""
+
+    LABEL_KEYS = {
+        "FOCOST — FINANCIAL REPORT": "report_title", "Generated": "generated",
+        "Period": "period", "Category": "category", "All time": "all_time",
+        "Present": "present", "All Categories": "all_categories",
+        "CURRENT FINANCIAL POSITION": "current_financial_position",
+        "Total cash income": "total_cash_income", "Less: total cash expenses": "less_cash_expenses",
+        "Available / savings balance": "available_savings_balance",
+        "Add: cumulative goal contributions": "cumulative_goal_contributions",
+        "Add: current investment value": "current_investment_value",
+        "Estimated net worth": "estimated_net_worth", "Note": "note",
+        "Period Total Income": "period_total_income", "Period Total Expenses": "period_total_expenses",
+        "Period Net Savings": "period_net_savings", "Period Savings Rate (%)": "period_savings_rate",
+        "Transactions": "transactions", "Income by Category": "income_by_category",
+        "Expense by Category": "expense_by_category", "Report Summary": "report_summary",
+        "Financial Position": "financial_position",
+        "FOCOST — STATEMENT OF FINANCIAL POSITION": "statement_financial_position",
+        "Current position": "current_position", "Component": "component", "Amount": "amount",
+        "Accounting context": "accounting_context", "Transaction Detail": "transaction_detail",
+        "Type": "type", "Date": "date", "Source / Merchant": "source_merchant",
+        "Original Amount": "original_amount", "Original Currency": "original_currency",
+        "Display Amount": "converted_amount", "Recurring": "recurring", "Notes": "notes",
+        "Savings Rate": "savings_rate_label", "Yes": "yes", "No": "no",
+        "Income": "income", "Expense": "expense", "No data": "no_data",
+    }
 
     @staticmethod
-    def _money(value):
-        return f"NGN {float(value or 0):,.2f}"
+    def _t(language_code, key):
+        from app.services.language_service import LanguageService
+        return LanguageService.translate(language_code or "en", key)
+
+    @staticmethod
+    def _label(text, language_code="en"):
+        key = ExportService.LABEL_KEYS.get(text)
+        return ExportService._t(language_code, key) if key else text
+
+    @staticmethod
+    def _money(value, currency="NGN"):
+        from app.services.currency_service import CurrencyService
+        return CurrencyService.format(value, currency, include_code=True)
 
     @staticmethod
     def _logo_path():
@@ -49,14 +85,14 @@ class ExportService:
         return image
 
     @staticmethod
-    def _financial_position_rows(position):
+    def _financial_position_rows(position, language_code="en"):
         return [
-            ("Total cash income", position["cash_income"]),
-            ("Less: total cash expenses", -position["cash_expenses"]),
-            ("Available / savings balance", position["available_balance"]),
-            ("Add: cumulative goal contributions", position["goal_contributions"]),
-            ("Add: current investment value", position["investment_current_value"]),
-            ("Estimated net worth", position["net_worth"]),
+            (ExportService._label("Total cash income", language_code), position["cash_income"]),
+            (ExportService._label("Less: total cash expenses", language_code), -position["cash_expenses"]),
+            (ExportService._label("Available / savings balance", language_code), position["available_balance"]),
+            (ExportService._label("Add: cumulative goal contributions", language_code), position["goal_contributions"]),
+            (ExportService._label("Add: current investment value", language_code), position["investment_current_value"]),
+            (ExportService._label("Estimated net worth", language_code), position["net_worth"]),
         ]
 
     @staticmethod
@@ -70,9 +106,9 @@ class ExportService:
         return path
 
     @staticmethod
-    def _configure_excel_sheet(ws, logo_path=None):
+    def _configure_excel_sheet(ws, logo_path=None, language_code="en"):
         ws.sheet_view.showGridLines = False
-        ws.oddHeader.center.text = '&BFOCOST — FINANCIAL REPORT'
+        ws.oddHeader.center.text = '&B' + ExportService._label('FOCOST — FINANCIAL REPORT', language_code)
         ws.oddHeader.center.size = 10
         ws.oddHeader.center.font = 'Calibri,Bold'
         ws.oddHeader.center.color = '1F4E78'
@@ -95,7 +131,7 @@ class ExportService:
                 pass
 
     @staticmethod
-    def excel(data, start_date=None, end_date=None, category=None):
+    def excel(data, start_date=None, end_date=None, category=None, language_code="en"):
         wb = Workbook()
         excel_logo_path = None
         try:
@@ -104,28 +140,29 @@ class ExportService:
             excel_logo_path = None
 
         ws = wb.active
-        ws.title = "Report Summary"
-        ExportService._configure_excel_sheet(ws, excel_logo_path)
+        ws.title = ExportService._label("Report Summary", language_code)[:31]
+        ExportService._configure_excel_sheet(ws, excel_logo_path, language_code)
 
-        ws["A1"] = "FOCOST — FINANCIAL REPORT"
+        ws["A1"] = ExportService._label("FOCOST — FINANCIAL REPORT", language_code)
         ws["A1"].font = Font(size=18, bold=True, color="1F4E78")
         ws.merge_cells("A1:F1")
-        ws["A2"] = "Generated"
+        ws["A2"] = ExportService._label("Generated", language_code)
         ws["B2"] = now().strftime("%d %b %Y %H:%M")
-        ws["A3"] = "Period"
-        ws["B3"] = f"{start_date or 'All time'} to {end_date or 'Present'}"
-        ws["A4"] = "Category"
-        ws["B4"] = category or "All Categories"
+        ws["A3"] = ExportService._label("Period", language_code)
+        ws["B3"] = f"{start_date or ExportService._label('All time', language_code)} – {end_date or ExportService._label('Present', language_code)}"
+        ws["A4"] = ExportService._label("Category", language_code)
+        ws["B4"] = category or ExportService._label("All Categories", language_code)
 
         summary = data["summary"]
         position = data["financial_position"]
+        display_currency = data.get("display_currency", "NGN")
 
         rows = [
-            ("Period Total Income", summary["income"]),
-            ("Period Total Expenses", summary["expenses"]),
-            ("Period Net Savings", summary["savings"]),
-            ("Period Savings Rate (%)", summary["savings_rate"]),
-            ("Transactions", summary["transactions"]),
+            (ExportService._label("Period Total Income", language_code), summary["income"]),
+            (ExportService._label("Period Total Expenses", language_code), summary["expenses"]),
+            (ExportService._label("Period Net Savings", language_code), summary["savings"]),
+            (ExportService._label("Period Savings Rate (%)", language_code), summary["savings_rate"]),
+            (ExportService._label("Transactions", language_code), summary["transactions"]),
         ]
         for r, (label, value) in enumerate(rows, 6):
             ws.cell(r, 1, label).font = Font(bold=True)
@@ -137,19 +174,20 @@ class ExportService:
         # from period-performance totals and uses DashboardService's authoritative
         # current balances so filters cannot distort net worth.
         start_row = 13
-        ws.cell(start_row, 1, "CURRENT FINANCIAL POSITION").font = Font(size=13, bold=True, color="1F4E78")
+        ws.cell(start_row, 1, ExportService._label("CURRENT FINANCIAL POSITION", language_code)).font = Font(size=13, bold=True, color="1F4E78")
         ws.merge_cells(start_row=start_row, start_column=1, end_row=start_row, end_column=2)
-        for offset, (label, value) in enumerate(ExportService._financial_position_rows(position), 1):
+        for offset, (label, value) in enumerate(ExportService._financial_position_rows(position, language_code), 1):
             row = start_row + offset
-            ws.cell(row, 1, label).font = Font(bold=label in {"Available / savings balance", "Estimated net worth"})
+            is_emphasis = offset in {3, 6}
+            ws.cell(row, 1, label).font = Font(bold=is_emphasis)
             ws.cell(row, 2, value)
             ws.cell(row, 2).number_format = '#,##0.00'
-            if label == "Estimated net worth":
+            if offset == 6:
                 ws.cell(row, 1).font = Font(bold=True, color="1F4E78")
                 ws.cell(row, 2).font = Font(bold=True, color="1F4E78")
 
-        ws.cell(start_row + 7, 1, "Note").font = Font(bold=True)
-        ws.cell(start_row + 7, 2, "Goal contributions are designated savings already deducted from available cash; investment value is the current carrying value of active investments.")
+        ws.cell(start_row + 7, 1, ExportService._label("Note", language_code)).font = Font(bold=True)
+        ws.cell(start_row + 7, 2, ExportService._t(language_code, "financial_position_note"))
         ws.cell(start_row + 7, 2).alignment = Alignment(wrap_text=True, vertical="top")
 
         for col, width in {1: 34, 2: 24, 3: 18, 4: 18, 5: 18, 6: 18}.items():
@@ -157,9 +195,10 @@ class ExportService:
 
         # Category sheets
         for title, key in (("Income by Category", "income_categories"), ("Expense by Category", "expense_categories")):
-            sh = wb.create_sheet(title[:31])
-            ExportService._configure_excel_sheet(sh, excel_logo_path)
-            sh.append(["Category", "Amount"])
+            translated_title = ExportService._label(title, language_code)
+            sh = wb.create_sheet(translated_title[:31])
+            ExportService._configure_excel_sheet(sh, excel_logo_path, language_code)
+            sh.append([ExportService._label("Category", language_code), ExportService._label("Amount", language_code)])
             for cell in sh[1]:
                 cell.font = Font(bold=True, color="FFFFFF")
                 cell.fill = PatternFill("solid", fgColor="1F4E78")
@@ -171,48 +210,52 @@ class ExportService:
                 row[0].number_format = '#,##0.00'
 
         # Transactions
-        sh = wb.create_sheet("Transactions")
-        ExportService._configure_excel_sheet(sh, excel_logo_path)
-        sh.append(["Type", "Date", "Category", "Source / Merchant", "Amount", "Recurring", "Notes"])
+        sh = wb.create_sheet(ExportService._label("Transactions", language_code)[:31])
+        ExportService._configure_excel_sheet(sh, excel_logo_path, language_code)
+        sh.append([ExportService._label("Type", language_code), ExportService._label("Date", language_code), ExportService._label("Category", language_code), ExportService._label("Source / Merchant", language_code), ExportService._label("Original Amount", language_code), ExportService._label("Original Currency", language_code), f"{ExportService._label('Display Amount', language_code)} ({display_currency})", ExportService._label("Recurring", language_code), ExportService._label("Notes", language_code)])
         for cell in sh[1]:
             cell.font = Font(bold=True, color="FFFFFF")
             cell.fill = PatternFill("solid", fgColor="1F4E78")
+        from app.services.financial_currency_service import FinancialCurrencyService
         for item in data["summary"]["income_records"]:
-            sh.append(["Income", item.received_date, item.category, item.source, float(item.amount or 0), "Yes" if item.recurring else "No", item.notes or ""])
+            converted = FinancialCurrencyService.convert_record(item, display_currency, date_field="received_date")
+            sh.append([ExportService._label("Income", language_code), item.received_date, item.category, item.source, float(item.amount or 0), item.currency or "NGN", float(converted), ExportService._label("Yes" if item.recurring else "No", language_code), item.notes or ""])
         for item in data["summary"]["expense_records"]:
-            sh.append(["Expense", item.expense_date, item.category, item.merchant, float(item.amount or 0), "Yes" if item.recurring else "No", item.notes or ""])
-        widths = [12, 15, 24, 30, 18, 12, 40]
+            converted = FinancialCurrencyService.convert_record(item, display_currency, date_field="expense_date")
+            sh.append([ExportService._label("Expense", language_code), item.expense_date, item.category, item.merchant, float(item.amount or 0), item.currency or "NGN", float(converted), ExportService._label("Yes" if item.recurring else "No", language_code), item.notes or ""])
+        widths = [12, 15, 24, 30, 18, 18, 22, 12, 40]
         for i, width in enumerate(widths, 1):
             sh.column_dimensions[get_column_letter(i)].width = width
         for row in sh.iter_rows(min_row=2):
             row[1].number_format = "dd mmm yyyy"
             row[4].number_format = '#,##0.00'
+            row[6].number_format = '#,##0.00'
 
         # Financial position sheet for a clean printable statement.
-        sh = wb.create_sheet("Financial Position")
-        ExportService._configure_excel_sheet(sh, excel_logo_path)
-        sh["A1"] = "FOCOST — STATEMENT OF FINANCIAL POSITION"
+        sh = wb.create_sheet(ExportService._label("Financial Position", language_code)[:31])
+        ExportService._configure_excel_sheet(sh, excel_logo_path, language_code)
+        sh["A1"] = ExportService._label("FOCOST — STATEMENT OF FINANCIAL POSITION", language_code)
         sh["A1"].font = Font(size=16, bold=True, color="1F4E78")
         sh.merge_cells("A1:B1")
-        sh["A2"] = "Current position"
+        sh["A2"] = ExportService._label("Current position", language_code)
         sh["B2"] = now().strftime("%d %b %Y")
-        sh["A4"] = "Component"
-        sh["B4"] = "Amount (NGN)"
+        sh["A4"] = ExportService._label("Component", language_code)
+        sh["B4"] = f"{ExportService._label('Amount', language_code)} ({display_currency})"
         for cell in sh[4]:
             cell.font = Font(bold=True, color="FFFFFF")
             cell.fill = PatternFill("solid", fgColor="1F4E78")
-        for row_index, (label, value) in enumerate(ExportService._financial_position_rows(position), 5):
+        for row_index, (label, value) in enumerate(ExportService._financial_position_rows(position, language_code), 5):
             sh.cell(row_index, 1, label)
             sh.cell(row_index, 2, value)
             sh.cell(row_index, 2).number_format = '#,##0.00'
-            if label in {"Available / savings balance", "Estimated net worth"}:
+            if row_index in {7, 10}:
                 sh.cell(row_index, 1).font = Font(bold=True)
                 sh.cell(row_index, 2).font = Font(bold=True)
-        sh["A12"] = "Accounting context"
+        sh["A12"] = ExportService._label("Accounting context", language_code)
         sh["A12"].font = Font(bold=True)
-        sh["A13"] = "Available / savings balance = total cash income − total cash expenses."
-        sh["A14"] = "Net worth = available / savings balance + cumulative goal contributions + current investment value."
-        sh["A15"] = "Investment valuation gains/losses affect investment carrying value and are excluded from spendable cash until realized through liquidation."
+        sh["A13"] = ExportService._t(language_code, "financial_position_explanation")
+        sh.merge_cells("A13:B15")
+        sh["A13"].alignment = Alignment(wrap_text=True, vertical="top")
         sh.column_dimensions["A"].width = 72
         sh.column_dimensions["B"].width = 24
         for r in range(13, 16):
@@ -303,7 +346,7 @@ class ExportService:
         ExportService._pdf_header(canvas, doc)
 
     @staticmethod
-    def pdf(data, start_date=None, end_date=None, category=None):
+    def pdf(data, start_date=None, end_date=None, category=None, language_code="en"):
         out = BytesIO()
         doc = SimpleDocTemplate(
             out,
@@ -320,12 +363,13 @@ class ExportService:
 
         summary = data["summary"]
         position = data["financial_position"]
+        display_currency = data.get("display_currency", "NGN")
         story = [
-            Paragraph("FOCOST — FINANCIAL REPORT", styles["Title"]),
+            Paragraph(ExportService._label("FOCOST — FINANCIAL REPORT", language_code), styles["Title"]),
             Paragraph(
-                f"Generated: {now().strftime('%d %b %Y %H:%M')} &nbsp; | &nbsp; "
-                f"Period: {start_date or 'All time'} to {end_date or 'Present'} &nbsp; | &nbsp; "
-                f"Category: {category or 'All Categories'}",
+                f"{ExportService._label('Generated', language_code)}: {now().strftime('%d %b %Y %H:%M')} &nbsp; | &nbsp; "
+                f"{ExportService._label('Period', language_code)}: {start_date or ExportService._label('All time', language_code)} – {end_date or ExportService._label('Present', language_code)} &nbsp; | &nbsp; "
+                f"{ExportService._label('Category', language_code)}: {category or ExportService._label('All Categories', language_code)}",
                 styles["Normal"],
             ),
             Spacer(1, 12),
@@ -333,10 +377,10 @@ class ExportService:
 
         # Financial position statement: current balances are sourced from
         # DashboardService and are independent of period/category filters.
-        story.append(Paragraph("Statement of Financial Position", styles["Heading2"]))
-        position_table = [["Component", "Amount"]]
-        for label, value in ExportService._financial_position_rows(position):
-            position_table.append([label, ExportService._money(value)])
+        story.append(Paragraph(ExportService._label("Financial Position", language_code), styles["Heading2"]))
+        position_table = [[ExportService._label("Component", language_code), ExportService._label("Amount", language_code)]]
+        for label, value in ExportService._financial_position_rows(position, language_code):
+            position_table.append([label, ExportService._money(value, display_currency)])
         pt = Table(position_table, colWidths=[370, 169], repeatRows=1)
         pt.setStyle(TableStyle([
             ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#1f4e78")),
@@ -352,17 +396,14 @@ class ExportService:
         ]))
         story += [pt, Spacer(1, 8)]
         story.append(Paragraph(
-            "Available / savings balance = total cash income − total cash expenses. "
-            "Net worth = available / savings balance + cumulative goal contributions + current investment value. "
-            "Goal contributions are designated savings already deducted from available cash and are therefore added back once only. "
-            "Investment valuation gains/losses affect the carrying value of investments and do not increase or reduce spendable cash until realized.",
+            ExportService._t(language_code, "financial_position_explanation"),
             styles["Normal"],
         ))
         story.append(Spacer(1, 16))
 
         kpis = [
-            ["Period Total Income", "Period Total Expenses", "Period Net Savings", "Savings Rate", "Transactions"],
-            [ExportService._money(summary["income"]), ExportService._money(summary["expenses"]), ExportService._money(summary["savings"]), f"{summary['savings_rate']:.1f}%", str(summary["transactions"])],
+            [ExportService._label("Period Total Income", language_code), ExportService._label("Period Total Expenses", language_code), ExportService._label("Period Net Savings", language_code), ExportService._label("Savings Rate", language_code), ExportService._label("Transactions", language_code)],
+            [ExportService._money(summary["income"], display_currency), ExportService._money(summary["expenses"], display_currency), ExportService._money(summary["savings"], display_currency), f"{summary['savings_rate']:.1f}%", str(summary["transactions"])],
         ]
         t = Table(kpis, colWidths=[107.8] * 5)
         t.setStyle(TableStyle([
@@ -378,9 +419,9 @@ class ExportService:
         story += [t, Spacer(1, 18)]
 
         for title, key in (("Income by Category", "income_categories"), ("Expense by Category", "expense_categories")):
-            table_data = [["Category", "Amount"]] + [[str(a), ExportService._money(b)] for a, b in zip(data[key]["labels"], data[key]["values"])]
+            table_data = [[ExportService._label("Category", language_code), ExportService._label("Amount", language_code)]] + [[str(a), ExportService._money(b, display_currency)] for a, b in zip(data[key]["labels"], data[key]["values"])]
             if len(table_data) == 1:
-                table_data.append(["No data", "NGN 0.00"])
+                table_data.append([ExportService._label("No data", language_code), ExportService._money(0, display_currency)])
             table = Table(table_data, colWidths=[300, 239], repeatRows=1)
             table.setStyle(TableStyle([
                 ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#1f4e78")),
@@ -391,11 +432,11 @@ class ExportService:
                 ("TOPPADDING", (0, 0), (-1, -1), 6),
                 ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
             ]))
-            story += [Paragraph(title, styles["Heading2"]), table, Spacer(1, 14)]
+            story += [Paragraph(ExportService._label(title, language_code), styles["Heading2"]), table, Spacer(1, 14)]
 
         story.append(PageBreak())
-        story.append(Paragraph("Transaction Detail", styles["Heading1"]))
-        tx = [["Type", "Date", "Category", "Source / Merchant", "Amount"]]
+        story.append(Paragraph(ExportService._label("Transaction Detail", language_code), styles["Heading1"]))
+        tx = [[ExportService._label("Type", language_code), ExportService._label("Date", language_code), ExportService._label("Category", language_code), ExportService._label("Source / Merchant", language_code), ExportService._label("Amount", language_code)]]
 
         # Build one unified transaction stream before rendering.
         # Income and Expense must be ordered strictly by transaction date/time,
@@ -404,27 +445,30 @@ class ExportService:
         # transactions share the same financial date. ID is the final stable
         # tie-breaker.
         transaction_rows = []
+        from app.services.financial_currency_service import FinancialCurrencyService
 
         for item in summary["income_records"]:
             transaction_rows.append({
-                "type": "Income",
+                "type": ExportService._label("Income", language_code),
                 "date": item.received_date,
                 "created_at": getattr(item, "created_at", None),
                 "id": item.id,
                 "category": str(item.category or "Uncategorized"),
                 "description": str(item.source or ""),
-                "amount": item.amount,
+                "amount": FinancialCurrencyService.convert_record(item, display_currency, date_field="received_date"),
+                "original_currency": item.currency or "NGN",
             })
 
         for item in summary["expense_records"]:
             transaction_rows.append({
-                "type": "Expense",
+                "type": ExportService._label("Expense", language_code),
                 "date": item.expense_date,
                 "created_at": getattr(item, "created_at", None),
                 "id": item.id,
                 "category": str(item.category or "Uncategorized"),
                 "description": str(item.merchant or ""),
-                "amount": item.amount,
+                "amount": FinancialCurrencyService.convert_record(item, display_currency, date_field="expense_date"),
+                "original_currency": item.currency or "NGN",
             })
 
         # Chronological order is independent of Income/Expense type.
@@ -444,11 +488,11 @@ class ExportService:
                 row["type"],
                 row["date"].strftime("%d %b %Y"),
                 row["category"],
-                row["description"],
-                ExportService._money(row["amount"]),
+                f"{row['description']} (original: {row['original_currency']})",
+                ExportService._money(row["amount"], display_currency),
             ])
         if len(tx) == 1:
-            tx.append(["—", "—", "No transactions", "—", "NGN 0.00"])
+            tx.append(["—", "—", ExportService._label("No data", language_code), "—", ExportService._money(0, display_currency)])
         table = Table(tx, colWidths=[55, 75, 105, 185, 119], repeatRows=1)
         table.setStyle(TableStyle([
             ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#1f4e78")),

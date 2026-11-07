@@ -126,7 +126,7 @@
 
                     <div class="fw-bold text-success">
 
-                        ₦{{ "{:,.2f}".format(today_income) }}
+                        {{ focost_money(today_income, source_currency=focost_display_currency) }}
 
                     </div>
 
@@ -153,7 +153,7 @@
 
                     <div class="fw-bold text-danger">
 
-                        ₦{{ "{:,.2f}".format(today_expense) }}
+                        {{ focost_money(today_expense, source_currency=focost_display_currency) }}
 
                     </div>
 
