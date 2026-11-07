@@ -3,6 +3,7 @@ from datetime import datetime
 from flask import (
     Blueprint,
     render_template,
+    render_template_string,
     redirect,
     url_for,
     flash,
@@ -66,6 +67,94 @@ def _user_display_name(user):
     ).strip()
 
     return name or user.email
+
+
+
+def _build_auth_email_html(
+    *,
+    greeting,
+    paragraphs,
+    action_url,
+    action_label,
+    recipient_email,
+):
+    """Render the shared, branded FOCOST authentication email template.
+
+    All dynamic values are passed as template variables and auto-escaped by
+    Flask/Jinja. The only HTML structure is authored in this trusted template.
+    """
+    logo_url = current_app.config.get("EMAIL_LOGO_URL") or url_for(
+        "static",
+        filename="images/focost_logo.png",
+        _external=True,
+    )
+    sender_name = "The FOCOST Team"
+    sender_email = current_app.config.get(
+        "FOCOST_SUPPORT_EMAIL",
+        "focostsupport@gmail.com",
+    )
+
+    return render_template_string(
+        """<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="light">
+  <title>FOCOST</title>
+</head>
+<body style="margin:0;padding:0;background:#f4f7fb;font-family:Arial,Helvetica,sans-serif;color:#263244;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#f4f7fb;padding:28px 12px;">
+    <tr><td align="center">
+      <table role="presentation" width="600" cellspacing="0" cellpadding="0" border="0" style="width:100%;max-width:600px;background:#ffffff;border:1px solid #e5eaf1;border-radius:14px;overflow:hidden;">
+        <tr><td align="center" style="padding:30px 28px 22px;background:#ffffff;">
+          <a href="https://focost.pythonanywhere.com" style="text-decoration:none;">
+            <img src="{{ logo_url }}" alt="FOCOST" width="150" style="display:block;width:150px;max-width:100%;height:auto;border:0;">
+          </a>
+          <p style="margin:12px 0 0;color:#667085;font-size:13px;letter-spacing:.2px;">AI-Powered Personal Financial Coach</p>
+        </td></tr>
+        <tr><td style="padding:30px 34px 18px;font-size:15px;line-height:1.75;">
+          <p style="margin:0 0 18px;font-size:17px;font-weight:600;color:#172b4d;">{{ greeting }}</p>
+          {% for paragraph in paragraphs %}
+            <p style="margin:0 0 16px;">{{ paragraph }}</p>
+          {% endfor %}
+          <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin:26px 0 24px;">
+            <tr><td align="center" bgcolor="#1769e0" style="border-radius:7px;">
+              <a href="{{ action_url }}" style="display:inline-block;padding:13px 22px;color:#ffffff;text-decoration:none;font-size:14px;font-weight:700;border-radius:7px;">{{ action_label }}</a>
+            </td></tr>
+          </table>
+          <p style="margin:0 0 8px;color:#667085;font-size:13px;">If the button does not work, copy and paste this link into your browser:</p>
+          <p style="margin:0 0 22px;overflow-wrap:anywhere;font-size:12px;"><a href="{{ action_url }}" style="color:#1769e0;">{{ action_url }}</a></p>
+          <p style="margin:0 0 4px;">Regards,</p>
+          <p style="margin:0;font-weight:700;color:#172b4d;">{{ sender_name }}</p>
+          <p style="margin:2px 0 0;font-size:13px;"><a href="mailto:{{ sender_email }}" style="color:#1769e0;text-decoration:none;">{{ sender_email }}</a></p>
+        </td></tr>
+        <tr><td align="center" style="padding:22px 28px;background:#f8fafc;border-top:1px solid #edf0f5;">
+          <p style="margin:0 0 12px;font-size:13px;font-weight:700;color:#344054;">FOCOST · Plan. Track. Grow.</p>
+          <p style="margin:0 0 12px;font-size:12px;">
+            <a href="https://focost.pythonanywhere.com" style="color:#1769e0;text-decoration:none;">Website</a>
+            <span style="color:#98a2b3;">&nbsp;|&nbsp;</span>
+            <a href="https://www.facebook.com/profile.php?id=61595405655287" style="color:#1769e0;text-decoration:none;">Facebook</a>
+            <span style="color:#98a2b3;">&nbsp;|&nbsp;</span>
+            <a href="https://www.linkedin.com/company/focost/" style="color:#1769e0;text-decoration:none;">LinkedIn</a>
+          </p>
+          <p style="margin:0 0 7px;font-size:11px;color:#98a2b3;">This email was sent to {{ recipient_email }}.</p>
+          <p style="margin:0;font-size:11px;color:#98a2b3;">© FOCOST · All rights reserved.</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>""",
+        logo_url=logo_url,
+        greeting=greeting,
+        paragraphs=paragraphs,
+        action_url=action_url,
+        action_label=action_label,
+        sender_name=sender_name,
+        sender_email=sender_email,
+        recipient_email=recipient_email,
+    )
 
 
 # ==========================================================
@@ -171,7 +260,7 @@ def register():
                         user.email,
                         "Verify your FOCOST email address",
                         (
-                            f"Hello {user_name},\n\n"
+                            f"Dear {user_name},\n\n"
                             "Welcome to FOCOST.\n\n"
                             "Thank you for creating your FOCOST account. "
                             "Please verify your email address to activate your "
@@ -186,26 +275,18 @@ def register():
                             "The FOCOST Team"
                         ),
                         (
-                            f"<p>Hello {user_name},</p>"
-                            "<p>Welcome to <strong>FOCOST</strong>.</p>"
-                            "<p>"
-                            "Thank you for creating your FOCOST account. "
-                            "Please verify your email address to activate your "
-                            "account and complete your registration."
-                            "</p>"
-                            f'<p><a href="{verify_url}">'
-                            "<strong>Verify Your Email Address</strong>"
-                            "</a></p>"
-                            "<p>"
-                            "For your security, this verification link is valid for "
-                            f"<strong>{verification_ttl_display}</strong> and will "
-                            "expire automatically after that time."
-                            "</p>"
-                            "<p>"
-                            "If you did not create this FOCOST account, you can "
-                            "safely ignore this email."
-                            "</p>"
-                            "<p>Regards,<br><strong>The FOCOST Team</strong></p>"
+                            _build_auth_email_html(
+                            greeting=f"Dear {user_name},",
+                            paragraphs=[
+                                "Welcome to FOCOST.",
+                                "Thank you for creating your FOCOST account. Please verify your email address to activate your account and complete your registration.",
+                                f"For your security, this verification link is valid for {verification_ttl_display} and will expire automatically after that time.",
+                                "If you did not create this FOCOST account, you can safely ignore this email.",
+                            ],
+                            action_url=verify_url,
+                            action_label="Verify Your Email Address",
+                            recipient_email=user.email,
+                        )
                         ),
                     )
 
@@ -385,7 +466,7 @@ def resend_verification():
                     user.email,
                     "Verify your FOCOST email address",
                     (
-                        f"Hello {user_name},\n\n"
+                        f"Dear {user_name},\n\n"
                         "Welcome to FOCOST.\n\n"
                         "Thank you for creating your FOCOST account. "
                         "Please verify your email address to activate your "
@@ -400,26 +481,18 @@ def resend_verification():
                         "The FOCOST Team"
                     ),
                     (
-                        f"<p>Hello {user_name},</p>"
-                        "<p>Welcome to <strong>FOCOST</strong>.</p>"
-                        "<p>"
-                        "Thank you for creating your FOCOST account. "
-                        "Please verify your email address to activate your "
-                        "account and complete your registration."
-                        "</p>"
-                        f'<p><a href="{verify_url}">'
-                        "<strong>Verify Your Email Address</strong>"
-                        "</a></p>"
-                        "<p>"
-                        "For your security, this verification link is valid for "
-                        f"<strong>{verification_ttl_display}</strong> and will "
-                        "expire automatically after that time."
-                        "</p>"
-                        "<p>"
-                        "If you did not create this FOCOST account, you can "
-                        "safely ignore this email."
-                        "</p>"
-                        "<p>Regards,<br><strong>The FOCOST Team</strong></p>"
+                        _build_auth_email_html(
+                            greeting=f"Dear {user_name},",
+                            paragraphs=[
+                                "Welcome to FOCOST.",
+                                "Thank you for creating your FOCOST account. Please verify your email address to activate your account and complete your registration.",
+                                f"For your security, this verification link is valid for {verification_ttl_display} and will expire automatically after that time.",
+                                "If you did not create this FOCOST account, you can safely ignore this email.",
+                            ],
+                            action_url=verify_url,
+                            action_label="Verify Your Email Address",
+                            recipient_email=user.email,
+                        )
                     ),
                 )
 
@@ -507,7 +580,7 @@ def forgot_password():
                         user.email,
                         "Reset your FOCOST password",
                         (
-                            f"Hello {user_name},\n\n"
+                            f"Dear {user_name},\n\n"
                             "We received a request to reset the password for "
                             "your FOCOST account.\n\n"
                             "If you made this request, use the link below to "
@@ -523,30 +596,18 @@ def forgot_password():
                             "The FOCOST Team"
                         ),
                         (
-                            f"<p>Hello {user_name},</p>"
-                            "<p>"
-                            "We received a request to reset the password for "
-                            "your FOCOST account."
-                            "</p>"
-                            "<p>"
-                            "If you made this request, use the link below to "
-                            "create a new password:"
-                            "</p>"
-                            f'<p><a href="{reset_url}">'
-                            "<strong>Reset Your Password</strong>"
-                            "</a></p>"
-                            "<p>"
-                            "For your security, this password-reset link is "
-                            f"valid for <strong>{password_reset_ttl_display}"
-                            "</strong> and can be used only once. After it "
-                            "expires or is used, you will need to request a "
-                            "new password-reset link."
-                            "</p>"
-                            "<p>"
-                            "If you did not request a password reset, no action "
-                            "is required. Your password will remain unchanged."
-                            "</p>"
-                            "<p>Regards,<br><strong>The FOCOST Team</strong></p>"
+                            _build_auth_email_html(
+                            greeting=f"Dears {user_name},",
+                            paragraphs=[
+                                "We received a request to reset the password for your FOCOST account.",
+                                "If you made this request, use the button below to create a new password.",
+                                f"For your security, this password-reset link is valid for {password_reset_ttl_display} and can be used only once. After it expires or is used, you will need to request a new password-reset link.",
+                                "If you did not request a password reset, no action is required. Your password will remain unchanged.",
+                            ],
+                            action_url=reset_url,
+                            action_label="Reset Your Password",
+                            recipient_email=user.email,
+                        )
                         ),
                     )
 
